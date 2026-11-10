@@ -2,6 +2,7 @@ package game;
 
 import game.view.MainMenuPanel;
 import game.view.SelectionPanel;
+import game.view.BattlePanel;
 import java.awt.CardLayout;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
@@ -20,15 +21,20 @@ public final class Main {
             window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             CardLayout layout = new CardLayout();
             JPanel screens = new JPanel(layout);
-            SelectionPanel selection = new SelectionPanel(() -> layout.show(screens, "menu"));
+            BattlePanel battle = new BattlePanel(() -> layout.show(screens, "menu"));
+            SelectionPanel selection = new SelectionPanel(() -> layout.show(screens, "menu"), party -> {
+                battle.start(party);
+                layout.show(screens, "battle");
+            });
             screens.add(new MainMenuPanel(window, () -> {
                 selection.reset();
                 layout.show(screens, "selection");
             }), "menu");
             screens.add(selection, "selection");
+            screens.add(battle, "battle");
             window.setContentPane(screens);
             window.pack();
-            window.setMinimumSize(window.getSize());
+            window.setResizable(false);
             window.setLocationRelativeTo(null);
             window.setVisible(true);
         });

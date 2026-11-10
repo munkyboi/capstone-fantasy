@@ -16,7 +16,7 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
+import java.util.function.Consumer;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
@@ -46,9 +46,10 @@ public final class SelectionPanel extends JPanel {
 
     /** Creates the selection screen.
      * @param goBack returns to the main menu
+     * @param startBattle receives the selected student indices
      */
-    public SelectionPanel(Runnable goBack) {
-        setPreferredSize(new Dimension(800, 600));
+    public SelectionPanel(Runnable goBack, Consumer<java.util.List<Integer>> startBattle) {
+        setPreferredSize(new Dimension(960, 540));
         setLayout(new BorderLayout(0, 8));
         setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
         JLabel heading = new JLabel("CHOOSE YOUR PARTY", SwingConstants.CENTER);
@@ -72,9 +73,7 @@ public final class SelectionPanel extends JPanel {
         footer.add(count, BorderLayout.CENTER);
         JButton back = new JButton("Back");
         back.addActionListener(event -> goBack.run());
-        continueButton.addActionListener(event -> JOptionPane.showMessageDialog(this,
-                "Your party: " + partyNames() + "\nThe first battle is coming soon.",
-                "Party ready", JOptionPane.INFORMATION_MESSAGE));
+        continueButton.addActionListener(event -> startBattle.accept(new java.util.ArrayList<>(selected)));
         footer.add(back, BorderLayout.WEST);
         footer.add(continueButton, BorderLayout.EAST);
         add(footer, BorderLayout.SOUTH);
@@ -104,15 +103,6 @@ public final class SelectionPanel extends JPanel {
                     + (selected.contains(i) ? ", selected" : ", not selected"));
             choices[i].repaint();
         }
-    }
-
-    private String partyNames() {
-        StringBuilder names = new StringBuilder();
-        for (int index : selected) {
-            if (names.length() > 0) { names.append(", "); }
-            names.append(NAMES[index]);
-        }
-        return names.toString();
     }
 
     private static BufferedImage loadImage(String path) {

@@ -18,8 +18,8 @@ import javax.swing.SwingConstants;
 
 /** The title screen and entry point to the game's menu. */
 public final class MainMenuPanel extends JPanel {
-    private static final int WIDTH = 800;
-    private static final int HEIGHT = 600;
+    private static final int WIDTH = 960;
+    private static final int HEIGHT = 540;
     private static final Color GOLD = new Color(250, 218, 143);
     private static final Color INK = new Color(24, 30, 58);
 
