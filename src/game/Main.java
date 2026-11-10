@@ -21,15 +21,22 @@ public final class Main {
             window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             CardLayout layout = new CardLayout();
             JPanel screens = new JPanel(layout);
-            BattlePanel battle = new BattlePanel(() -> layout.show(screens, "menu"));
-            SelectionPanel selection = new SelectionPanel(() -> layout.show(screens, "menu"), party -> {
+            Runnable showMenu = () -> {
+                layout.show(screens, "menu");
+                screens.getComponent(0).requestFocusInWindow();
+            };
+            BattlePanel battle = new BattlePanel(showMenu);
+            SelectionPanel selection = new SelectionPanel(showMenu, party -> {
                 battle.start(party);
                 layout.show(screens, "battle");
+                battle.requestFocusInWindow();
             });
-            screens.add(new MainMenuPanel(window, () -> {
+            MainMenuPanel menu = new MainMenuPanel(window, () -> {
                 selection.reset();
                 layout.show(screens, "selection");
-            }), "menu");
+                selection.requestFocusInWindow();
+            });
+            screens.add(menu, "menu");
             screens.add(selection, "selection");
             screens.add(battle, "battle");
             window.setContentPane(screens);
@@ -37,6 +44,7 @@ public final class Main {
             window.setResizable(false);
             window.setLocationRelativeTo(null);
             window.setVisible(true);
+            menu.requestFocusInWindow();
         });
     }
 }

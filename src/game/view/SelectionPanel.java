@@ -41,6 +41,7 @@ public final class SelectionPanel extends JPanel {
     private final JButton[] choices = new JButton[NAMES.length];
     private final JLabel count = new JLabel("", SwingConstants.CENTER);
     private final JButton continueButton = new JButton("Continue");
+    private int cursor;
     private final BufferedImage background = loadImage("/assets/backgrounds/campus-courtyard-v1.png");
     private final BufferedImage sprites = loadImage("/assets/sprites/student-party-idle-v1.png");
 
@@ -50,6 +51,7 @@ public final class SelectionPanel extends JPanel {
      */
     public SelectionPanel(Runnable goBack, Consumer<java.util.List<Integer>> startBattle) {
         setPreferredSize(new Dimension(960, 540));
+        setFocusable(true);
         setLayout(new BorderLayout(0, 8));
         setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
         JLabel heading = new JLabel("CHOOSE YOUR PARTY", SwingConstants.CENTER);
@@ -72,18 +74,38 @@ public final class SelectionPanel extends JPanel {
         count.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
         footer.add(count, BorderLayout.CENTER);
         JButton back = new JButton("Back");
+        back.setFocusable(false);
+        continueButton.setFocusable(false);
         back.addActionListener(event -> goBack.run());
         continueButton.addActionListener(event -> startBattle.accept(new java.util.ArrayList<>(selected)));
         footer.add(back, BorderLayout.WEST);
         footer.add(continueButton, BorderLayout.EAST);
         add(footer, BorderLayout.SOUTH);
+        Keys.bind(this, "LEFT", "party-left", () -> moveCursor(-1));
+        Keys.bind(this, "RIGHT", "party-right", () -> moveCursor(1));
+        Keys.bind(this, "DOWN", "party-continue", () -> { cursor = 4; refresh(); });
+        Keys.bind(this, "UP", "party-cards", () -> { if (cursor == 4) { cursor = 0; refresh(); } });
+        Keys.bind(this, "ENTER", "party-confirm", this::confirmCursor);
+        Keys.bind(this, "SPACE", "party-confirm-space", this::confirmCursor);
+        Keys.bind(this, "ESCAPE", "party-back", goBack);
         reset();
     }
 
     /** Clears the party when a new game starts. */
     public void reset() {
         selected.clear();
+        cursor = 0;
         refresh();
+    }
+
+    private void moveCursor(int direction) {
+        cursor = Math.floorMod(cursor + direction, choices.length);
+        refresh();
+    }
+
+    private void confirmCursor() {
+        if (cursor == 4) { if (continueButton.isEnabled()) { continueButton.doClick(); } }
+        else { toggle(cursor); }
     }
 
     private void toggle(int index) {
@@ -96,8 +118,9 @@ public final class SelectionPanel extends JPanel {
     }
 
     private void refresh() {
-        count.setText("Choose 3 students  •  " + selected.size() + " / " + PARTY_SIZE);
+        count.setText("← → Select  •  Enter Choose  •  ↓ Continue  •  " + selected.size() + " / " + PARTY_SIZE);
         continueButton.setEnabled(selected.size() == PARTY_SIZE);
+        continueButton.setText(cursor == 4 ? "▶ Continue" : "Continue");
         for (int i = 0; i < choices.length; i++) {
             choices[i].getAccessibleContext().setAccessibleName(NAMES[i] + ", " + CLASSES[i]
                     + (selected.contains(i) ? ", selected" : ", not selected"));
@@ -139,6 +162,7 @@ public final class SelectionPanel extends JPanel {
 
         CharacterCard(int index) {
             this.index = index;
+            setFocusable(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
             setFocusPainted(true);
@@ -152,7 +176,7 @@ public final class SelectionPanel extends JPanel {
                 int w = getWidth(), h = getHeight();
                 g.setColor(new Color(17, 28, 52, 224));
                 g.fillRect(0, 0, w, h);
-                g.setColor(selected.contains(index) ? GOLD : new Color(120, 149, 182));
+                g.setColor(index == cursor ? Color.WHITE : selected.contains(index) ? GOLD : new Color(120, 149, 182));
                 g.drawRect(1, 1, w - 3, h - 3);
                 g.drawRect(3, 3, w - 7, h - 7);
                 if (sprites != null) {
@@ -160,8 +184,18 @@ public final class SelectionPanel extends JPanel {
                             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                     int slice = sprites.getWidth() / 4;
                     int top = 60, bottom = Math.max(top + 40, h - 135);
-                    g.drawImage(sprites, 8, top, w - 8, bottom,
-                            index * slice, 0, (index + 1) * slice, sprites.getHeight(), null);
+                    int height = Math.min(bottom - top, (w - 16) * sprites.getHeight() / slice);
+                    int width = height * slice / sprites.getHeight();
+                    BufferedImage pixels = new BufferedImage(48, 64, BufferedImage.TYPE_INT_ARGB);
+                    Graphics2D pixelGraphics = pixels.createGraphics();
+                    try {
+                        pixelGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                        pixelGraphics.drawImage(sprites, 0, 0, 48, 64,
+                                index * slice, 0, (index + 1) * slice, sprites.getHeight(), null);
+                    } finally { pixelGraphics.dispose(); }
+                    int left = (w - width) / 2;
+                    g.drawImage(pixels, left, top, width, height, null);
                 }
                 g.setColor(GOLD);
                 g.setFont(new Font(Font.SERIF, Font.BOLD, 21));
@@ -176,7 +210,7 @@ public final class SelectionPanel extends JPanel {
                 g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
                 drawCentered(g, EFFECTS[index], w / 2, h - 53);
                 g.setColor(selected.contains(index) ? GOLD : LIGHT);
-                drawCentered(g, selected.contains(index) ? "SELECTED" : "Select", w / 2, h - 32);
+                drawCentered(g, (index == cursor ? "▶ " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - 32);
                 if (hasFocus()) { g.drawRect(6, 6, w - 13, h - 13); }
             } finally { g.dispose(); }
         }

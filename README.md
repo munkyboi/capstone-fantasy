@@ -11,11 +11,11 @@ sh build.sh
 java -jar build/capstone-fantasy.jar
 ```
 
-The current build opens a fixed-size 960 × 540 (16:9) game window. **New Game** opens character selection: click three students, click a selected student to remove them, and use Back to return to the menu. Continue starts a battle against one Library Wisp. During battle choose Attack, Ability, Item, or Defend. Angel can attack normally or use Healing Kiss to heal a living student. At victory or defeat, return to the main menu. **Load Game** is not implemented; **Quit** closes the window. A graphical desktop is required.
+The current build opens a fixed-size 960 × 540 (16:9) game window. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose three, then press **Down** and **Enter** to continue. **Escape** goes back. During battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. A cursor shows the target on the battlefield: use the arrow keys to move among living allies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Angel can attack normally or use Healing Kiss. Press Enter after victory or defeat to return to the menu. **Load Game** is not implemented. A graphical desktop is required.
 
 ## Direction
 
-The game is intended to be suitable for a school audience, without profanity, innuendo, sexual content, or immoral themes. The battle presentation is inspired by [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system); the application is being built in Java Swing.
+The game is intended to be suitable for a school audience, without profanity, innuendo, sexual content, or immoral themes. Its battle layout takes inspiration from classic 16-bit JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system); the application is being built in Java Swing. The battlefield and student portraits are rendered at low resolution and scaled with nearest-neighbor interpolation for a pixel-art appearance.
 
 ## AI assistance
 

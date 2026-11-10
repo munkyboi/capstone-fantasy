@@ -22,6 +22,7 @@ public final class MainMenuPanel extends JPanel {
     private static final int HEIGHT = 540;
     private static final Color GOLD = new Color(250, 218, 143);
     private static final Color INK = new Color(24, 30, 58);
+    private int cursor;
 
     /** Creates the menu for the given game window.
      * @param window window to close when the player quits
@@ -29,6 +30,7 @@ public final class MainMenuPanel extends JPanel {
      */
     public MainMenuPanel(Window window, Runnable startNewGame) {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setFocusable(true);
         setLayout(new BorderLayout());
 
         JLabel title = new JLabel("CAPSTONE FANTASY", SwingConstants.CENTER);
@@ -56,8 +58,20 @@ public final class MainMenuPanel extends JPanel {
         menu.add(newGame);
         menu.add(loadGame);
         menu.add(quit);
+        JButton[] buttons = {newGame, loadGame, quit};
+        Runnable refresh = () -> {
+            String[] labels = {"New Game", "Load Game", "Quit"};
+            for (int i = 0; i < buttons.length; i++) {
+                buttons[i].setText((i == cursor ? "▶  " : "     ") + labels[i]);
+            }
+        };
+        Keys.bind(this, "UP", "menu-up", () -> { cursor = Math.floorMod(cursor - 1, buttons.length); refresh.run(); });
+        Keys.bind(this, "DOWN", "menu-down", () -> { cursor = (cursor + 1) % buttons.length; refresh.run(); });
+        Keys.bind(this, "ENTER", "menu-confirm", () -> buttons[cursor].doClick());
+        Keys.bind(this, "SPACE", "menu-confirm-space", () -> buttons[cursor].doClick());
+        refresh.run();
         bottom.add(menu, BorderLayout.CENTER);
-        JLabel subtitle = new JLabel("A CAMPUS ADVENTURE", SwingConstants.CENTER);
+        JLabel subtitle = new JLabel("↑ ↓ MOVE   •   ENTER CONFIRM", SwingConstants.CENTER);
         subtitle.setForeground(Color.WHITE);
         subtitle.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         subtitle.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
@@ -67,6 +81,7 @@ public final class MainMenuPanel extends JPanel {
 
     private JButton menuButton(String label) {
         JButton button = new JButton(label);
+        button.setFocusable(false);
         button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
         button.setForeground(Color.WHITE);
         button.setBackground(INK);
