@@ -2,6 +2,7 @@ package game.view;
 
 import game.model.Battle;
 import game.model.Enemy;
+import game.model.GameProgress;
 import game.model.Student;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -15,6 +16,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -26,6 +28,7 @@ import javax.swing.JTextArea;
 /** Displays the campus entrance encounter and its controls. */
 public final class BattlePanel extends JPanel {
     private final Runnable returnToMenu;
+    private final Consumer<GameProgress> onVictory;
     private final JLabel status = new JLabel();
     private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel()};
     private final JTextArea log = new JTextArea();
@@ -37,6 +40,7 @@ public final class BattlePanel extends JPanel {
     private final JButton finish = new JButton("Return to Menu");
     private final Scene scene = new Scene();
     private Battle battle;
+    private GameProgress progress;
     private int commandIndex;
     private final JButton[] commands = {attack, ability, item, defend};
     private enum TargetAction { NONE, ATTACK, ABILITY, ITEM }
@@ -48,7 +52,16 @@ public final class BattlePanel extends JPanel {
      * @param returnToMenu returns to the title screen
      */
     public BattlePanel(Runnable returnToMenu) {
+        this(returnToMenu, ignored -> returnToMenu.run());
+    }
+
+    /** Creates a battle screen with a victory transition.
+     * @param returnToMenu returns after defeat
+     * @param onVictory opens the next screen after victory
+     */
+    public BattlePanel(Runnable returnToMenu, Consumer<GameProgress> onVictory) {
         this.returnToMenu = returnToMenu;
+        this.onVictory = onVictory;
         setPreferredSize(new Dimension(960, 540));
         setFocusable(true);
         setLayout(new BorderLayout());
@@ -105,7 +118,7 @@ public final class BattlePanel extends JPanel {
             }
             beginTargeting(TargetAction.ITEM);
         });
-        finish.addActionListener(e -> this.returnToMenu.run());
+        finish.addActionListener(e -> { if (battle.isVictory()) { this.onVictory.accept(progress); } else { this.returnToMenu.run(); } });
         Keys.bind(this, "UP", "battle-up", () -> moveCursor(-1));
         Keys.bind(this, "DOWN", "battle-down", () -> moveCursor(1));
         Keys.bind(this, "LEFT", "battle-left", () -> moveTarget(-1));
@@ -135,7 +148,15 @@ public final class BattlePanel extends JPanel {
      * @param ids selected student indices
      */
     public void start(List<Integer> ids) {
-        battle = new Battle(ids, new Random()); commandIndex = 0;
+        start(new GameProgress(ids));
+    }
+
+    /** Begins an encounter with the existing party and supplies.
+     * @param progress party and encounter progress
+     */
+    public void start(GameProgress progress) {
+        this.progress = progress;
+        battle = new Battle(progress, new Random()); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null; refresh();
     }
 
@@ -189,7 +210,7 @@ public final class BattlePanel extends JPanel {
             notice = null;
             if (action == TargetAction.ATTACK) { battle.attack(enemy); }
             else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
-            else { battle.useKit(target); }
+            else if (!battle.useKit(target)) { notice = target.getName() + " already has full HP."; }
             refresh();
         }
         else { commands[commandIndex].doClick(); }
@@ -207,7 +228,7 @@ public final class BattlePanel extends JPanel {
         String hint = targeting == TargetAction.NONE ? "↑ ↓ Move  •  Enter Select"
                 : targetsParty() ? "← → Choose ally  •  Enter Confirm  •  Esc Cancel"
                 : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "← → Choose enemy  •  Enter Confirm  •  Esc Cancel";
-        status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Return to Menu" : "GAME OVER  •  Enter: Return to Menu")
+        status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")
                 : battle.getCurrent().getName() + "'s turn  |  First-Aid Kits: " + battle.getKits() + "  |  " + hint);
         String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
@@ -224,6 +245,7 @@ public final class BattlePanel extends JPanel {
         boolean canChoose = !over && targeting == TargetAction.NONE;
         attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
         finish.setVisible(over);
+        finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
         updateCommands();
         scene.repaint();
     }
@@ -256,6 +278,7 @@ public final class BattlePanel extends JPanel {
         private final BufferedImage background = image("/assets/backgrounds/campus-courtyard-v1.png");
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v2.png");
+        private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
             if (getWidth() <= 0 || getHeight() <= 0) { return; }
@@ -288,12 +311,17 @@ public final class BattlePanel extends JPanel {
                 for (int enemyIndex = 0; enemyIndex < battle.getEnemies().size(); enemyIndex++) {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int x = w - 18 - (enemyIndex + 1) * (slotWidth + 3);
-                    if (wisp != null && enemy.isAlive()) {
-                        drawFit(g, wisp, 0, wisp.getWidth(), x + (slotWidth - spriteWidth) / 2,
-                                h - 10 - spriteHeight, spriteWidth, spriteHeight);
+                    BufferedImage enemyImage = enemy.isSentinel() ? sentinel : wisp;
+                    if (enemyImage != null && enemy.isAlive()) {
+                        int enemyWidth = enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                        int enemyHeight = enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
+                        int enemyX = x + (slotWidth - enemyWidth) / 2;
+                        int enemyY = h - 10 - enemyHeight;
+                        drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY,
+                                enemyWidth, enemyHeight);
                         if (targeting != TargetAction.NONE && !targetsParty()
                                 && (targetsAllEnemies() || enemyIndex == targetIndex)) {
-                            drawCursor(g, x + slotWidth / 2, h - 13 - spriteHeight);
+                            drawCursor(g, x + slotWidth / 2, enemyY - 3);
                         }
                     }
                 }
@@ -309,7 +337,7 @@ public final class BattlePanel extends JPanel {
                 output.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
                 for (int i = 0; i < battle.getEnemies().size(); i++) {
                     Enemy enemy = battle.getEnemies().get(i);
-                    output.drawString("Wisp " + (char) ('A' + i) + "  " + enemy.getHp() + " / "
+                    output.drawString((enemy.isSentinel() ? "Sentinel" : "Wisp " + (char) ('A' + i)) + "  " + enemy.getHp() + " / "
                             + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), getWidth() - 217, 30 + i * 18);
                 }
             } finally { output.dispose(); }

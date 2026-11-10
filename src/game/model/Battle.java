@@ -5,36 +5,51 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-/** Controls a two-Wisp encounter, independent of the Swing interface. */
+/** Controls an encounter, independent of the Swing interface. */
 public final class Battle {
-    private static final int FIRST_AID_HEAL = 30;
     private static final int KISS_HEAL = 28;
     private final List<Student> party = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
     private final Random random;
+    private final GameProgress progress;
     private int turn;
-    private int kits = 3;
-    private String message = "Two Library Wisps appear! Choose an action.";
+    private String message;
 
     /** Creates an encounter for exactly three different students.
      * @param ids selected student indices
      * @param random randomness used in combat
      */
     public Battle(List<Integer> ids, Random random) {
-        if (ids.size() != 3 || ids.stream().distinct().count() != 3) {
-            throw new IllegalArgumentException("Choose three different students");
-        }
+        this(new GameProgress(ids), random);
+    }
+    /** Creates a battle using a party's existing state.
+     * @param progress party and encounter progress
+     * @param random randomness used in combat
+     */
+    public Battle(GameProgress progress, Random random) {
+        this.progress = progress;
         this.random = random;
-        for (int id : ids) { party.add(new Student(id)); }
+        party.addAll(progress.getParty());
+        for (Student student : party) { student.clearDefense(); }
         party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
+        if (party.stream().noneMatch(Student::isAlive)) {
+            throw new IllegalArgumentException("At least one student must be able to battle");
+        }
+        while (!party.get(turn).isAlive()) { turn++; }
         enemies.add(new Enemy("Library Wisp A"));
-        enemies.add(new Enemy("Library Wisp B"));
+        if (progress.getEncounter() == 0) {
+            enemies.add(new Enemy("Library Wisp B"));
+            message = "Two Library Wisps appear! Choose an action.";
+        } else {
+            enemies.add(new Enemy("Stone Sentinel", true));
+            message = "A Stone Sentinel and a Library Wisp appear!";
+        }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
     }
     /** @return party in speed order */ public List<Student> getParty() { return List.copyOf(party); }
     /** @return enemies in speed order */ public List<Enemy> getEnemies() { return List.copyOf(enemies); }
     /** @return current student */ public Student getCurrent() { return party.get(turn); }
-    /** @return remaining first-aid kits */ public int getKits() { return kits; }
+    /** @return remaining first-aid kits */ public int getKits() { return progress.getKits(); }
     /** @return latest combat messages */ public String getMessage() { return message; }
     /** @return whether either side is defeated */ public boolean isOver() { return isVictory() || isDefeat(); }
     /** @return whether all enemies are defeated */ public boolean isVictory() { return enemies.stream().noneMatch(Enemy::isAlive); }
@@ -86,8 +101,10 @@ public final class Battle {
      * @return whether an item was used
      */
     public boolean useKit(Student target) {
-        if (isOver() || kits == 0 || !validAlly(target)) { return false; }
-        kits--; int healed = target.heal(FIRST_AID_HEAL);
+        if (isOver() || !validAlly(target)) { return false; }
+        int before = target.getHp();
+        if (!progress.useKit(target)) { return false; }
+        int healed = target.getHp() - before;
         finish(getCurrent().getName() + " uses a First-Aid Kit. " + target.getName()
                 + " recovers " + healed + " HP.");
         return true;
@@ -103,7 +120,7 @@ public final class Battle {
     private String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
     private void finish(String action) {
         message = action;
-        if (isVictory()) { message += "\nAll Wisps defeated! Victory!"; return; }
+        if (isVictory()) { message += "\nAll enemies defeated! Victory!"; return; }
         turn++;
         while (turn < party.size() && !party.get(turn).isAlive()) { turn++; }
         if (turn < party.size()) { return; }

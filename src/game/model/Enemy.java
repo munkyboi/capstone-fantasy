@@ -1,6 +1,6 @@
 package game.model;
 
-/** A Library Wisp in a battle. */
+/** An opponent in a battle. */
 public final class Enemy {
     private final String name;
     private final int maxHp;
@@ -8,18 +8,28 @@ public final class Enemy {
     private final int defense;
     private final int speed;
     private int hp;
+    private final boolean sentinel;
 
     /** Creates one Wisp with its own name and battle stats.
      * @param name display name
      */
     public Enemy(String name) {
-        this.name = name;
-        maxHp = 65;
-        hp = maxHp;
-        attack = 16;
-        defense = 5;
-        speed = 8;
+        this(name, false);
     }
+    /** Creates a Wisp or Stone Sentinel.
+     * @param name display name
+     * @param sentinel whether this is a Stone Sentinel
+     */
+    public Enemy(String name, boolean sentinel) {
+        this.name = name;
+        this.sentinel = sentinel;
+        maxHp = sentinel ? 105 : 65;
+        hp = maxHp;
+        attack = sentinel ? 20 : 16;
+        defense = sentinel ? 9 : 5;
+        speed = sentinel ? 5 : 8;
+    }
+    /** @return whether this enemy is a Stone Sentinel */ public boolean isSentinel() { return sentinel; }
     /** @return enemy name */ public String getName() { return name; }
     /** @return current HP */ public int getHp() { return hp; }
     /** @return maximum HP */ public int getMaxHp() { return maxHp; }

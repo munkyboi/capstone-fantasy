@@ -34,6 +34,7 @@ public final class Student {
     /** @return speed value */ public int getSpeed() { return speed; }
     /** @return whether the student can act */ public boolean isAlive() { return hp > 0; }
     /** Protects against the next incoming attack. */ public void defend() { defending = true; }
+    /** Clears defense between encounters. */ public void clearDefense() { defending = false; }
     /** Restores HP up to the maximum.
      * @param amount amount to restore
      * @return actual HP restored

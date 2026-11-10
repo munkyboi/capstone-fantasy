@@ -3,6 +3,7 @@ package game;
 import game.view.MainMenuPanel;
 import game.view.SelectionPanel;
 import game.view.BattlePanel;
+import game.view.CampPanel;
 import java.awt.CardLayout;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
@@ -25,7 +26,19 @@ public final class Main {
                 layout.show(screens, "menu");
                 screens.getComponent(0).requestFocusInWindow();
             };
-            BattlePanel battle = new BattlePanel(showMenu);
+            BattlePanel[] battleHolder = new BattlePanel[1];
+            CampPanel camp = new CampPanel(progress -> {
+                battleHolder[0].start(progress);
+                layout.show(screens, "battle");
+                battleHolder[0].requestFocusInWindow();
+            }, showMenu);
+            BattlePanel battle = new BattlePanel(showMenu, progress -> {
+                boolean hasNext = progress.advance();
+                camp.open(progress, !hasNext);
+                layout.show(screens, "camp");
+                camp.requestFocusInWindow();
+            });
+            battleHolder[0] = battle;
             SelectionPanel selection = new SelectionPanel(showMenu, party -> {
                 battle.start(party);
                 layout.show(screens, "battle");
@@ -39,6 +52,7 @@ public final class Main {
             screens.add(menu, "menu");
             screens.add(selection, "selection");
             screens.add(battle, "battle");
+            screens.add(camp, "camp");
             window.setContentPane(screens);
             window.pack();
             window.setResizable(false);
