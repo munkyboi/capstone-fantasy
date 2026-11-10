@@ -11,7 +11,7 @@ sh build.sh
 java -jar build/capstone-fantasy.jar
 ```
 
-The current build opens a fixed-size 960 × 540 (16:9) game window. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose three, then press **Down** and **Enter** to continue. **Escape** goes back. During battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. A cursor shows the target on the battlefield: use the arrow keys to move among living allies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Angel can attack normally or use Healing Kiss. Press Enter after victory or defeat to return to the menu. **Load Game** is not implemented. A graphical desktop is required.
+The current build opens a fixed-size 960 × 540 (16:9) game window. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose three, then press **Down** and **Enter** to continue. **Escape** goes back. The current encounter has two Library Wisps. During battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. A cursor shows the target on the battlefield: use the arrow keys to move among living allies or enemies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Zack's Arcane Burst targets all living enemies. Use **Page Up/Page Down** to scroll longer battle messages. Angel can attack normally or use Healing Kiss. Press Enter after victory or defeat to return to the menu. **Load Game** is not implemented. A graphical desktop is required.
 
 ## Direction
 
@@ -33,4 +33,4 @@ OpenAI Codex helped plan the game and draft the Java Swing main menu, character-
 
 ## Known limitations
 
-Only the first encounter is implemented. Camp, equipment, the remaining encounters, a full inventory, and saving are not implemented yet. The party starts the first battle with three First-Aid Kits. Stats and balance are provisional, the artwork has no animation frames yet, and the title screen's campus and crystal remain simple shapes drawn by the application.
+Only one encounter is implemented; it currently uses two Wisps to exercise multiple-enemy targeting. Camp, equipment, the remaining encounters, a full inventory, and saving are not implemented yet. The party starts the battle with three First-Aid Kits. Stats and balance are provisional, the artwork has no animation frames yet, and the title screen's campus and crystal remain simple shapes drawn by the application.

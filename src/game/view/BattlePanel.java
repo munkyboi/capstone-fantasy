@@ -1,6 +1,7 @@
 package game.view;
 
 import game.model.Battle;
+import game.model.Enemy;
 import game.model.Student;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,6 +20,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 /** Displays the campus entrance encounter and its controls. */
@@ -27,6 +29,7 @@ public final class BattlePanel extends JPanel {
     private final JLabel status = new JLabel();
     private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel()};
     private final JTextArea log = new JTextArea();
+    private final JScrollPane logScroll = new JScrollPane(log);
     private final JButton attack = new JButton("Attack");
     private final JButton ability = new JButton("Ability");
     private final JButton item = new JButton("Item");
@@ -64,7 +67,10 @@ public final class BattlePanel extends JPanel {
         log.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
         JPanel info = frame();
         info.setLayout(new BorderLayout());
-        info.add(log, BorderLayout.CENTER);
+        logScroll.setBorder(null);
+        logScroll.setFocusable(false);
+        logScroll.getVerticalScrollBar().setFocusable(false);
+        info.add(logScroll, BorderLayout.CENTER);
         JPanel members = new JPanel(new GridLayout(3, 1));
         members.setOpaque(false);
         for (JLabel member : partyStatus) {
@@ -107,6 +113,8 @@ public final class BattlePanel extends JPanel {
         Keys.bind(this, "ENTER", "battle-confirm", this::confirmCommand);
         Keys.bind(this, "SPACE", "battle-confirm-space", this::confirmCommand);
         Keys.bind(this, "ESCAPE", "battle-cancel", this::cancelTargeting);
+        Keys.bind(this, "PAGE_DOWN", "log-down", () -> scrollLog(1));
+        Keys.bind(this, "PAGE_UP", "log-up", () -> scrollLog(-1));
     }
 
     private static JPanel frame() {
@@ -116,6 +124,11 @@ public final class BattlePanel extends JPanel {
                 BorderFactory.createLineBorder(new Color(220, 225, 239), 3),
                 BorderFactory.createLineBorder(new Color(63, 100, 166), 2)));
         return panel;
+    }
+
+    private void scrollLog(int direction) {
+        javax.swing.JScrollBar bar = logScroll.getVerticalScrollBar();
+        bar.setValue(bar.getValue() + direction * bar.getBlockIncrement(direction));
     }
 
     /** Begins a fresh first encounter with the selected students.
@@ -138,20 +151,26 @@ public final class BattlePanel extends JPanel {
                 || (targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 3);
     }
 
+    private boolean targetsAllEnemies() {
+        return targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 0;
+    }
+
     private void beginTargeting(TargetAction action) {
         if (battle == null || battle.isOver() || targeting != TargetAction.NONE) { return; }
         notice = null; targeting = action; targetIndex = 0;
         if (targetsParty()) {
             while (!battle.getParty().get(targetIndex).isAlive()) { targetIndex++; }
+        } else {
+            while (!battle.getEnemies().get(targetIndex).isAlive()) { targetIndex++; }
         }
         refresh();
     }
 
     private void moveTarget(int direction) {
-        if (battle == null || battle.isOver() || targeting == TargetAction.NONE || !targetsParty()) { return; }
-        int size = battle.getParty().size();
+        if (battle == null || battle.isOver() || targeting == TargetAction.NONE || targetsAllEnemies()) { return; }
+        int size = targetsParty() ? battle.getParty().size() : battle.getEnemies().size();
         do { targetIndex = Math.floorMod(targetIndex + direction, size); }
-        while (!battle.getParty().get(targetIndex).isAlive());
+        while (targetsParty() ? !battle.getParty().get(targetIndex).isAlive() : !battle.getEnemies().get(targetIndex).isAlive());
         refresh();
     }
 
@@ -164,11 +183,12 @@ public final class BattlePanel extends JPanel {
         if (battle.isOver()) { finish.doClick(); }
         else if (targeting != TargetAction.NONE) {
             Student target = targetsParty() ? battle.getParty().get(targetIndex) : null;
+            Enemy enemy = !targetsParty() ? battle.getEnemies().get(targetIndex) : null;
             TargetAction action = targeting;
             targeting = TargetAction.NONE;
             notice = null;
-            if (action == TargetAction.ATTACK) { battle.attack(); }
-            else if (action == TargetAction.ABILITY) { battle.ability(target); }
+            if (action == TargetAction.ATTACK) { battle.attack(enemy); }
+            else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
             else { battle.useKit(target); }
             refresh();
         }
@@ -186,14 +206,15 @@ public final class BattlePanel extends JPanel {
         boolean over = battle.isOver();
         String hint = targeting == TargetAction.NONE ? "↑ ↓ Move  •  Enter Select"
                 : targetsParty() ? "← → Choose ally  •  Enter Confirm  •  Esc Cancel"
-                : "Enter Confirm  •  Esc Cancel";
+                : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "← → Choose enemy  •  Enter Confirm  •  Esc Cancel";
         status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Return to Menu" : "GAME OVER  •  Enter: Return to Menu")
                 : battle.getCurrent().getName() + "'s turn  |  First-Aid Kits: " + battle.getKits() + "  |  " + hint);
         String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
                 : targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 0
-                ? "Arcane Burst targets all enemies." : "Choose the Library Wisp as the target.";
+                ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
         log.setText(targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage());
+        log.setCaretPosition(0);
         for (int i = 0; i < partyStatus.length; i++) {
             Student student = battle.getParty().get(i);
             String marker = !over && student == battle.getCurrent() ? "▶ " : "  ";
@@ -264,12 +285,16 @@ public final class BattlePanel extends JPanel {
                         drawCursor(g, x + slotWidth / 2, y - 3);
                     }
                 }
-                int x = w - slotWidth - 18;
-                if (wisp != null && battle.getWispHp() > 0) {
-                    drawFit(g, wisp, 0, wisp.getWidth(), x + (slotWidth - spriteWidth) / 2,
-                            h - 10 - spriteHeight, spriteWidth, spriteHeight);
-                    if (targeting != TargetAction.NONE && !targetsParty()) {
-                        drawCursor(g, x + slotWidth / 2, h - 13 - spriteHeight);
+                for (int enemyIndex = 0; enemyIndex < battle.getEnemies().size(); enemyIndex++) {
+                    Enemy enemy = battle.getEnemies().get(enemyIndex);
+                    int x = w - 18 - (enemyIndex + 1) * (slotWidth + 3);
+                    if (wisp != null && enemy.isAlive()) {
+                        drawFit(g, wisp, 0, wisp.getWidth(), x + (slotWidth - spriteWidth) / 2,
+                                h - 10 - spriteHeight, spriteWidth, spriteHeight);
+                        if (targeting != TargetAction.NONE && !targetsParty()
+                                && (targetsAllEnemies() || enemyIndex == targetIndex)) {
+                            drawCursor(g, x + slotWidth / 2, h - 13 - spriteHeight);
+                        }
                     }
                 }
             } finally { g.dispose(); }
@@ -279,11 +304,14 @@ public final class BattlePanel extends JPanel {
                         RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 output.drawImage(pixels, 0, 0, getWidth(), getHeight(), null);
                 output.setColor(new Color(15, 25, 47, 225));
-                output.fillRect(getWidth() - 224, 12, 170, 38);
+                output.fillRect(getWidth() - 224, 12, 200, 52);
                 output.setColor(Color.WHITE);
                 output.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
-                output.drawString("Library Wisp", getWidth() - 217, 27);
-                output.drawString(battle.getWispHp() + " / " + battle.getWispMaxHp() + " HP", getWidth() - 217, 43);
+                for (int i = 0; i < battle.getEnemies().size(); i++) {
+                    Enemy enemy = battle.getEnemies().get(i);
+                    output.drawString("Wisp " + (char) ('A' + i) + "  " + enemy.getHp() + " / "
+                            + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), getWidth() - 217, 30 + i * 18);
+                }
             } finally { output.dispose(); }
         }
 
