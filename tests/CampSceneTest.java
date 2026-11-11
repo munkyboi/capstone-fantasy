@@ -18,7 +18,7 @@ public final class CampSceneTest {
     }
     public static void main(String[] args) throws Exception {
         for (String name : List.of("zack", "bogart", "charice", "angel")) {
-            var url = CampPanel.class.getResource("/assets/sprites/camp-" + name + "-v1.png");
+            var url = CampPanel.class.getResource("/assets/sprites/camp-" + name + (name.equals("bogart") ? "-v2.png" : "-v1.png"));
             check(url != null, name + " camp sprite is packaged");
             BufferedImage sprite = ImageIO.read(url);
             check(sprite.getColorModel().hasAlpha(), name + " camp sprite has transparency");
@@ -38,7 +38,7 @@ public final class CampSceneTest {
                     if (before.getRGB(x, y) != after.getRGB(x, y)) { changes++; }
                 }
                 check(changes > 200, "selection moves the status popup for party " + ids);
-                Student selected = progress.getParty().get(1); selected.takeDamage(20);
+                Student selected = progress.getParty().stream().sorted(java.util.Comparator.comparingInt(Student::getId)).toList().get(1); selected.takeDamage(20);
                 panel.getActionMap().get("camp-use").actionPerformed(new ActionEvent(panel, 0, ""));
                 check(selected.getHp() == selected.getMaxHp() && progress.getKits() == 2,
                         "kit heals the selected student for party " + ids);

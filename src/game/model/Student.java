@@ -17,6 +17,8 @@ public class Student extends GameCharacter {
         /** Hunter ability. */ TWIN_SHOT,
         /** Monk ability. */ HEALING_KISS
     }
+    /** Stats that can receive level-up points. */
+    public enum Stat { HP, SP, ATK, DEF, SPD }
     /** Creates the appropriate playable class for a selection index.
      * @param id character index
      * @return corresponding hero
@@ -54,6 +56,7 @@ public class Student extends GameCharacter {
     private final int level = STARTING_LEVEL;
     private int hp;
     private int experience;
+    private int allocatedHp, allocatedSp, allocatedAttack, allocatedDefense, allocatedSpeed;
     /** Maximum experience: level 30. */
     public static final int MAX_EXPERIENCE = 2900;
     // False identifies a serialized save from before SP existed.
@@ -87,21 +90,21 @@ public class Student extends GameCharacter {
      */ public int getHp() { return hp; }
     /** Returns maximum HP.
      * @return maximum HP
-     */ public int getMaxHp() { return maxHp + (getLevel() - 1) * 5; }
+    */ public int getMaxHp() { return maxHp + (getLevel() - 1) * 5 + allocatedHp * 5; }
     /** Returns attack value.
      * @return attack value
      */ public int getAttack() { return getBaseAttack() + equipmentAttack(); }
     /** Returns attack before equipment bonuses.
      * @return base attack
      */
-    public int getBaseAttack() { return attack + (getLevel() - 1) * 2; }
+    public int getBaseAttack() { return attack + (getLevel() - 1) * 2 + allocatedAttack; }
     /** Returns defense value.
      * @return defense value
      */ public int getDefense() { return getBaseDefense() + equipmentDefense(); }
     /** Returns defense before equipment bonuses.
      * @return base defense
      */
-    public int getBaseDefense() { return defense + (getLevel() - 1); }
+    public int getBaseDefense() { return defense + (getLevel() - 1) + allocatedDefense; }
     /** Checks whether the campus vest is equipped.
      * @return true if equipped
      */
@@ -134,7 +137,7 @@ public class Student extends GameCharacter {
     }
     /** Returns speed value.
      * @return speed value
-     */ public int getSpeed() { return speed; }
+    */ public int getSpeed() { return speed + allocatedSpeed; }
     /** Returns current level.
      * @return current level
      */ public int getLevel() { return STARTING_LEVEL + experience / 100; }
@@ -158,7 +161,37 @@ public class Student extends GameCharacter {
     /** Returns current and maximum skill points and the ability cost. */
     public int getSp() { return skillPointsInitialized ? skillPoints : getMaxSp(); }
     /** Returns the student's maximum skill points. */
-    public int getMaxSp() { return MAX_SP[id] + (getLevel() - 1) * 3; }
+    public int getMaxSp() { return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3; }
+    /** Returns points earned but not spent. */
+    public int getUnspentStatPoints() {
+        return getLevel() - 1 - allocatedHp - allocatedSp - allocatedAttack - allocatedDefense - allocatedSpeed;
+    }
+    /** Returns the number of points assigned to one stat. */
+    public int getAllocatedStatPoints(Stat stat) {
+        return switch (stat) { case HP -> allocatedHp; case SP -> allocatedSp; case ATK -> allocatedAttack;
+            case DEF -> allocatedDefense; case SPD -> allocatedSpeed; };
+    }
+    /** Spends one point and applies the stat increase. KO students stay KO. */
+    public boolean allocateStatPoint(Stat stat) {
+        if (stat == null || getUnspentStatPoints() <= 0) { return false; }
+        switch (stat) {
+            case HP -> { allocatedHp++; if (isAlive()) { hp += 5; } }
+            case SP -> { int oldSp = getSp(); allocatedSp++; skillPoints = oldSp + 3; skillPointsInitialized = true; }
+            case ATK -> allocatedAttack++;
+            case DEF -> allocatedDefense++;
+            case SPD -> allocatedSpeed++;
+        }
+        return true;
+    }
+    /** Restores validated allocations without changing current HP or SP. */
+    public void restoreStatAllocations(int hpPoints, int spPoints, int atkPoints, int defPoints, int spdPoints) {
+        if (hpPoints < 0 || spPoints < 0 || atkPoints < 0 || defPoints < 0 || spdPoints < 0
+                || (long) hpPoints + spPoints + atkPoints + defPoints + spdPoints > getLevel() - 1) {
+            throw new IllegalArgumentException("Invalid stat allocation");
+        }
+        allocatedHp = hpPoints; allocatedSp = spPoints; allocatedAttack = atkPoints;
+        allocatedDefense = defPoints; allocatedSpeed = spdPoints;
+    }
     /** Returns the skill-point cost of the student's ability. */
     public int getAbilitySpCost() { return ABILITY_SP_COST[id]; }
     /** Uses skill points if enough are available. */

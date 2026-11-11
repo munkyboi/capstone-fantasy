@@ -212,7 +212,13 @@ public final class GameProgress implements java.io.Serializable {
     }
     /** Reconstructs a saved party including experience. */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience, int kits, int encounter) {
+        return restore(ids, hitPoints, experience, null, kits, encounter);
+    }
+    /** Reconstructs a saved party with its level-up allocations. */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience,
+            List<int[]> allocations, int kits, int encounter) {
         if (ids == null || hitPoints == null || experience == null || ids.size() != 3 || hitPoints.size() != 3 || experience.size() != 3
+                || (allocations != null && allocations.size() != 3)
                 || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 5) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
@@ -221,6 +227,11 @@ public final class GameProgress implements java.io.Serializable {
             final int id = ids.get(i);
             Student student = result.party.stream().filter(s -> s.getId() == id).findFirst().orElseThrow();
             student.restoreExperience(experience.get(i));
+            if (allocations != null) {
+                int[] points = allocations.get(i);
+                if (points == null || points.length != 5) { throw new IllegalArgumentException("Invalid allocations"); }
+                student.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4]);
+            }
             student.restoreHp(hitPoints.get(i));
         }
         if (result.party.stream().noneMatch(Student::isAlive)) { throw new IllegalArgumentException("Party is defeated"); }

@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.event.HierarchyEvent;
 import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 import javax.swing.JPanel;
@@ -14,12 +15,21 @@ import javax.swing.JPanel;
 /** Between-battle camp for reviewing the party and using supplies. */
 public final class CampPanel extends JPanel {
     private static final int WIDTH = 960, HEIGHT = 540;
-    private static final int[] POSITIONS = {220, 370, 730};
+    private static final int[] POSITIONS = {230, 365, 595, 735};
     private static final Color HP_COLOR = new Color(224, 73, 79);
     private static final Color SP_COLOR = new Color(76, 155, 245);
     private static final Color XP_COLOR = new Color(250, 218, 75);
-    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-bonfire-v1.png");
+    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-parallax-base-v1.png");
+    private final BufferedImage sky = ScreenArt.prepareBackground("/assets/backgrounds/camp-sky-v1.png");
+    private final BufferedImage distance = ScreenArt.prepareBackground("/assets/backgrounds/camp-distant-v1.png");
+    private final BufferedImage courtyard = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-layer-v2.png");
+    private final BufferedImage fire = trimTransparent(ScreenArt.load("/assets/sprites/camp-fire-v1.png"));
+    private final BufferedImage foreground = ScreenArt.load("/assets/backgrounds/camp-near-layer-v1.png");
     private final BufferedImage[] characters = loadCharacters();
+    private final BufferedImage scenePixels = new BufferedImage(480, 270, BufferedImage.TYPE_INT_ARGB);
+    private double cameraOffset;
+    private double cameraTarget;
+    private final javax.swing.Timer animation = new javax.swing.Timer(16, event -> advanceCamera());
     private final Consumer<GameProgress> nextBattle;
     private final Runnable menu;
     private final Consumer<GameProgress> save;
@@ -27,13 +37,15 @@ public final class CampPanel extends JPanel {
     private GameProgress progress;
     private int cursor;
     private boolean complete;
+    private boolean allocating;
+    private int statCursor;
     private String message = "";
 
     private static BufferedImage[] loadCharacters() {
         String[] names = {"zack", "bogart", "charice", "angel"};
         BufferedImage[] result = new BufferedImage[names.length];
         for (int i = 0; i < names.length; i++) {
-            result[i] = trimTransparent(ScreenArt.load("/assets/sprites/camp-" + names[i] + "-v1.png"));
+            result[i] = trimTransparent(ScreenArt.load("/assets/sprites/camp-" + names[i] + (i == Student.BOGART ? "-v2.png" : "-v1.png")));
         }
         return result;
     }
@@ -63,6 +75,11 @@ public final class CampPanel extends JPanel {
             Consumer<GameProgress> inventory) {
         this.nextBattle = nextBattle; this.menu = menu; this.save = save; this.inventory = inventory;
         setPreferredSize(new Dimension(WIDTH, HEIGHT)); setFocusable(true);
+        addHierarchyListener(event -> {
+            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                if (!isShowing()) { animation.stop(); }
+            }
+        });
         Keys.bind(this, "UP", "camp-up", () -> move(-1));
         Keys.bind(this, "DOWN", "camp-down", () -> move(1));
         Keys.bind(this, "LEFT", "camp-left", () -> move(-1));
@@ -71,41 +88,61 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "SPACE", "camp-use-space", this::confirm);
         Keys.bind(this, "C", "camp-continue", this::continueGame);
         Keys.bind(this, "E", "camp-equip", this::toggleVest);
-        Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null) { this.inventory.accept(progress); } });
-        Keys.bind(this, "S", "camp-save", () -> { if (progress != null) { this.save.accept(progress); } });
-        Keys.bind(this, "ESCAPE", "camp-menu", menu);
+        Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null && !allocating) { this.inventory.accept(progress); } });
+        Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !allocating) { this.save.accept(progress); } });
+        Keys.bind(this, "L", "camp-allocate", () -> { if (progress != null) { allocating = !allocating; statCursor = 0; repaint(); } });
+        Keys.bind(this, "ESCAPE", "camp-menu", () -> { if (allocating) { allocating = false; repaint(); } else { this.menu.run(); } });
     }
 
     /** Opens camp with the current party. */
     public void open(GameProgress progress, boolean complete) { open(progress, complete, null); }
     /** Opens camp and optionally shows a reward message. */
     public void open(GameProgress progress, boolean complete, String reward) {
-        this.progress = progress; this.complete = complete; cursor = 0;
+        this.progress = progress; this.complete = complete; cursor = 0; allocating = false;
+        cameraTarget = focusOffset(campParty().get(cursor)); cameraOffset = cameraTarget; animation.stop();
         refresh(reward != null ? "Victory reward: " + reward + "! Press I to equip."
                 : complete ? "The available encounters are complete." : "Choose a student to use a First-Aid Kit.");
     }
     /** Returns the current party state. */
     public GameProgress getProgress() { return progress; }
+    private java.util.List<Student> campParty() {
+        return progress.getParty().stream().sorted(java.util.Comparator.comparingInt(Student::getId)).toList();
+    }
     private void move(int direction) {
         if (progress == null) { return; }
-        cursor = Math.floorMod(cursor + direction, progress.getParty().size());
+        if (allocating) { statCursor = Math.floorMod(statCursor + direction, Student.Stat.values().length); repaint(); return; }
+        cursor = Math.floorMod(cursor + direction, campParty().size());
+        cameraTarget = focusOffset(campParty().get(cursor));
+        if (isShowing()) { animation.start(); } else { cameraOffset = cameraTarget; }
         refresh(complete ? "The available encounters are complete." : "Choose a student to use a First-Aid Kit.");
+    }
+    private static double focusOffset(Student student) { return (480.0 - POSITIONS[student.getId()]) * 0.10; }
+    private void advanceCamera() {
+        cameraOffset += (cameraTarget - cameraOffset) * 0.22;
+        if (Math.abs(cameraTarget - cameraOffset) < 0.05) { cameraOffset = cameraTarget; animation.stop(); }
+        repaint();
     }
     private void confirm() {
         if (progress == null) { return; }
-        Student student = progress.getParty().get(cursor); int before = student.getHp();
+        Student student = campParty().get(cursor);
+        if (allocating) {
+            Student.Stat stat = Student.Stat.values()[statCursor];
+            refresh(student.allocateStatPoint(stat) ? student.getName() + " increased " + stat + "." : "No stat points available.");
+            return;
+        }
+        int before = student.getHp();
         if (progress.useKit(student)) { refresh(student.getName() + " recovered " + (student.getHp() - before) + " HP."); }
         else { refresh(progress.getKits() == 0 ? "No First-Aid Kits remain."
                 : !student.isAlive() ? "A knocked-out student cannot use a First-Aid Kit."
                 : student.getName() + " already has full HP."); }
     }
     private void toggleVest() {
-        if (progress == null) { return; }
-        Student student = progress.getParty().get(cursor); boolean equipped = student.hasVest();
+        if (progress == null || allocating) { return; }
+        Student student = campParty().get(cursor); boolean equipped = student.hasVest();
         if (progress.toggleVest(student)) { refresh(equipped ? "Campus Vest returned to inventory."
                 : "Campus Vest equipped by " + student.getName() + "."); }
     }
-    private void continueGame() { if (progress != null) { nextBattle.accept(progress); } }
+    private void continueGame() { if (progress != null && !allocating) { nextBattle.accept(progress); } }
     private void refresh(String text) { message = text; repaint(); }
 
     @Override protected void paintComponent(Graphics graphics) {
@@ -114,34 +151,89 @@ public final class CampPanel extends JPanel {
         try {
             g.scale(getWidth() / (double) WIDTH, getHeight() / (double) HEIGHT);
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            ScreenArt.drawBackground(g, background, WIDTH, HEIGHT, 0);
-            Graphics2D scene = (Graphics2D) g.create();
-            try {
-                scene.translate(0, -65);
-                ScreenArt.drawBackground(scene, background, WIDTH, HEIGHT, 0);
-            } finally { scene.dispose(); }
+            drawPixelScene(g);
             g.setColor(new Color(7, 17, 39, 190)); g.fillRect(0, 0, WIDTH, 42);
             g.setFont(ClassicUi.title(28)); g.setColor(new Color(250, 218, 143));
             drawCentered(g, complete ? "ENCOUNTERS COMPLETE" : "CAMP", WIDTH / 2, 31);
             if (progress != null) {
-                for (int i = 0; i < progress.getParty().size(); i++) { drawCharacter(g, progress.getParty().get(i), POSITIONS[i]); }
-                drawStatus(g, progress.getParty().get(cursor), POSITIONS[cursor]);
-                Student selected = progress.getParty().get(cursor);
-                g.drawImage(PixelPointer.ART, POSITIONS[cursor] - (selected.getId() == Student.ANGEL ? 115 : 97),
+                int middleOffset = (int) Math.round(cameraOffset * 0.65);
+                Student selected = campParty().get(cursor);
+                int position = POSITIONS[selected.getId()] + middleOffset;
+                drawStatus(g, selected, position);
+                g.drawImage(PixelPointer.ART, position - (selected.getId() == Student.ANGEL ? 115 : 97),
                         285, 38, 28, null);
                 g.setColor(new Color(7, 17, 39, 225)); g.fillRect(0, 451, WIDTH, 89);
                 g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143));
                 drawCentered(g, "Kits: " + progress.getKits() + "    •    " + progress.getPetot() + " Petot", WIDTH / 2, 474);
                 g.setFont(ClassicUi.numbers(14)); g.setColor(Color.WHITE); drawCentered(g, message, WIDTH / 2, 496);
-                g.setFont(ClassicUi.body(15)); drawCentered(g, "← → Select  •  Enter: Use kit  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
+                g.setFont(ClassicUi.body(14)); drawCentered(g, allocating
+                        ? "← → Choose stat  •  Enter: Add point  •  Esc: Back"
+                        : "← → Select  •  Enter: Kit  •  L: Stats  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
+                if (allocating) { drawAllocation(g, selected); }
             }
         } finally { g.dispose(); }
+    }
+    private void drawPixelScene(Graphics2D output) {
+        Graphics2D pixels = scenePixels.createGraphics();
+        try {
+            pixels.setComposite(java.awt.AlphaComposite.Clear);
+            pixels.fillRect(0, 0, scenePixels.getWidth(), scenePixels.getHeight());
+            pixels.setComposite(java.awt.AlphaComposite.SrcOver);
+            pixels.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            pixels.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            pixels.scale(0.5, 0.5);
+            drawScenery(pixels, cameraOffset);
+            if (progress != null) {
+                int middleOffset = (int) Math.round(cameraOffset * 0.65);
+                for (Student student : campParty()) { drawCharacter(pixels, student, POSITIONS[student.getId()] + middleOffset); }
+                drawFire(pixels, middleOffset);
+                drawForeground(pixels, cameraOffset);
+            }
+        } finally { pixels.dispose(); }
+        output.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        output.drawImage(scenePixels, 0, 0, WIDTH, HEIGHT, null);
+    }
+    private void drawScenery(Graphics2D g, double focus) {
+        ScreenArt.drawBackground(g, background, WIDTH, HEIGHT, 0);
+        if (sky == null || distance == null || courtyard == null) { return; }
+        drawDepthLayer(g, sky, focus * 0.10, -240);
+        drawDepthLayer(g, distance, focus * 0.30, -105);
+        drawDepthLayer(g, courtyard, focus * 0.65, -65);
+    }
+    private static void drawDepthLayer(Graphics2D g, BufferedImage layer, double offset, int top) {
+        if (layer != null) { g.drawImage(layer, -32 + (int) Math.round(offset), top, 1024, 576, null); }
+    }
+    private void drawFire(Graphics2D g, int middleOffset) {
+        if (fire != null) {
+            double scale = Math.min(112.0 / fire.getWidth(), 120.0 / fire.getHeight());
+            int width = (int) Math.round(fire.getWidth() * scale), height = (int) Math.round(fire.getHeight() * scale);
+            g.drawImage(fire, 480 - width / 2 + middleOffset, 447 - height, width, height, null);
+        }
+    }
+    private void drawForeground(Graphics2D g, double focus) {
+        if (foreground != null) {
+            drawDepthLayer(g, foreground, focus, -65);
+        }
+    }
+    private void drawAllocation(Graphics2D g, Student student) {
+        int x = 306, y = 235, w = 348, h = 195;
+        g.setColor(new Color(8, 18, 54, 245)); g.fillRect(x, y, w, h);
+        g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
+        g.setFont(ClassicUi.numbers(15)); g.drawString(student.getName() + "  •  Points: " + student.getUnspentStatPoints(), x + 15, y + 24);
+        String[] options = {"HP +5", "SP +3", "ATK +1", "DEF +1", "SPD +1"};
+        g.setFont(ClassicUi.numbers(14));
+        for (int i = 0; i < options.length; i++) {
+            int row = y + 45 + i * 25;
+            g.setColor(i == statCursor ? new Color(250, 218, 143) : Color.WHITE);
+            if (i == statCursor) { g.drawImage(PixelPointer.ART, x + 18, row - 12, 25, 19, null); }
+            g.drawString(options[i], x + 52, row + 2);
+        }
     }
     private void drawCharacter(Graphics2D g, Student student, int center) {
         BufferedImage image = characters[student.getId()];
         if (image == null) { return; }
         boolean angel = student.getId() == Student.ANGEL;
-        double scale = Math.min((angel ? 160.0 : 135.0) / image.getWidth(),
+        double scale = Math.min((angel ? 150.0 : 125.0) / image.getWidth(),
                 (angel ? 190.0 : 160.0) / image.getHeight());
         int width = (int) Math.round(image.getWidth() * scale), height = (int) Math.round(image.getHeight() * scale);
         int left = center - width / 2;
@@ -156,7 +248,8 @@ public final class CampPanel extends JPanel {
         g.setColor(new Color(8, 18, 54, 235)); g.fillRect(x, y, w, h);
         g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
         g.setFont(ClassicUi.numbers(15)); g.setColor(new Color(250, 218, 143));
-        g.drawString(student.getName() + "  L" + student.getLevel() + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
+        g.drawString(student.getName() + " L" + student.getLevel() + " P:" + student.getUnspentStatPoints()
+                + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
         drawResourceBar(g, x, y + 39, w, "HP", student.getHp(), student.getMaxHp(), HP_COLOR);
         drawResourceBar(g, x, y + 63, w, "SP", student.getSp(), student.getMaxSp(), SP_COLOR);
         int xp = student.getExperience() == Student.MAX_EXPERIENCE ? 100 : student.getExperience() % 100;

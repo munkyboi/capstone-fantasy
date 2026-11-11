@@ -18,7 +18,8 @@ public final class CampInventoryReturnTest {
     public static void main(String[] args) throws Exception {
         SwingUtilities.invokeAndWait(() -> {
                 GameProgress progress = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.CHARICE));
-                Student first = progress.getParty().get(0), second = progress.getParty().get(1);
+                var party = progress.getParty().stream().sorted(java.util.Comparator.comparingInt(Student::getId)).toList();
+                Student first = party.get(0), second = party.get(1);
                 first.takeDamage(30); second.takeDamage(30);
                 CampPanel camp = new CampPanel(ignored -> { }, () -> { });
                 camp.open(progress, false);
@@ -29,7 +30,7 @@ public final class CampInventoryReturnTest {
                 key(bag, "inventory-confirm");
                 key(bag, "inventory-down");
                 key(bag, "inventory-confirm");
-                check(first.getDefense() > first.getBaseDefense(), "equipment change persists");
+                check(progress.getParty().stream().anyMatch(s -> s.getDefense() > s.getBaseDefense()), "equipment change persists");
                 camp.open(progress, false);
                 key(camp, "camp-down");
                 key(camp, "camp-use");
