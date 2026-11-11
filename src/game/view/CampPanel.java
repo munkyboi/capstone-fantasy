@@ -27,6 +27,7 @@ public final class CampPanel extends JPanel {
     private final Consumer<GameProgress> nextBattle;
     private final Runnable menu;
     private final Consumer<GameProgress> save;
+    private final Consumer<GameProgress> inventory;
     private GameProgress progress;
     private int cursor;
     private boolean complete;
@@ -45,9 +46,21 @@ public final class CampPanel extends JPanel {
      * @param save opens the save slots
      */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save) {
+        this(nextBattle, menu, save, ignored -> { });
+    }
+
+    /** Creates a camp with save and inventory actions.
+     * @param nextBattle returns to the route
+     * @param menu returns to the menu
+     * @param save opens save slots
+     * @param inventory opens the shared bag
+     */
+    public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save,
+            Consumer<GameProgress> inventory) {
         this.nextBattle = nextBattle;
         this.menu = menu;
         this.save = save;
+        this.inventory = inventory;
         setPreferredSize(new Dimension(960, 540));
         setFocusable(true);
         setLayout(new BorderLayout(20, 20));
@@ -88,7 +101,8 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "SPACE", "camp-use-space", this::confirm);
         Keys.bind(this, "C", "camp-continue", this::continueGame);
         Keys.bind(this, "E", "camp-equip", this::toggleVest);
-        Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !complete) { this.save.accept(progress); } });
+        Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null) { this.inventory.accept(progress); } });
+        Keys.bind(this, "S", "camp-save", () -> { if (progress != null) { this.save.accept(progress); } });
         Keys.bind(this, "ESCAPE", "camp-menu", menu);
     }
 
@@ -96,10 +110,23 @@ public final class CampPanel extends JPanel {
      * @param progress shared party state
      * @param complete whether the available encounters are finished
      */
-    public void open(GameProgress progress, boolean complete) {
+    public void open(GameProgress progress, boolean complete) { open(progress, complete, null); }
+
+    /** Opens camp and displays a newly earned reward.
+     * @param progress shared party state
+     * @param complete whether available encounters are finished
+     * @param reward newly earned item name, or null
+     */
+    public void open(GameProgress progress, boolean complete, String reward) {
         this.progress = progress; this.complete = complete; cursor = 0;
-        refresh(complete ? "The available encounters are complete." : "Prepare for the next encounter.");
+        refresh(reward != null ? "Victory reward: " + reward + "! Press I to equip."
+                : complete ? "The available encounters are complete." : "Prepare for the next encounter.");
     }
+
+    /** Returns the party state currently displayed at camp.
+     * @return current progress
+     */
+    public GameProgress getProgress() { return progress; }
 
     private void move(int direction) {
         if (progress == null) { return; }
@@ -108,7 +135,6 @@ public final class CampPanel extends JPanel {
     }
     private void confirm() {
         if (progress == null) { return; }
-        if (complete) { menu.run(); return; }
         Student student = progress.getParty().get(cursor);
         int before = student.getHp();
         if (progress.useKit(student)) {
@@ -120,7 +146,7 @@ public final class CampPanel extends JPanel {
         }
     }
     private void toggleVest() {
-        if (progress == null || complete) { return; }
+        if (progress == null) { return; }
         Student student = progress.getParty().get(cursor);
         boolean wasEquipped = student.hasVest();
         if (progress.toggleVest(student)) {
@@ -130,13 +156,13 @@ public final class CampPanel extends JPanel {
     }
     private void continueGame() {
         if (progress == null) { return; }
-        if (complete) { menu.run(); } else { nextBattle.accept(progress); }
+        nextBattle.accept(progress);
     }
     private void refresh(String message) {
         title.setText(complete ? "ENCOUNTERS COMPLETE" : "CAMP");
         for (int i = 0; i < students.length; i++) {
             Student student = progress.getParty().get(i);
-            students[i].setIcon(portraits[student.getId()]);
+            ViewportFonts.setScaledIcon(students[i], portraits[student.getId()]);
             students[i].setText(String.format("%s %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s", i == cursor ? "▶" : " ",
                     student.getName(), student.getHp(), student.getMaxHp(), student.getAttack(), student.getDefense(),
                     student.getSpeed(), student.hasVest() ? "[Vest]" : "", student.isAlive() ? "" : " KO"));
@@ -145,7 +171,7 @@ public final class CampPanel extends JPanel {
                 + " &nbsp;•&nbsp; Campus Pass &nbsp;•&nbsp; Vest: "
                 + (progress.getInventory().getVestOwner() == -1 ? "in bag" : "equipped")
                 + "<br>" + message + "</div></html>");
-        help.setText(complete ? "Enter: Return to menu" : "↑ ↓ Select  •  Enter: Use kit  •  E: Equip/remove vest  •  S: Save  •  C: Route  •  Esc: Menu");
+        help.setText("↑ ↓ Select  •  Enter: Use kit  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu");
     }
 
     /** Draws the camp scene beneath the party controls.

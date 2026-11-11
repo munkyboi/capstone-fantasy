@@ -49,6 +49,9 @@ public class Student extends GameCharacter {
     private int hp;
     private boolean defending;
     private boolean vestEquipped;
+    private String weaponId;
+    private String armorId;
+    private String accessoryId;
 
     /** Creates a student from the character-selection index.
      * @param id character index from zero to three
@@ -74,10 +77,14 @@ public class Student extends GameCharacter {
      */ public int getMaxHp() { return maxHp; }
     /** Returns attack value.
      * @return attack value
-     */ public int getAttack() { return attack; }
+     */ public int getAttack() { return attack + equipmentAttack(); }
+    /** Returns attack before equipment bonuses.
+     * @return base attack
+     */
+    public int getBaseAttack() { return attack; }
     /** Returns defense value.
      * @return defense value
-     */ public int getDefense() { return defense + (vestEquipped ? Equipment.DEFENSE_BONUS : 0); }
+     */ public int getDefense() { return defense + equipmentDefense(); }
     /** Returns defense before equipment bonuses.
      * @return base defense
      */
@@ -85,8 +92,33 @@ public class Student extends GameCharacter {
     /** Checks whether the campus vest is equipped.
      * @return true if equipped
      */
-    public boolean hasVest() { return vestEquipped; }
-    void setVestEquipped(boolean equipped) { vestEquipped = equipped; }
+    public boolean hasVest() { return "campus_vest".equals(armorId) || (armorId == null && vestEquipped); }
+    void setVestEquipped(boolean equipped) { vestEquipped = equipped; armorId = equipped ? "campus_vest" : null; }
+    /** Returns the item ID equipped in a slot.
+     * @param slot equipment slot
+     * @return item ID, or null
+     */
+    public String getEquipmentId(Equipment.Slot slot) {
+        return switch (slot) { case WEAPON -> weaponId; case ARMOR -> armorId; case ACCESSORY -> accessoryId; };
+    }
+    void setEquipmentId(Equipment.Slot slot, String item) {
+        switch (slot) { case WEAPON -> weaponId = item; case ARMOR -> { armorId = item; vestEquipped = "campus_vest".equals(item); }
+            case ACCESSORY -> accessoryId = item; }
+    }
+    private int equipmentAttack() {
+        int total = 0;
+        for (Equipment.Slot slot : Equipment.Slot.values()) {
+            String item = getEquipmentId(slot); if (item != null) { total += Equipment.fromId(item).getAttackBonus(); }
+        }
+        return total;
+    }
+    private int equipmentDefense() {
+        int total = armorId == null && vestEquipped ? Equipment.DEFENSE_BONUS : 0;
+        for (Equipment.Slot slot : Equipment.Slot.values()) {
+            String item = getEquipmentId(slot); if (item != null) { total += Equipment.fromId(item).getDefenseBonus(); }
+        }
+        return total;
+    }
     /** Returns speed value.
      * @return speed value
      */ public int getSpeed() { return speed; }

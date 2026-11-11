@@ -6,6 +6,7 @@ import game.view.PixelShell;
 import game.view.SelectionPanel;
 import game.view.BattlePanel;
 import game.view.CampPanel;
+import game.view.InventoryPanel;
 import game.view.SaveSlotPanel;
 import game.view.WorldMapPanel;
 import game.io.SaveStore;
@@ -38,6 +39,7 @@ public final class Main {
             BattlePanel[] battleHolder = new BattlePanel[1];
             GameSettings settings = new GameSettings();
             CampPanel[] campHolder = new CampPanel[1];
+            InventoryPanel[] inventoryHolder = new InventoryPanel[1];
             WorldMapPanel[] mapHolder = new WorldMapPanel[1];
             boolean[] saving = {false};
             Random random = new Random();
@@ -58,11 +60,22 @@ public final class Main {
                 slots.openSave(progress);
                 layout.show(screens, "slots");
                 slots.requestFocusInWindow();
+            }, progress -> {
+                inventoryHolder[0].open(progress);
+                layout.show(screens, "inventory");
+                inventoryHolder[0].requestFocusInWindow();
             });
             campHolder[0] = camp;
+            InventoryPanel inventory = new InventoryPanel(() -> {
+                camp.open(campHolder[0].getProgress(), false);
+                layout.show(screens, "camp");
+                camp.requestFocusInWindow();
+            });
+            inventoryHolder[0] = inventory;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
+                String reward = progress.claimStageReward();
                 boolean hasNext = progress.advance();
-                camp.open(progress, !hasNext);
+                camp.open(progress, !hasNext, reward);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();
             }, settings);
@@ -97,6 +110,7 @@ public final class Main {
             screens.add(new AspectRatioPanel(selection), "selection");
             screens.add(battle, "battle");
             screens.add(new AspectRatioPanel(camp), "camp");
+            screens.add(new AspectRatioPanel(inventory), "inventory");
             screens.add(new AspectRatioPanel(map), "map");
             screens.add(new AspectRatioPanel(slots), "slots");
             window.setContentPane(PixelShell.wrap(screens));

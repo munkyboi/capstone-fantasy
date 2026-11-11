@@ -5,6 +5,7 @@ import game.model.Student;
 import game.model.Hero;
 import game.model.GameCharacter;
 import game.model.Inventory;
+import game.model.Equipment;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -67,11 +68,14 @@ public final class SaveStore {
             temp = Files.createTempFile(directory, "save-", ".tmp");
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
-                properties.setProperty("version", "1");
+                properties.setProperty("version", "2");
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
                 properties.setProperty("inventory.campusPass", "true");
-                properties.setProperty("inventory.campusVestOwner", Integer.toString(checked.getInventory().getVestOwner()));
+                properties.setProperty("inventory.equipment", String.join(",", checked.getInventory().getEquipmentIds()));
+                for (int stage = 0; stage < 5; stage++) {
+                    properties.setProperty("reward." + stage, Boolean.toString(checked.getInventory().isRewardClaimed(stage)));
+                }
                 for (int i = 0; i < 3; i++) {
                     Student student = checked.getParty().get(i);
                     String prefix = "student." + (i + 1) + ".";
@@ -80,6 +84,10 @@ public final class SaveStore {
                     properties.setProperty(prefix + "hp", Integer.toString(student.getHp()));
                     properties.setProperty(prefix + "maxHp", Integer.toString(student.getMaxHp()));
                     properties.setProperty(prefix + "level", Integer.toString(student.getLevel()));
+                    for (Equipment.Slot gearSlot : Equipment.Slot.values()) {
+                        String id = student.getEquipmentId(gearSlot);
+                        properties.setProperty(prefix + gearSlot.name().toLowerCase(java.util.Locale.ROOT), id == null ? "" : id);
+                    }
                 }
                 try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
                     properties.store(writer, "Capstone Fantasy camp save v1");
@@ -117,7 +125,7 @@ public final class SaveStore {
                         if (type == null) { return ObjectInputFilter.Status.UNDECIDED; }
                         if (type == GameProgress.class || type == Student.class || type == Hero.class || type == GameCharacter.class
                                 || type == Hero.Mage.class || type == Hero.Warrior.class || type == Hero.Hunter.class
-                                || type == Hero.Monk.class || type == Inventory.class || type == ArrayList.class
+                                || type == Hero.Monk.class || type == Inventory.class || type == ArrayList.class || type == boolean[].class
                                 || type == Object[].class) { return ObjectInputFilter.Status.ALLOWED; }
                         return ObjectInputFilter.Status.REJECTED;
                     });
@@ -128,7 +136,8 @@ public final class SaveStore {
             }
             Properties properties = new Properties();
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { properties.load(reader); }
-            if (!"1".equals(properties.getProperty("version"))) { throw new IOException("Unsupported save version"); }
+            String version = properties.getProperty("version");
+            if (!"1".equals(version) && !"2".equals(version)) { throw new IOException("Unsupported save version"); }
             List<Integer> ids = new ArrayList<>();
             List<Integer> hp = new ArrayList<>();
             for (int i = 1; i <= 3; i++) {
@@ -147,29 +156,64 @@ public final class SaveStore {
             }
             GameProgress restored = GameProgress.restore(ids, hp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
-            restored.setVestOwner(Integer.parseInt(properties.getProperty("inventory.campusVestOwner", "-1")));
+            if ("1".equals(version)) {
+                restored.setVestOwner(Integer.parseInt(properties.getProperty("inventory.campusVestOwner", "-1")));
+                restored.grantLegacyRewards();
+            } else {
+                String bag = properties.getProperty("inventory.equipment");
+                if (bag == null) { throw new IOException("Missing equipment"); }
+                List<String> equipment = bag.isEmpty() ? List.of() : List.of(bag.split(",", -1));
+                List<List<String>> slots = new ArrayList<>();
+                for (int i = 1; i <= 3; i++) {
+                    List<String> itemSlots = new ArrayList<>();
+                    for (Equipment.Slot gearSlot : Equipment.Slot.values()) {
+                        String value = properties.getProperty("student." + i + "." + gearSlot.name().toLowerCase(java.util.Locale.ROOT));
+                        if (value == null) { throw new IOException("Missing equipment slot"); }
+                        itemSlots.add(value.isEmpty() ? null : value);
+                    }
+                    slots.add(itemSlots);
+                }
+                boolean[] claimed = new boolean[5];
+                for (int stage = 0; stage < claimed.length; stage++) {
+                    String value = properties.getProperty("reward." + stage);
+                    if (!"true".equals(value) && !"false".equals(value)) { throw new IOException("Invalid reward state"); }
+                    claimed[stage] = Boolean.parseBoolean(value);
+                }
+                restored.restoreEquipment(equipment, slots, claimed);
+            }
             return restored;
         } catch (IOException | ClassNotFoundException | RuntimeException ex) {
             throw new SaveException("This save is damaged or cannot be read.", ex);
         }
     }
     private static GameProgress validate(GameProgress progress) {
+        boolean legacy = progress.hasLegacyInventory();
+        Inventory inventory = progress.getInventory();
         List<Integer> ids = new ArrayList<>();
         List<Integer> hp = new ArrayList<>();
+        java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
         for (Student student : progress.getParty()) {
             Student expected = new Student(student.getId());
-            boolean legacyAngel = student.getId() == Student.ANGEL && student.getAttack() == LEGACY_ANGEL_ATTACK;
+            boolean legacyAngel = student.getId() == Student.ANGEL && student.getBaseAttack() == LEGACY_ANGEL_ATTACK;
             boolean legacySpeed = (student.getId() == Student.ANGEL && student.getSpeed() == LEGACY_ANGEL_SPEED)
                     || (student.getId() == Student.BOGART && student.getSpeed() == LEGACY_BOGART_SPEED);
             if (!expected.getName().equals(student.getName()) || expected.getMaxHp() != student.getMaxHp()
-                    || (expected.getAttack() != student.getAttack() && !legacyAngel) || expected.getBaseDefense() != student.getBaseDefense()
+                    || (expected.getBaseAttack() != student.getBaseAttack() && !legacyAngel) || expected.getBaseDefense() != student.getBaseDefense()
                     || (expected.getSpeed() != student.getSpeed() && !legacySpeed) || expected.getLevel() != student.getLevel()) {
                 throw new IllegalArgumentException("Invalid student information");
             }
             ids.add(student.getId()); hp.add(student.getHp());
+            List<String> items = new ArrayList<>();
+            for (Equipment.Slot slot : Equipment.Slot.values()) { items.add(student.getEquipmentId(slot)); }
+            slotsByStudent.put(student.getId(), items);
         }
         GameProgress restored = GameProgress.restore(ids, hp, progress.getKits(), progress.getEncounter());
-        restored.setVestOwner(progress.getInventory().getVestOwner());
+        List<List<String>> slots = new ArrayList<>();
+        for (Student student : restored.getParty()) { slots.add(slotsByStudent.get(student.getId())); }
+        boolean[] claimed = new boolean[5];
+        for (int stage = 0; stage < claimed.length; stage++) { claimed[stage] = inventory.isRewardClaimed(stage); }
+        restored.restoreEquipment(inventory.getEquipmentIds(), slots, claimed);
+        if (legacy) { restored.grantLegacyRewards(); }
         return restored;
     }
 }

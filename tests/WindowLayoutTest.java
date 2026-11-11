@@ -54,6 +54,22 @@ public final class WindowLayoutTest {
         check(Math.abs(status.getFont().getSize2D() - base) < 0.2 && bar.getPreferredSize().width == baseBar,
                 "font and controls return to baseline after resizing back");
     }
+    private static void checkCampPortraits() throws Exception {
+        var camp = new game.view.CampPanel(progress -> { }, () -> { });
+        var progress = new game.model.GameProgress(List.of(Student.ZACK, Student.CHARICE, Student.ANGEL));
+        progress.advance(); camp.open(progress, false);
+        var field = game.view.CampPanel.class.getDeclaredField("students"); field.setAccessible(true);
+        var labels = (javax.swing.JLabel[]) field.get(camp);
+        var viewport = new AspectRatioPanel(camp);
+        viewport.setSize(960, 540); layout(viewport);
+        check(labels[0].getIcon().getIconWidth() == 72, "portrait is readable at the normal viewport");
+        viewport.setSize(1440, 810); layout(viewport);
+        check(labels[0].getIcon().getIconWidth() == 108, "portrait scales with larger viewport");
+        camp.getActionMap().get("camp-down").actionPerformed(new java.awt.event.ActionEvent(camp, 0, ""));
+        check(labels[0].getIcon().getIconWidth() == 108, "camp refresh preserves portrait size");
+        viewport.setSize(960, 540); layout(viewport);
+        check(labels[0].getIcon().getIconWidth() == 72, "portrait returns to baseline after resize");
+    }
     /** Runs the window layout checks.
      * @param args unused
      */
@@ -67,7 +83,7 @@ public final class WindowLayoutTest {
         frame.setSize(960, 540); frame.doLayout();
         check(screens.getBounds().equals(new Rectangle(0, 0, 960, 540)), "fills the initial window");
         SwingUtilities.invokeAndWait(() -> {
-            try { checkBattle(960, 720); checkBattle(1440, 900); checkFontScaling(); }
+            try { checkBattle(960, 720); checkBattle(1440, 900); checkFontScaling(); checkCampPortraits(); }
             catch (Exception error) { throw new RuntimeException(error); }
         });
         System.out.println("Window layout checks passed");

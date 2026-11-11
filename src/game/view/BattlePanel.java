@@ -399,9 +399,9 @@ public final class BattlePanel extends JPanel {
 
     private void refreshStatus() {
         boolean over = battle.isOver();
-        String hint = targeting == TargetAction.NONE ? "↑ ↓ Move  •  Enter Select"
-                : targetsParty() ? "← → Choose ally  •  Enter Confirm  •  Esc Cancel"
-                : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "← → Choose enemy  •  Enter Confirm  •  Esc Cancel";
+        String hint = targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
+                : targetsParty() ? "Left/Right Choose ally  •  Enter Confirm  •  Esc Cancel"
+                : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
         status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")
                 : (battle.getCurrent() == null ? "Waiting for AP" : battle.getCurrent().getName() + " is ready")
                 + "  |  First-Aid Kits: " + battle.getKits() + "  |  " + hint);
