@@ -25,6 +25,8 @@ final class BattleScene extends JPanel {
         boolean partyTarget(int index);
         boolean enemyTarget(int index);
         boolean showEffects();
+        boolean showAmbush();
+        double victoryProgress();
         double enemyPoints(Enemy enemy);
         Object attackingSprite();
         double effectProgress();
@@ -84,7 +86,8 @@ final class BattleScene extends JPanel {
                     if (sprites != null) {
                         int slice = sprites.getWidth() / 4, id = student.getId();
                         int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
-                        drawFit(g, sprites, id * slice, slice, left, y + attackLift(student), spriteWidth, spriteHeight);
+                        int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
+                        drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
                     }
                     if (state.partyTarget(index)) {
                         drawCursor(g, x + slotWidth / 2, y - 3);
@@ -132,7 +135,23 @@ final class BattleScene extends JPanel {
                             getWidth() - 109, y + 13);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
+                if (battle.isOver()) { drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!"); }
+                else if (state.showAmbush()) { drawBattleAlert(output, "You have been ambushed!"); }
             } finally { output.dispose(); }
+        }
+
+        private void drawBattleAlert(Graphics2D g, String text) {
+            g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
+            int width = g.getFontMetrics().stringWidth(text) + 28;
+            int x = (getWidth() - width) / 2;
+            int y = Math.max(18, getHeight() / 5);
+            g.setColor(new Color(12, 25, 48, 235));
+            g.fillRect(x, y, width, 42);
+            g.setColor(new Color(247, 204, 114));
+            g.drawRect(x, y, width - 1, 41);
+            g.drawRect(x + 3, y + 3, width - 7, 35);
+            g.setColor(Color.WHITE);
+            g.drawString(text, x + 14, y + 27);
         }
 
         private void drawEffects(Graphics2D g, int w, int h) {
@@ -176,6 +195,14 @@ final class BattleScene extends JPanel {
                     py = Math.max(20, py - 22);
                 }
             }
+        }
+
+        private int victoryLift(Student student, int index) {
+            if (!student.isAlive()) { return 0; }
+            double progress = state.victoryProgress();
+            if (progress >= 1.0) { return 0; }
+            double phase = Math.max(0, progress * 3.0 - index * 0.12);
+            return -(int) Math.round(4 * Math.max(0, Math.sin(phase * 2 * Math.PI)));
         }
 
         private int attackOffset(Object participant, int direction) {

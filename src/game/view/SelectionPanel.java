@@ -28,8 +28,8 @@ public final class SelectionPanel extends JPanel {
     private static final String[] NAMES = {"Zack", "Bogart", "Charice", "Angel"};
     private static final String[] CLASSES = {"Mage", "Warrior", "Hunter", "Monk"};
     private static final String[] STATS = {
-        "HP 80  ATK 18  DEF 6  SPD 10", "HP 120  ATK 15  DEF 14  SPD 7",
-        "HP 90  ATK 14  DEF 8  SPD 16", "HP 105  ATK 10  DEF 10  SPD 9"
+        "HP 80  ATK 18  DEF 6  SPD 10", "HP 120  ATK 15  DEF 14  SPD 11",
+        "HP 90  ATK 14  DEF 8  SPD 16", "HP 105  ATK 39  DEF 10  SPD 7"
     };
     private static final String[] ABILITIES = {
         "Arcane Burst", "Cadet Strike", "Twin Shot", "Healing Kiss"

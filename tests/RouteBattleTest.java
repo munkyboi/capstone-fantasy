@@ -41,6 +41,10 @@ public final class RouteBattleTest {
         GameProgress progress = new GameProgress(List.of(0, 1, 3));
         check(new Student(0).getActionThreshold() == 35 && new Student(1).getActionThreshold() == 30
                 && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 45, "student AP thresholds");
+        check(new Student(Student.CHARICE).getSpeed() > new Student(Student.BOGART).getSpeed()
+                && new Student(Student.BOGART).getSpeed() > new Student(Student.ZACK).getSpeed()
+                && new Student(Student.ZACK).getSpeed() > new Student(Student.ANGEL).getSpeed(),
+                "speed order matches AP readiness, with Angel slowest");
         Battle battle = new Battle(progress, new Random(1));
         Enemy enemy = battle.getEnemies().get(0);
         check(battle.getCurrent() == null && !battle.attack(enemy), "no action before ready");
@@ -91,6 +95,13 @@ public final class RouteBattleTest {
                     check(normalBattle.getCurrent().getId() == Student.CHARICE
                             && normalBattle.getParty().stream().allMatch(student -> normalPoints.get(student) == student.getActionThreshold()),
                             "normal battle starts full with fastest student ready");
+                    Map<?, ?> normalEnemyPoints = (Map<?, ?>) enemyField.get(normal);
+                    check(normalBattle.getEnemies().stream().allMatch(monster -> normalEnemyPoints.get(monster).equals(0.0)),
+                            "normal battle starts with empty enemy AP");
+                    Map<?, ?> ambushEnemyPoints = (Map<?, ?>) enemyField.get(panel);
+                    check(active.getEnemies().stream().allMatch(monster ->
+                            Math.abs((double) ambushEnemyPoints.get(monster) - monster.getActionThreshold() * 0.9) < 0.0001),
+                            "ambush enemies start at 90% of their individual thresholds");
                     Field logField = BattlePanel.class.getDeclaredField("log"); logField.setAccessible(true);
                     check(((javax.swing.JTextArea) logField.get(panel)).getText().contains("You have been ambushed!"),
                             "ambush alert appears in the battle log");
@@ -104,20 +115,28 @@ public final class RouteBattleTest {
                             && ambush.getEnemies().stream().anyMatch(Enemy::isSentinel)
                             && secondStage.getEncounter() == 1,
                             "stage ambush retains stage enemies and progress");
+                    BattlePanel secondPanel = new BattlePanel(() -> { });
+                    secondPanel.start(secondStage, true);
+                    Battle secondBattle = (Battle) field.get(secondPanel);
+                    Map<?, ?> secondEnemyPoints = (Map<?, ?>) enemyField.get(secondPanel);
+                    check(secondBattle.getEnemies().stream().allMatch(monster ->
+                            Math.abs((double) secondEnemyPoints.get(monster) - monster.getActionThreshold() * 0.9) < 0.0001),
+                            "ambush starts Wisp and Sentinel at 90% AP");
                     int hpBefore = active.getParty().stream().mapToInt(Student::getHp).sum();
                     advance.invoke(panel, 0.5);
                     check(((Map<?, ?>) pointsField.get(panel)).values().stream().allMatch(v -> v.equals(1.5))
-                            && ((Map<?, ?>) enemyField.get(panel)).values().stream().allMatch(v -> v.equals(1.5)),
+                            && active.getEnemies().stream().allMatch(monster ->
+                                    Math.abs((double) ambushEnemyPoints.get(monster) - (monster.getActionThreshold() * 0.9 + 1.5)) < 0.0001),
                             "students and enemies fill smoothly at 3 AP per second");
                     Field barsField = BattlePanel.class.getDeclaredField("apBars"); barsField.setAccessible(true);
                     javax.swing.JProgressBar[] bars = (javax.swing.JProgressBar[]) barsField.get(panel);
                     check(bars[0].getValue() == 150 && bars[0].getMaximum() == 2800,
                             "fractional AP is visible on the bar");
-                    advance.invoke(panel, 7.5);
+                    advance.invoke(panel, 0.3);
                     check(active.getCurrent() == null && active.getParty().stream().mapToInt(Student::getHp).sum() < hpBefore,
                             "Wisp A attacks before any student is ready");
-                    check(((Map<?, ?>) enemyField.get(panel)).get(active.getEnemies().get(0)).equals(0.0), "enemy AP reset");
-                    advance.invoke(panel, 2.0 / 3.0); advance.invoke(panel, 2.0 / 3.0);
+                    check(Math.abs((double) ((Map<?, ?>) enemyField.get(panel)).get(active.getEnemies().get(0))) < 0.0001, "enemy AP reset");
+                    advance.invoke(panel, 25.6 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 2, "Charice selected at 28 AP");
                     @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(panel);
                     double zackPoints = points.get(active.getParty().stream().filter(s -> s.getId() == 0).findFirst().orElseThrow());
@@ -139,9 +158,9 @@ public final class RouteBattleTest {
                         if (student.getId() == 0 || student.getId() == 1) { tiedPoints.put(student, student.getActionThreshold() - 3.0); }
                     }
                     advance.invoke(tied, 1.0);
-                    check(tiedBattle.getCurrent().getId() == 0, "simultaneous ready students use speed order");
+                    check(tiedBattle.getCurrent().getId() == 1, "simultaneous ready students use speed order");
                     key(tied, "battle-confirm"); key(tied, "battle-confirm");
-                    check(tiedBattle.getCurrent().getId() == 1, "next ready student selected without another tick");
+                    check(tiedBattle.getCurrent().getId() == 0, "next ready student selected without another tick");
                     GameSettings settings = new GameSettings();
                     check(settings.getApPerSecond() == 3.0, "default AP setting");
                     settings.setApPerSecond(6.0);

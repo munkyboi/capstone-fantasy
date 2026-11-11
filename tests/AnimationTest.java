@@ -82,7 +82,7 @@ public final class AnimationTest {
                 check(hasWhiteOutline(player, 0xff6464), "damage text has a white outline");
 
                 BattlePanel monster = new BattlePanel(() -> { }); monster.start(new GameProgress(List.of(0, 1, 3)), true);
-                advance.invoke(monster, 8.0);
+                advance.invoke(monster, 0.8);
                 Object attackingEnemy = attackerField.get(monster);
                 check(attackingEnemy instanceof Enemy && showingField.getBoolean(monster), "monster attack animates");
                 Object monsterScene = sceneField.get(monster);
@@ -99,7 +99,7 @@ public final class AnimationTest {
                 @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(healer);
                 points.put(angel, (double) angel.getActionThreshold());
                 Method refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true); refresh.invoke(healer);
-                key(healer, "battle-down"); key(healer, "battle-confirm"); key(healer, "battle-confirm");
+                key(healer, "battle-down"); key(healer, "battle-confirm"); key(healer, "battle-right"); key(healer, "battle-confirm");
                 check(showingField.getBoolean(healer) && attackerField.get(healer) == null, "heal animates without attack lunge");
                 check(healingBattle.getEffects().stream().anyMatch(effect -> effect.getStudent() == zack && effect.getAmount() > 0), "healing indicator targets ally");
                 startedField.setLong(healer, System.nanoTime());

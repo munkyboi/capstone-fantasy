@@ -23,7 +23,10 @@ public final class BattlePanel extends JPanel {
     private static final int AP_FRAME_MILLIS = 50;
     private static final double AP_EPSILON = 0.0000001;
     private static final int EFFECT_MILLIS = 1600;
+    private static final int AMBUSH_ALERT_MILLIS = 3000;
+    private static final double AMBUSH_ENEMY_AP_FRACTION = 0.9;
     private static final int ANIMATION_FRAME_MILLIS = 50;
+    private static final int VICTORY_ANIMATION_MILLIS = 1800;
     private final Runnable returnToMenu;
     private final Consumer<GameProgress> onVictory;
     private final GameSettings settings;
@@ -51,6 +54,10 @@ public final class BattlePanel extends JPanel {
     private final Timer apTimer = new Timer(AP_FRAME_MILLIS, event -> tickActionPoints());
     private long lastTickNanos;
     private final Timer effectTimer;
+    private final Timer ambushAlertTimer;
+    private final Timer victoryTimer;
+    private long victoryStartedNanos;
+    private boolean showAmbush;
     private boolean showEffects;
     private long effectStartedNanos;
     private Object attackingSprite;
@@ -89,12 +96,28 @@ public final class BattlePanel extends JPanel {
                         && (targetsAllEnemies() || index == targetIndex);
             }
             @Override public boolean showEffects() { return showEffects; }
+            @Override public boolean showAmbush() { return showAmbush; }
+            @Override public double victoryProgress() {
+                return victoryStartedNanos == 0 ? 1.0 : Math.min(1.0,
+                        (System.nanoTime() - victoryStartedNanos) / (VICTORY_ANIMATION_MILLIS * 1_000_000.0));
+            }
             @Override public double enemyPoints(Enemy enemy) { return enemyPoints.getOrDefault(enemy, 0.0); }
             @Override public Object attackingSprite() { return attackingSprite; }
             @Override public double effectProgress() {
                 return showEffects ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
             }
         });
+        victoryTimer = new Timer(ANIMATION_FRAME_MILLIS, event -> {
+            if ((System.nanoTime() - victoryStartedNanos) / 1_000_000.0 >= VICTORY_ANIMATION_MILLIS) {
+                ((Timer) event.getSource()).stop();
+            }
+            scene.repaint();
+        });
+        ambushAlertTimer = new Timer(AMBUSH_ALERT_MILLIS, event -> {
+            showAmbush = false;
+            scene.repaint();
+        });
+        ambushAlertTimer.setRepeats(false);
         effectTimer = new Timer(ANIMATION_FRAME_MILLIS, event -> {
             if ((System.nanoTime() - effectStartedNanos) / 1_000_000.0 >= EFFECT_MILLIS) {
                 showEffects = false; attackingSprite = null; effectTimerStop();
@@ -128,7 +151,7 @@ public final class BattlePanel extends JPanel {
                     lastTickNanos = System.nanoTime();
                     apTimer.start();
                 }
-                else { apTimer.stop(); }
+                else { apTimer.stop(); victoryTimer.stop(); }
             }
         });
     }
@@ -171,7 +194,11 @@ public final class BattlePanel extends JPanel {
         this.progress = progress;
         battle = new Battle(progress, new Random(), ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
-        apTimer.stop(); effectTimer.stop(); showEffects = false; attackingSprite = null;
+        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
+        victoryStartedNanos = 0;
+        showEffects = false; attackingSprite = null;
+        showAmbush = ambushed;
+        if (ambushed) { ambushAlertTimer.restart(); }
         resetActionPoints(ambushed);
         if (!ambushed) { selectReadyStudent(); }
         if (isShowing()) { lastTickNanos = System.nanoTime(); apTimer.start(); }
@@ -183,7 +210,9 @@ public final class BattlePanel extends JPanel {
         for (Student student : battle.getParty()) {
             actionPoints.put(student, ambushed || !student.isAlive() ? 0.0 : (double) student.getActionThreshold());
         }
-        for (Enemy enemy : battle.getEnemies()) { enemyPoints.put(enemy, 0.0); }
+        for (Enemy enemy : battle.getEnemies()) {
+            enemyPoints.put(enemy, ambushed ? enemy.getActionThreshold() * AMBUSH_ENEMY_AP_FRACTION : 0.0);
+        }
     }
 
     private void tickActionPoints() {
@@ -330,6 +359,14 @@ public final class BattlePanel extends JPanel {
 
     private void refresh() {
         boolean over = battle.isOver();
+        if (over) {
+            showAmbush = false;
+            ambushAlertTimer.stop();
+            if (battle.isVictory() && victoryStartedNanos == 0) {
+                victoryStartedNanos = System.nanoTime();
+                victoryTimer.start();
+            }
+        }
         refreshStatus();
         String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."

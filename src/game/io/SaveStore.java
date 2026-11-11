@@ -20,6 +20,9 @@ import java.util.Properties;
 /** Reads and writes three independent slots in text or binary format. */
 public final class SaveStore {
     private static final long MAX_SAVE_BYTES = 65536;
+    private static final int LEGACY_ANGEL_ATTACK = 10;
+    private static final int LEGACY_ANGEL_SPEED = 9;
+    private static final int LEGACY_BOGART_SPEED = 7;
     private final Path directory;
     /** Supported save formats. */
     public enum Format {
@@ -143,9 +146,12 @@ public final class SaveStore {
         List<Integer> hp = new ArrayList<>();
         for (Student student : progress.getParty()) {
             Student expected = new Student(student.getId());
+            boolean legacyAngel = student.getId() == Student.ANGEL && student.getAttack() == LEGACY_ANGEL_ATTACK;
+            boolean legacySpeed = (student.getId() == Student.ANGEL && student.getSpeed() == LEGACY_ANGEL_SPEED)
+                    || (student.getId() == Student.BOGART && student.getSpeed() == LEGACY_BOGART_SPEED);
             if (!expected.getName().equals(student.getName()) || expected.getMaxHp() != student.getMaxHp()
-                    || expected.getAttack() != student.getAttack() || expected.getDefense() != student.getDefense()
-                    || expected.getSpeed() != student.getSpeed() || expected.getLevel() != student.getLevel()) {
+                    || (expected.getAttack() != student.getAttack() && !legacyAngel) || expected.getDefense() != student.getDefense()
+                    || (expected.getSpeed() != student.getSpeed() && !legacySpeed) || expected.getLevel() != student.getLevel()) {
                 throw new IllegalArgumentException("Invalid student information");
             }
             ids.add(student.getId()); hp.add(student.getHp());
