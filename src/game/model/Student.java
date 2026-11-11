@@ -34,11 +34,13 @@ public class Student extends GameCharacter {
     private static final int MINIMUM_DAMAGE = 1;
     private static final long serialVersionUID = 1L;
     private static final int[] STARTING_HEALTH = {80, 120, 90, 105};
-    private static final int[] STARTING_ATTACK = {18, 15, 14, 39};
-    private static final int[] STARTING_DEFENSE = {6, 14, 8, 10};
-    private static final int[] STARTING_SPEED = {10, 11, 16, 7};
+    private static final int[] STARTING_ATTACK = {22, 15, 14, 25};
+    private static final int[] STARTING_DEFENSE = {6, 13, 8, 10};
+    private static final int[] STARTING_SPEED = {12, 12, 18, 5};
+    private static final int[] MAX_SP = {150, 50, 45, 30};
+    private static final int[] ABILITY_SP_COST = {15, 5, 6, 10};
     private static final int DEFENSE_DIVISOR = 2;
-    private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 45};
+    private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 50};
     private final int id;
     private final String name;
     private final int maxHp;
@@ -47,6 +49,9 @@ public class Student extends GameCharacter {
     private final int speed;
     private final int level = STARTING_LEVEL;
     private int hp;
+    // False identifies a serialized save from before SP existed.
+    private int skillPoints;
+    private boolean skillPointsInitialized;
     private boolean defending;
     private boolean vestEquipped;
     private String weaponId;
@@ -61,6 +66,7 @@ public class Student extends GameCharacter {
         if (id < 0 || id >= names.length) { throw new IllegalArgumentException("Unknown student"); }
         this.id = id; name = names[id]; maxHp = STARTING_HEALTH[id]; hp = maxHp;
         attack = STARTING_ATTACK[id]; defense = STARTING_DEFENSE[id]; speed = STARTING_SPEED[id];
+        skillPoints = MAX_SP[id]; skillPointsInitialized = true;
     }
 
     /** Returns character index.
@@ -125,6 +131,24 @@ public class Student extends GameCharacter {
     /** Returns current level.
      * @return current level
      */ public int getLevel() { return level; }
+    /** Returns current and maximum skill points and the ability cost. */
+    public int getSp() { return skillPointsInitialized ? skillPoints : getMaxSp(); }
+    /** Returns the student's maximum skill points. */
+    public int getMaxSp() { return MAX_SP[id]; }
+    /** Returns the skill-point cost of the student's ability. */
+    public int getAbilitySpCost() { return ABILITY_SP_COST[id]; }
+    /** Uses skill points if enough are available. */
+    public boolean spendAbilitySp() {
+        if (getSp() < getAbilitySpCost()) { return false; }
+        skillPoints = getSp() - getAbilitySpCost(); skillPointsInitialized = true; return true;
+    }
+    /** Restores validated skill points from a save. */
+    public void restoreSp(int value) {
+        if (value < 0 || value > getMaxSp()) { throw new IllegalArgumentException("Invalid SP"); }
+        skillPoints = value; skillPointsInitialized = true;
+    }
+    /** Fully restores the student's SP. */
+    public void restoreAllSp() { skillPoints = getMaxSp(); skillPointsInitialized = true; }
     /** Returns AP required before this student can act.
      * @return AP required before this student can act
      */

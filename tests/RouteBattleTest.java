@@ -46,11 +46,11 @@ public final class RouteBattleTest {
                 "ordinary stages remain eligible for ambushes");
         GameProgress progress = new GameProgress(List.of(0, 1, 3));
         check(new Student(0).getActionThreshold() == 35 && new Student(1).getActionThreshold() == 30
-                && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 45, "student AP thresholds");
+                && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 50, "student AP thresholds");
         check(new Student(Student.CHARICE).getSpeed() > new Student(Student.BOGART).getSpeed()
-                && new Student(Student.BOGART).getSpeed() > new Student(Student.ZACK).getSpeed()
+                && new Student(Student.BOGART).getSpeed() == new Student(Student.ZACK).getSpeed()
                 && new Student(Student.ZACK).getSpeed() > new Student(Student.ANGEL).getSpeed(),
-                "speed order matches AP readiness, with Angel slowest");
+                "speed order matches configured stats, with Angel slowest");
         Battle battle = new Battle(progress, new Random(1));
         Enemy enemy = battle.getEnemies().get(0);
         check(battle.getCurrent() == null && !battle.attack(enemy), "no action before ready");
@@ -164,9 +164,9 @@ public final class RouteBattleTest {
                         if (student.getId() == 0 || student.getId() == 1) { tiedPoints.put(student, student.getActionThreshold() - 3.0); }
                     }
                     advance.invoke(tied, 1.0);
-                    check(tiedBattle.getCurrent().getId() == 1, "simultaneous ready students use speed order");
+                    check(tiedBattle.getCurrent().getId() == 0, "equal-speed ready students retain party order");
                     key(tied, "battle-confirm"); key(tied, "battle-confirm");
-                    check(tiedBattle.getCurrent().getId() == 0, "next ready student selected without another tick");
+                    check(tiedBattle.getCurrent().getId() == 1, "next ready student selected without another tick");
                     GameSettings settings = new GameSettings();
                     check(settings.getApPerSecond() == 3.0, "default AP setting");
                     settings.setApPerSecond(6.0);

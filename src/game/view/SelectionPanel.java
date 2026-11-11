@@ -34,7 +34,7 @@ public final class SelectionPanel extends JPanel {
         new Color(240, 110, 178), new Color(76, 155, 245)
     };
     // The bars compare the four starting characters within each stat.
-    private static final int[] STAT_MAXIMA = {120, 39, 14, 16};
+    private static final int[] STAT_MAXIMA = {120, 25, 13, 18, 150};
     private static final String[] ABILITIES = {
         "Arcane Burst", "Cadet Strike", "Twin Shot", "Healing Kiss"
     };
@@ -45,6 +45,7 @@ public final class SelectionPanel extends JPanel {
     private final JButton[] choices = new JButton[NAMES.length];
     private final JLabel count = new JLabel("", SwingConstants.CENTER);
     private final JButton continueButton = new JButton("Continue");
+    private final JButton backButton = new JButton("Back");
     private int cursor;
     private final BufferedImage background = loadImage("/assets/backgrounds/campus-courtyard-v1.png");
     private final BufferedImage sprites = loadImage("/assets/sprites/student-party-idle-v1.png");
@@ -72,26 +73,40 @@ public final class SelectionPanel extends JPanel {
             cards.add(choices[i]);
         }
         add(cards, BorderLayout.CENTER);
-        JPanel footer = new JPanel(new BorderLayout(12, 8));
+        JPanel footer = new JPanel(new BorderLayout(12, 8)) {
+            @Override protected void paintChildren(Graphics graphics) {
+                super.paintChildren(graphics);
+                if (cursor != 4 && cursor != 5) { return; }
+                JButton target = cursor == 4 ? continueButton : backButton;
+                int pointerWidth = ViewportFonts.pixels(26, ViewportFonts.factor(SelectionPanel.this.getWidth()));
+                int pointerHeight = pointerWidth * PixelPointer.ART.getHeight() / PixelPointer.ART.getWidth();
+                Graphics2D g = (Graphics2D) graphics.create();
+                try {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                    g.drawImage(PixelPointer.ART, target.getX() - pointerWidth - 3,
+                            target.getY() + (target.getHeight() - pointerHeight) / 2, pointerWidth, pointerHeight, null);
+                } finally { g.dispose(); }
+            }
+        };
         footer.setOpaque(false);
+        footer.setBorder(BorderFactory.createEmptyBorder(0, 32, 0, 0));
         count.setForeground(LIGHT);
         count.setFont(ClassicUi.numbers(15));
         footer.add(count, BorderLayout.CENTER);
-        JButton back = new JButton("Back");
-        back.setFocusable(false);
+        backButton.setFocusable(false);
         continueButton.setFocusable(false);
         continueButton.setOpaque(true);
         continueButton.setContentAreaFilled(true);
         continueButton.setBorderPainted(true);
-        back.addActionListener(event -> goBack.run());
+        backButton.addActionListener(event -> goBack.run());
         continueButton.addActionListener(event -> startBattle.accept(new java.util.ArrayList<>(selected)));
-        footer.add(back, BorderLayout.WEST);
+        footer.add(backButton, BorderLayout.WEST);
         footer.add(continueButton, BorderLayout.EAST);
         add(footer, BorderLayout.SOUTH);
         Keys.bind(this, "LEFT", "party-left", () -> moveCursor(-1));
         Keys.bind(this, "RIGHT", "party-right", () -> moveCursor(1));
         Keys.bind(this, "DOWN", "party-continue", () -> { cursor = 4; refresh(); });
-        Keys.bind(this, "UP", "party-cards", () -> { if (cursor == 4) { cursor = 0; refresh(); } });
+        Keys.bind(this, "UP", "party-cards", () -> { if (cursor >= 4) { cursor = 0; refresh(); } });
         Keys.bind(this, "ENTER", "party-confirm", this::confirmCursor);
         Keys.bind(this, "SPACE", "party-confirm-space", this::confirmCursor);
         Keys.bind(this, "ESCAPE", "party-back", goBack);
@@ -106,12 +121,14 @@ public final class SelectionPanel extends JPanel {
     }
 
     private void moveCursor(int direction) {
-        cursor = Math.floorMod(cursor + direction, choices.length);
+        if (cursor >= 4) { cursor = cursor == 4 ? 5 : 4; }
+        else { cursor = Math.floorMod(cursor + direction, choices.length); }
         refresh();
     }
 
     private void confirmCursor() {
         if (cursor == 4) { if (continueButton.isEnabled()) { continueButton.doClick(); } }
+        else if (cursor == 5) { backButton.doClick(); }
         else { toggle(cursor); }
     }
 
@@ -125,7 +142,7 @@ public final class SelectionPanel extends JPanel {
     }
 
     private void refresh() {
-        count.setText("← → Select  •  Enter Choose  •  ↓ Continue  •  " + selected.size() + " / " + PARTY_SIZE);
+        count.setText("← → Select  •  Enter Choose  •  ↓ Buttons  •  " + selected.size() + " / " + PARTY_SIZE);
         continueButton.setEnabled(selected.size() == PARTY_SIZE);
         continueButton.setText("Continue");
         boolean focused = cursor == 4 && continueButton.isEnabled();
@@ -139,6 +156,7 @@ public final class SelectionPanel extends JPanel {
                     + (selected.contains(i) ? ", selected" : ", not selected"));
             choices[i].repaint();
         }
+        repaint();
     }
 
     private static BufferedImage loadImage(String path) {
@@ -229,9 +247,11 @@ public final class SelectionPanel extends JPanel {
                 drawCentered(g, ABILITIES[index], w / 2, h - ViewportFonts.pixels(48, scale));
                 g.setFont(ClassicUi.body(ViewportFonts.pixels(11, scale)));
                 drawCentered(g, EFFECTS[index], w / 2, h - ViewportFonts.pixels(31, scale));
+                g.setFont(ClassicUi.numbers(ViewportFonts.pixels(10, scale)));
+                drawCentered(g, "SP " + Student.create(index).getAbilitySpCost(), w / 2, h - ViewportFonts.pixels(20, scale));
                 if (selected.contains(index)) {
                     g.setColor(GOLD);
-                    drawCentered(g, "SELECTED", w / 2, h - ViewportFonts.pixels(12, scale));
+                    drawCentered(g, "SELECTED", w / 2, h - ViewportFonts.pixels(7, scale));
                 }
                 if (hasFocus()) { g.drawRect(6, 6, w - 13, h - 13); }
             } finally { g.dispose(); }
@@ -239,10 +259,10 @@ public final class SelectionPanel extends JPanel {
 
         private void drawStats(Graphics2D g, int width, int height, double scale) {
             Student student = Student.create(index);
-            int[] values = {student.getMaxHp(), student.getBaseAttack(), student.getBaseDefense(), student.getSpeed()};
+            int[] values = {student.getMaxHp(), student.getBaseAttack(), student.getBaseDefense(), student.getSpeed(), student.getMaxSp()};
             int left = ViewportFonts.pixels(12, scale);
             int barLeft = ViewportFonts.pixels(48, scale);
-            int valueRight = width - ViewportFonts.pixels(12, scale);
+            int valueRight = width - ViewportFonts.pixels(7, scale);
             int barWidth = Math.max(1, valueRight - barLeft - ViewportFonts.pixels(32, scale));
             int rowHeight = ViewportFonts.pixels(17, scale);
             int top = height - ViewportFonts.pixels(158, scale);

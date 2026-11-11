@@ -42,6 +42,7 @@ public final class Main {
             InventoryPanel[] inventoryHolder = new InventoryPanel[1];
             WorldMapPanel[] mapHolder = new WorldMapPanel[1];
             boolean[] saving = {false};
+            int[] activeStage = {0};
             Random random = new Random();
             SaveSlotPanel slots = new SaveSlotPanel(new SaveStore(SaveStore.defaultDirectory()), () -> {
                 if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
@@ -73,15 +74,18 @@ public final class Main {
             });
             inventoryHolder[0] = inventory;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
-                boolean hasNext = progress.advance();
+                boolean replay = activeStage[0] < progress.getEncounter();
+                boolean hasNext = replay ? progress.getEncounter() < 2 : progress.advance();
+                for (game.model.Student student : progress.getParty()) { student.restoreAllSp(); }
                 camp.open(progress, !hasNext);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();
             }, settings);
             battleHolder[0] = battle;
-            WorldMapPanel map = new WorldMapPanel(progress -> {
-                boolean ambushed = settings.rollAmbush(progress.getEncounter(), random);
-                battle.start(progress, ambushed);
+            WorldMapPanel map = new WorldMapPanel((progress, stage) -> {
+                activeStage[0] = stage;
+                boolean ambushed = settings.rollAmbush(stage, random);
+                battle.start(progress, ambushed, stage);
                 layout.show(screens, "battle");
                 battle.requestFocusInWindow();
             }, progress -> {

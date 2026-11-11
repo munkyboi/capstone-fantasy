@@ -211,7 +211,9 @@ final class BattleScene extends JPanel {
         private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
 
         private void drawRewards(Graphics2D g) {
-            java.util.List<String> items = state.rewardItems();
+            java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+            for (String id : state.rewardItems()) { counts.merge(id, 1, Integer::sum); }
+            java.util.List<String> items = new java.util.ArrayList<>(counts.keySet());
             if (items.isEmpty()) { return; }
             int width = 360, x = (960 - width) / 2;
             int y = Math.max(18, hudHeight() / 5) + 52;
@@ -229,11 +231,17 @@ final class BattleScene extends JPanel {
                 int rowY = y + 36 + i * 28;
                 drawRewardIcon(g, id, x + 16, rowY, 24);
                 g.setColor(Color.WHITE);
-                g.drawString("1x " + Equipment.fromId(id).getName(), x + 50, rowY + 18);
+                String name = "first_aid_kit".equals(id) ? "First-Aid Kit" : Equipment.fromId(id).getName();
+                g.drawString(counts.get(id) + "x " + name, x + 50, rowY + 18);
             }
         }
 
         private void drawRewardIcon(Graphics2D g, String id, int x, int y, int size) {
+            if ("first_aid_kit".equals(id)) {
+                g.setColor(new Color(242, 239, 220)); g.fillRect(x + 3, y + 5, size - 6, size - 10);
+                g.setColor(new Color(202, 57, 65)); g.fillRect(x + size / 2 - 2, y + 7, 4, size - 14);
+                g.fillRect(x + 7, y + size / 2 - 2, size - 14, 4); return;
+            }
             if ("training_uniform".equals(id) && uniformIcon != null) {
                 drawFit(g, uniformIcon, 0, uniformIcon.getWidth(), x, y, size, size);
                 return;

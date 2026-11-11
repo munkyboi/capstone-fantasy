@@ -68,7 +68,7 @@ public final class SaveStore {
             temp = Files.createTempFile(directory, "save-", ".tmp");
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
-                properties.setProperty("version", "2");
+                properties.setProperty("version", "3");
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
                 properties.setProperty("inventory.campusPass", "true");
@@ -82,6 +82,7 @@ public final class SaveStore {
                     properties.setProperty(prefix + "id", Integer.toString(student.getId()));
                     properties.setProperty(prefix + "name", student.getName());
                     properties.setProperty(prefix + "hp", Integer.toString(student.getHp()));
+                    properties.setProperty(prefix + "sp", Integer.toString(student.getSp()));
                     properties.setProperty(prefix + "maxHp", Integer.toString(student.getMaxHp()));
                     properties.setProperty(prefix + "level", Integer.toString(student.getLevel()));
                     for (Equipment.Slot gearSlot : Equipment.Slot.values()) {
@@ -137,7 +138,7 @@ public final class SaveStore {
             Properties properties = new Properties();
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { properties.load(reader); }
             String version = properties.getProperty("version");
-            if (!"1".equals(version) && !"2".equals(version)) { throw new IOException("Unsupported save version"); }
+            if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version)) { throw new IOException("Unsupported save version"); }
             List<Integer> ids = new ArrayList<>();
             List<Integer> hp = new ArrayList<>();
             for (int i = 1; i <= 3; i++) {
@@ -156,6 +157,14 @@ public final class SaveStore {
             }
             GameProgress restored = GameProgress.restore(ids, hp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
+            if ("3".equals(version)) {
+                for (int i = 1; i <= 3; i++) {
+                    int id = Integer.parseInt(properties.getProperty("student." + i + ".id"));
+                    int sp = Integer.parseInt(properties.getProperty("student." + i + ".sp"));
+                    restored.getParty().stream().filter(student -> student.getId() == id)
+                            .findFirst().orElseThrow().restoreSp(sp);
+                }
+            }
             if ("1".equals(version)) {
                 restored.setVestOwner(Integer.parseInt(properties.getProperty("inventory.campusVestOwner", "-1")));
                 restored.grantLegacyRewards();
@@ -194,12 +203,18 @@ public final class SaveStore {
         java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
         for (Student student : progress.getParty()) {
             Student expected = new Student(student.getId());
-            boolean legacyAngel = student.getId() == Student.ANGEL && student.getBaseAttack() == LEGACY_ANGEL_ATTACK;
-            boolean legacySpeed = (student.getId() == Student.ANGEL && student.getSpeed() == LEGACY_ANGEL_SPEED)
-                    || (student.getId() == Student.BOGART && student.getSpeed() == LEGACY_BOGART_SPEED);
+            boolean oldAttack = (student.getId() == Student.ZACK && student.getBaseAttack() == 18)
+                    || (student.getId() == Student.ANGEL && (student.getBaseAttack() == 10 || student.getBaseAttack() == 39));
+            boolean oldDefense = student.getId() == Student.BOGART && student.getBaseDefense() == 14;
+            boolean oldSpeed = (student.getId() == Student.ZACK && student.getSpeed() == 10)
+                    || (student.getId() == Student.BOGART && (student.getSpeed() == 7 || student.getSpeed() == 11))
+                    || (student.getId() == Student.CHARICE && student.getSpeed() == 16)
+                    || (student.getId() == Student.ANGEL && (student.getSpeed() == 7 || student.getSpeed() == 9));
             if (!expected.getName().equals(student.getName()) || expected.getMaxHp() != student.getMaxHp()
-                    || (expected.getBaseAttack() != student.getBaseAttack() && !legacyAngel) || expected.getBaseDefense() != student.getBaseDefense()
-                    || (expected.getSpeed() != student.getSpeed() && !legacySpeed) || expected.getLevel() != student.getLevel()) {
+                    || (expected.getBaseAttack() != student.getBaseAttack() && !oldAttack)
+                    || (expected.getBaseDefense() != student.getBaseDefense() && !oldDefense)
+                    || (expected.getSpeed() != student.getSpeed() && !oldSpeed) || expected.getLevel() != student.getLevel()
+                    || student.getSp() < 0 || student.getSp() > student.getMaxSp()) {
                 throw new IllegalArgumentException("Invalid student information");
             }
             ids.add(student.getId()); hp.add(student.getHp());
@@ -209,7 +224,11 @@ public final class SaveStore {
         }
         GameProgress restored = GameProgress.restore(ids, hp, progress.getKits(), progress.getEncounter());
         List<List<String>> slots = new ArrayList<>();
-        for (Student student : restored.getParty()) { slots.add(slotsByStudent.get(student.getId())); }
+        for (Student student : restored.getParty()) {
+            slots.add(slotsByStudent.get(student.getId()));
+            int id = student.getId();
+            student.restoreSp(progress.getParty().stream().filter(old -> old.getId() == id).findFirst().orElseThrow().getSp());
+        }
         boolean[] claimed = new boolean[5];
         for (int stage = 0; stage < claimed.length; stage++) { claimed[stage] = inventory.isRewardClaimed(stage); }
         restored.restoreEquipment(inventory.getEquipmentIds(), slots, claimed);

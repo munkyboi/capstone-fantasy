@@ -37,6 +37,7 @@ public final class Equipment extends Item {
             case "campus_vest" -> new Equipment();
             case "focus_charm" -> new Equipment(id, "Focus Charm", Slot.ACCESSORY, 2, 0, -1);
             case "training_uniform" -> new Equipment(id, "Training Uniform", Slot.ARMOR, 0, 6, -1);
+            case "sentinel_band" -> new Equipment(id, "Sentinel Band", Slot.ACCESSORY, 0, 2, -1);
             case "guardian_band" -> new Equipment(id, "Guardian Band", Slot.ACCESSORY, 0, 3, -1);
             case "courage_charm" -> new Equipment(id, "Courage Charm", Slot.ACCESSORY, 3, 1, -1);
             case "campus_medal" -> new Equipment(id, "Campus Medal", Slot.ACCESSORY, 5, 3, -1);

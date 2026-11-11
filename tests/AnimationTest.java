@@ -99,7 +99,7 @@ public final class AnimationTest {
                 @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(healer);
                 points.put(angel, (double) angel.getActionThreshold());
                 Method refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true); refresh.invoke(healer);
-                key(healer, "battle-down"); key(healer, "battle-confirm"); key(healer, "battle-right"); key(healer, "battle-confirm");
+                key(healer, "battle-down"); key(healer, "battle-confirm"); key(healer, "battle-confirm");
                 check(showingField.getBoolean(healer) && attackerField.get(healer) == null, "heal animates without attack lunge");
                 check(healingBattle.getEffects().stream().anyMatch(effect -> effect.getStudent() == zack && effect.getAmount() > 0), "healing indicator targets ally");
                 startedField.setLong(healer, System.nanoTime());

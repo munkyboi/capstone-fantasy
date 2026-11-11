@@ -102,8 +102,9 @@ final class BattleControls {
             Student student = battle.getParty().get(i);
             partyStatus[i].setForeground(!over && student == battle.getCurrent()
                     ? new Color(250, 218, 143) : Color.WHITE);
-            partyStatus[i].setText(String.format("%-9s  HP %3d / %3d%s",
-                    student.getName(), student.getHp(), student.getMaxHp(), student.isAlive() ? "" : "  KO"));
+            partyStatus[i].setText(String.format("%-9s  HP %3d / %3d  SP %3d / %3d%s",
+                    student.getName(), student.getHp(), student.getMaxHp(), student.getSp(), student.getMaxSp(),
+                    student.isAlive() ? "" : "  KO"));
         }
     }
 

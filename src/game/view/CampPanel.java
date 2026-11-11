@@ -182,8 +182,8 @@ public final class CampPanel extends JPanel {
             Student student = progress.getParty().get(i);
             ViewportFonts.setScaledIcon(students[i], portraits[student.getId()]);
             students[i].putClientProperty("selected", i == cursor);
-            students[i].setText(String.format("    %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s",
-                    student.getName(), student.getHp(), student.getMaxHp(), student.getAttack(), student.getDefense(),
+            students[i].setText(String.format("    %-8s HP %3d/%3d  SP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s",
+                    student.getName(), student.getHp(), student.getMaxHp(), student.getSp(), student.getMaxSp(), student.getAttack(), student.getDefense(),
                     student.getSpeed(), student.hasVest() ? "[Vest]" : "", student.isAlive() ? "" : " KO"));
         }
         supplies.setText("<html><div style='text-align: center'>Kits: " + progress.getKits()

@@ -41,7 +41,7 @@ public final class InventoryUiTest {
                 JLabel[] rows = (JLabel[]) rowsField.get(panel);
                 check(rows[0].getBackground().getRGB() != rows[1].getBackground().getRGB(), "selected party row is distinct");
                 key(panel, "inventory-down");
-                check(profile.getText().contains("Bogart") && rows[1].getBackground().getRGB() != rows[0].getBackground().getRGB(),
+                check(profile.getText().contains("Zack") && rows[1].getBackground().getRGB() != rows[0].getBackground().getRGB(),
                         "party selection follows keyboard");
                 Field scrollField = InventoryPanel.class.getDeclaredField("bagScroll"); scrollField.setAccessible(true);
                 JScrollPane scroll = (JScrollPane) scrollField.get(panel); layout(viewport);

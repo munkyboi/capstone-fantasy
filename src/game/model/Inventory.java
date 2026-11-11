@@ -64,6 +64,11 @@ public final class Inventory implements java.io.Serializable {
         if (healed > 0) { kits--; }
         return healed;
     }
+    /** Adds a kit if there is space in the shared bag. */
+    public boolean addKit() {
+        if (kits >= MAX_KITS) { return false; }
+        kits++; return true;
+    }
     /** Sets the vest owner for backward-compatible saves.
      * @param id student ID, or -1
      */

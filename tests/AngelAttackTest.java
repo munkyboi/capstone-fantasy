@@ -28,13 +28,12 @@ public final class AngelAttackTest {
         Battle monkBattle = newBattle();
         Student monk = monkBattle.getParty().stream().filter(s -> s.getId() == Student.ANGEL).findFirst().orElseThrow();
         Enemy monkTarget = monkBattle.getEnemies().get(0);
-        check(monk.getAttack() == 39 && monk.getActionThreshold() == 45, "Angel has increased attack and unchanged AP threshold");
+        check(monk.getAttack() == 25 && monk.getActionThreshold() == 50, "Angel has the configured attack and AP threshold");
         check(monkBattle.selectStudent(monk), "select Angel");
         before = monkTarget.getHp();
         check(monkBattle.attack(monkTarget), "use Angel basic attack");
         int basicDamage = before - monkTarget.getHp();
-        check(twinShotDamage == 26 && basicDamage == 36, "expected damage against a Wisp");
-        check(Math.abs((double) basicDamage / twinShotDamage - 1.4) < 0.05, "Angel damage is about 1.4 times Twin Shot");
+        check(twinShotDamage == 26 && basicDamage == 22, "expected damage against a Wisp");
         System.out.println("Angel attack balance checks passed");
     }
 }

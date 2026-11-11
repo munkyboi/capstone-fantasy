@@ -107,8 +107,13 @@ public final class GameProgress implements java.io.Serializable {
      * @return newly awarded equipment IDs, or an empty list when already claimed
      */
     public List<String> claimStageRewardItems() {
+        return claimStageRewardItems(encounter);
+    }
+    /** Awards the specific unlocked stage's one-time rewards. */
+    public List<String> claimStageRewardItems(int stage) {
+        if (stage < 0 || stage > encounter) { throw new IllegalArgumentException("Stage is locked"); }
         List<String> previous = new ArrayList<>(getInventory().getEquipmentIds());
-        if (claimReward(encounter) == null) { return List.of(); }
+        if (claimReward(stage) == null) { return List.of(); }
         List<String> awarded = new ArrayList<>();
         for (String id : getInventory().getEquipmentIds()) {
             if (!previous.remove(id)) { awarded.add(id); }

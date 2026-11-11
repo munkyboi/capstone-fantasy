@@ -52,6 +52,7 @@ public final class BattlePanel extends JPanel {
     private String notice;
     private List<String> victoryRewardItems = List.of();
     private boolean rewardRecorded;
+    private int encounterStage;
     private final Map<Student, Double> actionPoints = new HashMap<>();
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
     private final Timer apTimer = new Timer(AP_FRAME_MILLIS, event -> tickActionPoints());
@@ -143,7 +144,14 @@ public final class BattlePanel extends JPanel {
                 attack, ability, item, defend, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
         defend.addActionListener(e -> performAction(() -> { notice = null; battle.defend(); }, false));
-        ability.addActionListener(e -> beginTargeting(TargetAction.ABILITY));
+        ability.addActionListener(e -> {
+            Student actor = battle.getCurrent();
+            if (actor != null && actor.getSp() < actor.getAbilitySpCost()) {
+                notice = "Not enough SP. " + actor.getName() + " needs " + actor.getAbilitySpCost() + " SP.";
+                refresh(); return;
+            }
+            beginTargeting(TargetAction.ABILITY);
+        });
         item.addActionListener(e -> {
             if (battle.getKits() == 0) {
                 notice = "No First-Aid Kits remain."; refresh(); return;
@@ -206,9 +214,14 @@ public final class BattlePanel extends JPanel {
      * @param ambushed whether students start with empty AP bars
      */
     public void start(GameProgress progress, boolean ambushed) {
-        ambushed = ambushed && settings.allowsAmbush(progress.getEncounter());
-        this.progress = progress;
-        battle = new Battle(progress, battleRandom, ambushed); commandIndex = 0;
+        start(progress, ambushed, progress.getEncounter());
+    }
+
+    /** Starts a specific unlocked stage, including a replay. */
+    public void start(GameProgress progress, boolean ambushed, int stage) {
+        ambushed = ambushed && settings.allowsAmbush(stage);
+        this.progress = progress; encounterStage = stage;
+        battle = new Battle(progress, battleRandom, ambushed, stage); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
         victoryRewardItems = List.of(); rewardRecorded = false;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
@@ -380,7 +393,9 @@ public final class BattlePanel extends JPanel {
             showAmbush = false;
             ambushAlertTimer.stop();
             if (battle.isVictory() && !rewardRecorded) {
-                victoryRewardItems = progress.claimStageRewardItems();
+                java.util.List<String> rewards = new java.util.ArrayList<>(progress.claimStageRewardItems(encounterStage));
+                rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom));
+                victoryRewardItems = List.copyOf(rewards);
                 rewardRecorded = true;
             }
             if (battle.isVictory() && victoryStartedNanos == 0) {

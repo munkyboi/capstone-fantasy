@@ -19,12 +19,14 @@ public final class WorldMapPanel extends JPanel {
     private static final int[] X = {35, 94, 156, 218, 282};
     private static final int[] Y = {105, 82, 105, 82, 105};
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/campus-route-v1.png");
-    private final Consumer<GameProgress> battle;
+    private final java.util.function.BiConsumer<GameProgress, Integer> battle;
     private final Consumer<GameProgress> camp;
     private final Runnable menu;
     private GameProgress progress;
     private int cursor;
     private String notice;
+    private boolean replayPrompt;
+    private boolean replayYes;
 
     /** Creates the campus route screen.
      * @param battle starts the current encounter
@@ -32,6 +34,12 @@ public final class WorldMapPanel extends JPanel {
      * @param menu returns to the main menu
      */
     public WorldMapPanel(Consumer<GameProgress> battle, Consumer<GameProgress> camp, Runnable menu) {
+        this((progress, stage) -> battle.accept(progress), camp, menu);
+    }
+
+    /** Creates a route that supplies the selected stage to the battle. */
+    public WorldMapPanel(java.util.function.BiConsumer<GameProgress, Integer> battle,
+            Consumer<GameProgress> camp, Runnable menu) {
         this.battle = battle; this.camp = camp; this.menu = menu;
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);
         Keys.bind(this, "LEFT", "map-left", () -> move(-1));
@@ -40,27 +48,31 @@ public final class WorldMapPanel extends JPanel {
         Keys.bind(this, "DOWN", "map-down", () -> move(1));
         Keys.bind(this, "ENTER", "map-enter", this::confirm);
         Keys.bind(this, "SPACE", "map-space", this::confirm);
-        Keys.bind(this, "C", "map-camp", () -> { if (progress != null && progress.getEncounter() > 0) { camp.accept(progress); } });
-        Keys.bind(this, "ESCAPE", "map-menu", menu);
+        Keys.bind(this, "C", "map-camp", () -> { if (!replayPrompt && progress != null && progress.getEncounter() > 0) { camp.accept(progress); } });
+        Keys.bind(this, "ESCAPE", "map-menu", () -> { if (replayPrompt) { replayPrompt = false; repaint(); } else { menu.run(); } });
     }
 
     /** Displays the party's unlocked position on the route.
      * @param progress current party progress
      */
     public void open(GameProgress progress) {
-        this.progress = progress; cursor = progress.getEncounter(); notice = null; repaint();
+        this.progress = progress; cursor = progress.getEncounter(); notice = null; replayPrompt = false; repaint();
     }
     private void move(int direction) {
         if (progress == null) { return; }
+        if (replayPrompt) { replayYes = !replayYes; repaint(); return; }
         cursor = Math.max(0, Math.min(progress.getEncounter(), cursor + direction));
         notice = null; repaint();
     }
     private void confirm() {
         if (progress == null) { return; }
-        if (cursor < progress.getEncounter()) { notice = "This encounter is complete."; }
+        if (replayPrompt) {
+            replayPrompt = false;
+            if (replayYes) { battle.accept(progress, cursor); return; }
+        } else if (cursor < progress.getEncounter()) { replayPrompt = true; replayYes = false; }
         else if (cursor > progress.getEncounter()) { notice = "Complete the previous encounter to unlock this location."; }
         else if (cursor > 1) { notice = "This encounter is not available yet."; }
-        else { battle.accept(progress); return; }
+        else { battle.accept(progress, cursor); return; }
         repaint();
     }
     /** Draws the campus route and its current position.
@@ -119,6 +131,22 @@ public final class WorldMapPanel extends JPanel {
             out.drawString(LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
             out.setFont(ClassicUi.body(14));
             out.drawString(notice != null ? notice : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
+            if (replayPrompt) {
+                int x = 280, y = 200, w = 400, h = 125;
+                out.setColor(new Color(12, 25, 48, 240)); out.fillRect(x, y, w, h);
+                out.setColor(new Color(247, 204, 114)); out.drawRect(x, y, w - 1, h - 1);
+                out.drawRect(x + 3, y + 3, w - 7, h - 7);
+                out.setFont(ClassicUi.numbers(16)); out.setColor(Color.WHITE);
+                String title = "Replay " + LOCATIONS[cursor] + "?";
+                out.drawString(title, x + (w - out.getFontMetrics().stringWidth(title)) / 2, y + 35);
+                out.setFont(ClassicUi.body(14));
+                out.drawString("Stage rewards are earned once.", x + 70, y + 61);
+                out.setFont(ClassicUi.numbers(16));
+                int pointerX = x + (replayYes ? 200 : 85);
+                out.drawImage(PixelPointer.ART, pointerX, y + 78, 27, 20, null);
+                out.setColor(replayYes ? Color.WHITE : new Color(250, 218, 143)); out.drawString("No", x + 120, y + 96);
+                out.setColor(replayYes ? new Color(250, 218, 143) : Color.WHITE); out.drawString("Yes", x + 235, y + 96);
+            }
         } finally { out.dispose(); }
     }
 }

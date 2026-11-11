@@ -42,7 +42,14 @@ public final class Battle {
      * @param ambushed whether enemies ambush the party
      */
     public Battle(GameProgress progress, Random random, boolean ambushed) {
-        if (progress.getEncounter() > 1) { throw new IllegalArgumentException("This encounter is not available yet"); }
+        this(progress, random, ambushed, progress.getEncounter());
+    }
+
+    /** Starts a specific unlocked route encounter, including a replay. */
+    public Battle(GameProgress progress, Random random, boolean ambushed, int encounter) {
+        if (encounter < 0 || encounter > 1 || encounter > progress.getEncounter()) {
+            throw new IllegalArgumentException("This encounter is not available yet");
+        }
         this.progress = progress;
         this.random = random;
         party.addAll(progress.getParty());
@@ -51,8 +58,8 @@ public final class Battle {
         if (party.stream().noneMatch(Student::isAlive)) {
             throw new IllegalArgumentException("At least one student must be able to battle");
         }
-        int count = EncounterRules.rollMonsterCount(progress.getEncounter(), random);
-        boolean sentinelEncounter = progress.getEncounter() == 1;
+        int count = EncounterRules.rollMonsterCount(encounter, random);
+        boolean sentinelEncounter = encounter == 1;
         int wisps = sentinelEncounter ? count - 1 : count;
         for (int index = 0; index < wisps; index++) {
             enemies.add(new Enemy("Library Wisp " + (char) ('A' + index)));
@@ -124,6 +131,11 @@ public final class Battle {
     public boolean ability(Student ally, Enemy enemy) {
         if (isOver() || getCurrent() == null) { return false; }
         Student actor = getCurrent();
+        if (actor.getSp() < actor.getAbilitySpCost()) { return false; }
+        if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS && !validAlly(ally)) { return false; }
+        if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
+                && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && !validEnemy(enemy)) { return false; }
+        if (!actor.spendAbilitySp()) { return false; }
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
             if (!validAlly(ally)) { return false; }
             effects.clear();
