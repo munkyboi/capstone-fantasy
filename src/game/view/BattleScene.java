@@ -422,19 +422,20 @@ final class BattleScene extends JPanel {
         }
 
         private void drawActiveMarker(Graphics2D g, int x, int footY) {
-            // Pixel-sized light pillars rise behind the sprite while the gold ring marks its feet.
-            int phase = (int) ((System.nanoTime() / 180_000_000L) % 8);
+            // Fixed pixel-art light rays sit behind the selected student.
             int[] offsets = {-14, -11, -8, 8, 11, 14};
             int[] heights = {12, 19, 11, 15, 21, 12};
             g.setColor(new Color(255, 174, 57, 30));
             g.fillOval(x - 17, footY - 6, 34, 13);
             for (int i = 0; i < offsets.length; i++) {
                 int px = x + offsets[i];
-                int height = heights[i] + ((phase + i * 3) % 5) - 2;
+                int height = heights[i];
                 g.setColor(new Color(255, 166, 55, 45));
                 g.fillRect(px - 1, footY - height, 3, height - 2);
                 g.setColor(new Color(255, 202, 96, 105));
                 g.fillRect(px, footY - height + 4, 1, height - 4);
+                g.setColor(new Color(255, 232, 160, 175));
+                g.fillRect(px, footY - 6, 1, 4);
             }
             g.setColor(new Color(211, 133, 48, 150));
             g.drawOval(x - 15, footY - 5, 30, 10);

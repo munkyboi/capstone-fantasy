@@ -20,8 +20,8 @@ public final class SettingsPanel extends JPanel {
     public SettingsPanel(GameSettings settings, Path file, Runnable back) {
         this.settings = settings; this.file = file; this.back = back;
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);
-        Keys.bind(this, "UP", "settings-up", () -> { cursor = Math.floorMod(cursor - 1, 7); repaint(); });
-        Keys.bind(this, "DOWN", "settings-down", () -> { cursor = (cursor + 1) % 7; repaint(); });
+        Keys.bind(this, "UP", "settings-up", () -> { cursor = Math.floorMod(cursor - 1, 8); repaint(); });
+        Keys.bind(this, "DOWN", "settings-down", () -> { cursor = (cursor + 1) % 8; repaint(); });
         Keys.bind(this, "LEFT", "settings-left", () -> change(-1));
         Keys.bind(this, "RIGHT", "settings-right", () -> change(1));
         Keys.bind(this, "ESCAPE", "settings-back", this::finish);
@@ -36,13 +36,15 @@ public final class SettingsPanel extends JPanel {
             case 3 -> settings.setPartySize(Math.max(1, Math.min(4, settings.getPartySize() + direction)));
             case 4 -> settings.setXpBoost(GameSettings.XpBoost.values()[Math.max(0, Math.min(GameSettings.XpBoost.values().length - 1, settings.getXpBoost().ordinal() + direction))]);
             case 5 -> settings.setDifficulty(GameSettings.Difficulty.values()[Math.max(0, Math.min(GameSettings.Difficulty.values().length - 1, settings.getDifficulty().ordinal() + direction))]);
-            case 6 -> { return; }
+            case 6 -> settings.setAmbushEnabled(direction > 0);
+            case 7 -> { return; }
             default -> throw new IllegalStateException();
         }
         notice = "Changes apply when starting or loading a game."; repaint();
     }
     private void confirm() {
-        if (cursor == 6) { settings.resetDefaults(); notice = "All settings restored to defaults."; repaint(); }
+        if (cursor == 6) { settings.setAmbushEnabled(!settings.isAmbushEnabled()); repaint(); }
+        else if (cursor == 7) { settings.resetDefaults(); notice = "All settings restored to defaults."; repaint(); }
         else { finish(); }
     }
     private void finish() {
@@ -58,29 +60,29 @@ public final class SettingsPanel extends JPanel {
             g.setColor(new Color(8, 18, 54, 235)); g.fillRect(155, 60, 650, 420);
             g.setColor(new Color(250, 218, 143)); g.drawRect(155, 60, 650, 420); g.drawRect(159, 64, 642, 412);
             g.setFont(ClassicUi.title(28)); g.drawString("GAME SETTINGS", 325, 102);
-            String[] labels = {"BATTLE SPEED", "XP GROWTH", "LEVEL CAP", "PARTY SIZE", "XP BOOST", "DIFFICULTY"};
+            String[] labels = {"BATTLE SPEED", "XP GROWTH", "LEVEL CAP", "PARTY SIZE", "XP BOOST", "DIFFICULTY", "ENABLE AMBUSH"};
             String[] values = {settings.getBattleSpeed().name(), settings.getGrowthFactor() + "%",
-                    Integer.toString(settings.getLevelCap()), Integer.toString(settings.getPartySize()), settings.getXpBoost().name(), settings.getDifficulty().name()};
+                    Integer.toString(settings.getLevelCap()), Integer.toString(settings.getPartySize()), settings.getXpBoost().name(), settings.getDifficulty().name(), settings.isAmbushEnabled() ? "ON" : "OFF"};
             int[] steps = {settings.getBattleSpeed().ordinal(), settings.getGrowthFactor() - 1,
                     java.util.Arrays.binarySearch(CAPS, settings.getLevelCap()), settings.getPartySize() - 1,
-                    settings.getXpBoost().ordinal(), settings.getDifficulty().ordinal()};
-            int[] maxima = {GameSettings.BattleSpeed.values().length - 1, 19, CAPS.length - 1, 3, 2, 3};
+                    settings.getXpBoost().ordinal(), settings.getDifficulty().ordinal(), settings.isAmbushEnabled() ? 1 : 0};
+            int[] maxima = {GameSettings.BattleSpeed.values().length - 1, 19, CAPS.length - 1, 3, 2, 3, 1};
             g.setFont(ClassicUi.numbers(17));
             for (int i = 0; i < labels.length; i++) {
-                int y = 137 + i * 43; g.setColor(i == cursor ? new Color(250, 218, 143) : Color.WHITE);
+                int y = 137 + i * 36; g.setColor(i == cursor ? new Color(250, 218, 143) : Color.WHITE);
                 if (i == cursor) g.drawImage(PixelPointer.ART, 178, y - 15, 28, 21, null);
                 g.drawString(labels[i], 215, y); g.drawString(values[i], 675, y);
                 g.setColor(new Color(55, 71, 107)); g.fillRect(430, y - 10, 210, 8);
                 g.setColor(new Color(94, 188, 246)); g.fillRect(430, y - 10, 210 * steps[i] / maxima[i], 8);
                 g.setColor(Color.WHITE); g.fillRect(427 + 210 * steps[i] / maxima[i], y - 14, 7, 16);
             }
-            g.setColor(cursor == 6 ? new Color(250, 218, 143) : new Color(100, 128, 180));
+            g.setColor(cursor == 7 ? new Color(250, 218, 143) : new Color(100, 128, 180));
             g.drawRect(345, 382, 270, 31);
-            if (cursor == 6) g.drawImage(PixelPointer.ART, 350, 387, 28, 21, null);
+            if (cursor == 7) g.drawImage(PixelPointer.ART, 350, 387, 28, 21, null);
             g.setFont(ClassicUi.numbers(15)); g.drawString("RESET TO DEFAULTS", 389, 403);
             g.setColor(new Color(250, 218, 143)); g.setFont(ClassicUi.numbers(12));
             g.drawString(cursor == 1 ? "Each level requires approximately " + settings.getGrowthFactor() + "% more XP." : notice, 185, 431);
-            g.setColor(Color.WHITE); g.setFont(ClassicUi.body(14)); g.drawString("Up/Down: Select   •   Left/Right: Adjust   •   Enter: Confirm   •   Esc: Save", 185, 456);
+            g.setColor(Color.WHITE); g.setFont(ClassicUi.body(14)); g.drawString("Up/Down: Select   •   Left/Right: Adjust   •   Enter: Select   •   Esc: Save", 185, 456);
         } finally { g.dispose(); }
     }
 }

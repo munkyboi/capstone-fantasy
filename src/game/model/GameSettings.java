@@ -17,6 +17,7 @@ public final class GameSettings {
     private int partySize = 3;
     private XpBoost xpBoost = XpBoost.NORMAL;
     private Difficulty difficulty = Difficulty.NORMAL;
+    private boolean ambushEnabled = true;
 
     /** Creates settings with the default action-point rate. */
     public GameSettings() { }
@@ -26,12 +27,14 @@ public final class GameSettings {
     public int getPartySize() { return partySize; }
     public XpBoost getXpBoost() { return xpBoost; }
     public Difficulty getDifficulty() { return difficulty; }
+    public boolean isAmbushEnabled() { return ambushEnabled; }
+    public void setAmbushEnabled(boolean enabled) { ambushEnabled = enabled; }
     public void setXpBoost(XpBoost value) { xpBoost = java.util.Objects.requireNonNull(value); }
     public void setDifficulty(Difficulty value) { difficulty = java.util.Objects.requireNonNull(value); }
     /** Restores all user-facing options to their default values. */
     public void resetDefaults() {
         setBattleSpeed(BattleSpeed.NORMAL); growthFactor = 7; levelCap = 30; partySize = 3;
-        xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL;
+        xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL; ambushEnabled = true;
     }
     /** Adjusts the elapsed-time AP rate without changing the rendering frame rate. */
     public void setBattleSpeed(BattleSpeed speed) {
@@ -54,6 +57,9 @@ public final class GameSettings {
             settings.setPartySize(Integer.parseInt(props.getProperty("partySize", "3")));
             settings.setXpBoost(XpBoost.valueOf(props.getProperty("xpBoost", "NORMAL")));
             settings.setDifficulty(Difficulty.valueOf(props.getProperty("difficulty", "NORMAL")));
+            String ambush = props.getProperty("ambushEnabled", "true");
+            if (!ambush.equals("true") && !ambush.equals("false")) throw new IllegalArgumentException("Invalid ambush setting");
+            settings.setAmbushEnabled(Boolean.parseBoolean(ambush));
             return settings;
         } catch (Exception invalid) { return new GameSettings(); }
     }
@@ -64,6 +70,7 @@ public final class GameSettings {
         props.setProperty("growthFactor", Integer.toString(growthFactor)); props.setProperty("levelCap", Integer.toString(levelCap));
         props.setProperty("partySize", Integer.toString(partySize));
         props.setProperty("xpBoost", xpBoost.name()); props.setProperty("difficulty", difficulty.name());
+        props.setProperty("ambushEnabled", Boolean.toString(ambushEnabled));
         var temp = java.nio.file.Files.createTempFile(parent, "settings-", ".tmp");
         try {
             try (var writer = java.nio.file.Files.newBufferedWriter(temp)) { props.store(writer, "Capstone Fantasy settings"); }
@@ -86,7 +93,7 @@ public final class GameSettings {
      * @param encounter zero-based route position
      * @return false for the final boss encounter
      */
-    public boolean allowsAmbush(int encounter) { return encounter != GameProgress.FINAL_BOSS_ENCOUNTER; }
+    public boolean allowsAmbush(int encounter) { return ambushEnabled && encounter != GameProgress.FINAL_BOSS_ENCOUNTER; }
 
     /** Rolls whether an eligible stage begins with an ambush.
      * @param encounter zero-based route position

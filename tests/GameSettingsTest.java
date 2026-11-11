@@ -16,6 +16,9 @@ public final class GameSettingsTest {
         settings.setBattleSpeed(GameSettings.BattleSpeed.SLOW); check(settings.getApPerSecond() == 5, "slow AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.FAST); check(settings.getApPerSecond() == 15, "fast AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.ULTRA); check(settings.getApPerSecond() == 20, "ultra AP");
+        check(settings.isAmbushEnabled(), "ambush defaults on");
+        settings.setAmbushEnabled(false);
+        check(!settings.rollAmbush(0, new Random() { @Override public double nextDouble() { return 0; } }), "disabled ambush never occurs");
         for (int cap = 20; cap <= 100; cap += 10) {
             GameSettings choices = new GameSettings(); choices.setLevelCap(cap);
             Student eligible = Student.create(0); eligible.configureProgression(7, cap);
@@ -36,11 +39,14 @@ public final class GameSettingsTest {
         Path dir = Files.createTempDirectory("game-settings-");
         try {
             settings.setGrowthFactor(15); settings.setPartySize(4); settings.setLevelCap(50); Path file = dir.resolve("settings.properties"); settings.save(file);
-            GameSettings loaded = GameSettings.load(file); check(loaded.getGrowthFactor() == 15 && loaded.getPartySize() == 4 && loaded.getLevelCap() == 50 && loaded.getApPerSecond() == 20, "settings persist");
+            GameSettings loaded = GameSettings.load(file); check(loaded.getGrowthFactor() == 15 && loaded.getPartySize() == 4 && loaded.getLevelCap() == 50 && loaded.getApPerSecond() == 20 && !loaded.isAmbushEnabled(), "settings persist");
             SwingUtilities.invokeAndWait(() -> {
                 try {
                     BattlePanel panel = new BattlePanel(() -> {}, ignored -> {}, loaded, new Random(1));
                     GameProgress progress = new GameProgress(List.of(0, 1, 2)); panel.start(progress, true, 0);
+                    var ambushField = BattlePanel.class.getDeclaredField("showAmbush"); ambushField.setAccessible(true);
+                    check(!ambushField.getBoolean(panel), "disabled setting prevents forced ambush");
+                    loaded.setAmbushEnabled(true); panel.start(progress, true, 0);
                     var advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
                     advance.invoke(panel, 0.1);
                     var points = BattlePanel.class.getDeclaredField("actionPoints"); points.setAccessible(true);
@@ -67,10 +73,17 @@ public final class GameSettingsTest {
                 for (int i = 0; i < 6; i++) key(ui, "settings-right");
                 check(edited.getLevelCap() == 100, "settings allow level 100");
             });
+            SwingUtilities.invokeAndWait(() -> {
+                GameSettings toggle = new GameSettings(); SettingsPanel ui = new SettingsPanel(toggle, uiFile, () -> {});
+                for (int i = 0; i < 6; i++) key(ui, "settings-down");
+                key(ui, "settings-confirm"); check(!toggle.isAmbushEnabled(), "enter toggles ambush off");
+                key(ui, "settings-back"); check(!GameSettings.load(uiFile).isAmbushEnabled(), "ambush toggle saves");
+                toggle.resetDefaults(); check(toggle.isAmbushEnabled(), "reset enables ambush");
+            });
             Path oldSettings = dir.resolve("old-settings.properties");
             Files.writeString(oldSettings, "levelCap=40\npartySize=4\n");
             GameSettings migrated = GameSettings.load(oldSettings);
-            check(migrated.getLevelCap() == 40 && migrated.getPartySize() == 4, "legacy cap 40 and preferences remain unchanged");
+            check(migrated.getLevelCap() == 40 && migrated.getPartySize() == 4 && migrated.isAmbushEnabled(), "legacy cap 40 and preferences remain unchanged");
             SwingUtilities.invokeAndWait(() -> {
                 List<List<Integer>> chosen = new ArrayList<>();
                 SelectionPanel selection = new SelectionPanel(() -> {}, chosen::add);
