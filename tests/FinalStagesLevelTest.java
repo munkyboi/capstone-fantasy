@@ -14,12 +14,13 @@ public final class FinalStagesLevelTest {
     public static void main(String[] args) throws Exception {
         Student hero = new Student(Student.ZACK); hero.takeDamage(20);
         check(hero.gainExperience(99) == 0 && hero.getLevel() == 1, "no early level");
-        int priorHp = hero.getHp();
+        hero.restoreSp(0);
         check(hero.gainExperience(201) == 3 && hero.getLevel() == 4 && hero.getMaxHp() == 95
-                && hero.getBaseAttack() == 28 && hero.getBaseDefense() == 9 && hero.getHp() == priorHp + 15,
-                "multiple levels grow stats and health");
+                && hero.getBaseAttack() == 28 && hero.getBaseDefense() == 9 && hero.getHp() == hero.getMaxHp()
+                && hero.getSp() == hero.getMaxSp(), "multiple levels grow stats and restore HP and SP");
         hero.takeDamage(999); hero.gainExperience(100);
-        check(!hero.isAlive() && hero.getLevel() == 5, "KO students gain XP but remain KO");
+        check(hero.isAlive() && hero.getHp() == hero.getMaxHp() && hero.getSp() == hero.getMaxSp()
+                && hero.getLevel() == 5, "level-up restores a KO student");
         hero.gainExperience(2499); check(hero.getLevel() == 29, "level before cap");
         hero.gainExperience(1); check(hero.getLevel() == 30, "level cap reached");
         hero.gainExperience(99999); check(hero.getLevel() == 30 && hero.getExperience() == 2900, "experience capped");
@@ -41,7 +42,7 @@ public final class FinalStagesLevelTest {
                 check(b.getEnemies().size() == 6 && b.getEnemies().stream().filter(Enemy::isBoss).count() == 1,
                         "final encounter has guardian and five Wisps");
                 check(!b.getMessage().contains("ambushed"), "final boss cannot be ambushed");
-                int xp = b.getEnemies().stream().mapToInt(Enemy::getExperienceDrop).sum();
+                int xp = (int) Math.round(b.getEnemies().stream().mapToInt(Enemy::getExperienceDrop).sum() * 1.5);
                 for (Enemy e : b.getEnemies()) { e.takeDamage(999); }
                 Method refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true); refresh.invoke(panel);
                 check(p.getParty().stream().allMatch(s -> s.getExperience() == xp), "each student earns boss experience");

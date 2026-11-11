@@ -168,7 +168,7 @@ public final class RouteBattleTest {
                     key(tied, "battle-confirm"); key(tied, "battle-confirm");
                     check(tiedBattle.getCurrent().getId() == 1, "next ready student selected without another tick");
                     GameSettings settings = new GameSettings();
-                    check(settings.getApPerSecond() == 3.0, "default AP setting");
+                    check(settings.getApPerSecond() == 10.0, "default AP setting");
                     settings.setApPerSecond(6.0);
                     BattlePanel configured = TestBattles.twoEnemies(() -> { }, p -> { }, settings);
                     configured.start(new GameProgress(List.of(0, 1, 3)), true);

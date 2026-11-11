@@ -47,6 +47,10 @@ public final class Battle {
 
     /** Starts a specific unlocked route encounter, including a replay. */
     public Battle(GameProgress progress, Random random, boolean ambushed, int encounter) {
+        this(progress, random, ambushed, encounter, GameSettings.Difficulty.NORMAL);
+    }
+    /** Starts an encounter using the selected monster difficulty. */
+    public Battle(GameProgress progress, Random random, boolean ambushed, int encounter, GameSettings.Difficulty difficulty) {
         if (encounter < 0 || encounter > 4 || encounter > progress.getEncounter()) {
             throw new IllegalArgumentException("This encounter is not available yet");
         }
@@ -64,10 +68,10 @@ public final class Battle {
         boolean sentinelEncounter = encounter >= 1 && !finalEncounter;
         int wisps = (sentinelEncounter || finalEncounter) ? count - 1 : count;
         for (int index = 0; index < wisps; index++) {
-            enemies.add(new Enemy("Library Wisp " + (char) ('A' + index)));
+            enemies.add(new Enemy("Library Wisp " + (char) ('A' + index), false, false, difficulty));
         }
-        if (sentinelEncounter) { enemies.add(new Enemy("Stone Sentinel", true)); }
-        if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true)); }
+        if (sentinelEncounter) { enemies.add(new Enemy("Stone Sentinel", true, false, difficulty)); }
+        if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true, difficulty)); }
         message = finalEncounter ? "The Crystal Guardian and its five Wisps appear!" : sentinelEncounter ? "A Stone Sentinel" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appears!")
                 : count + " Library Wisp(s) appear! Choose an action.";
         if (ambushed) { message = "You have been ambushed!\n" + message; }
@@ -230,8 +234,8 @@ public final class Battle {
     }
 
     private int enemyDamage(Enemy enemy, Student target, int bonus) {
-        int damage = target.takeDamage(Math.max(MINIMUM_DAMAGE,
-                enemy.getAttack() + bonus - target.getDefense() + random.nextInt(DAMAGE_VARIATION)));
+        int damage = target.takeDamage(enemy.scaleDamage(Math.max(MINIMUM_DAMAGE,
+                enemy.getAttack() + bonus - target.getDefense() + random.nextInt(DAMAGE_VARIATION))));
         effects.add(new BattleEffect(target, -damage));
         return damage;
     }

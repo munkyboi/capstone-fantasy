@@ -189,15 +189,14 @@ public class Student extends GameCharacter {
         if (value < 0 || value > experienceForLevel(50, experienceGrowth)) { throw new IllegalArgumentException("Invalid experience"); }
         experience = value;
     }
-    /** Grants XP and returns the number of levels gained; knocked-out students stay knocked out. */
+    /** Grants XP and fully restores HP and SP when at least one level is gained. */
     public int gainExperience(int amount) {
         if (amount < 0) { throw new IllegalArgumentException("Invalid experience"); }
-        int oldLevel = getLevel(), oldSp = getSp();
+        int oldLevel = getLevel();
         int limit = experienceForLevel(getLevelCap(), experienceGrowth);
         if (getLevel() < getLevelCap()) { experience = (int) Math.min(limit, (long) experience + amount); }
         int gained = getLevel() - oldLevel;
-        if (hp > 0) { hp = Math.min(getMaxHp(), hp + gained * 5); }
-        skillPoints = Math.min(getMaxSp(), oldSp + gained * 3); skillPointsInitialized = true;
+        if (gained > 0) { hp = getMaxHp(); skillPoints = getMaxSp(); skillPointsInitialized = true; }
         return gained;
     }
     /** Returns current and maximum skill points and the ability cost. */

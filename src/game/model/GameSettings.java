@@ -1,11 +1,13 @@
 package game.model;
 
-/** Game-wide settings; a settings screen can edit these in a future update. */
+/** Persistent gameplay preferences shared by the settings screen and battles. */
 public final class GameSettings {
     /** AP generation presets. */
-    public enum BattleSpeed { SLOW, NORMAL, FAST }
+    public enum BattleSpeed { SLOW, NORMAL, FAST, ULTRA }
+    public enum XpBoost { NORMAL(1), HYPER(2), ULTRA(5); private final int multiplier; XpBoost(int multiplier) { this.multiplier = multiplier; } public int multiplier() { return multiplier; } }
+    public enum Difficulty { EASY(0.75), NORMAL(1.0), HARD(1.5), INSANE(2.0); private final double multiplier; Difficulty(double multiplier) { this.multiplier = multiplier; } public double multiplier() { return multiplier; } }
     private static final double AMBUSH_CHANCE = 0.50;
-    private static final double DEFAULT_AP_PER_SECOND = 3.0;
+    private static final double DEFAULT_AP_PER_SECOND = 10.0;
     private static final double MIN_AP_PER_SECOND = 0.5;
     private static final double MAX_AP_PER_SECOND = 30.0;
     private double apPerSecond = DEFAULT_AP_PER_SECOND;
@@ -13,6 +15,8 @@ public final class GameSettings {
     private int growthFactor = 7;
     private int levelCap = 30;
     private int partySize = 3;
+    private XpBoost xpBoost = XpBoost.NORMAL;
+    private Difficulty difficulty = Difficulty.NORMAL;
 
     /** Creates settings with the default action-point rate. */
     public GameSettings() { }
@@ -20,10 +24,19 @@ public final class GameSettings {
     public int getGrowthFactor() { return growthFactor; }
     public int getLevelCap() { return levelCap; }
     public int getPartySize() { return partySize; }
+    public XpBoost getXpBoost() { return xpBoost; }
+    public Difficulty getDifficulty() { return difficulty; }
+    public void setXpBoost(XpBoost value) { xpBoost = java.util.Objects.requireNonNull(value); }
+    public void setDifficulty(Difficulty value) { difficulty = java.util.Objects.requireNonNull(value); }
+    /** Restores all user-facing options to their default values. */
+    public void resetDefaults() {
+        setBattleSpeed(BattleSpeed.NORMAL); growthFactor = 7; levelCap = 30; partySize = 3;
+        xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL;
+    }
     /** Adjusts the elapsed-time AP rate without changing the rendering frame rate. */
     public void setBattleSpeed(BattleSpeed speed) {
         battleSpeed = java.util.Objects.requireNonNull(speed);
-        apPerSecond = switch (speed) { case SLOW -> 2.0; case NORMAL -> 3.0; case FAST -> 5.0; };
+        apPerSecond = switch (speed) { case SLOW -> 5.0; case NORMAL -> 10.0; case FAST -> 15.0; case ULTRA -> 20.0; };
     }
     public void setGrowthFactor(int value) { if (value < 1 || value > 20) throw new IllegalArgumentException("Invalid growth factor"); growthFactor = value; }
     public void setLevelCap(int value) { if (value != 20 && value != 30 && value != 40 && value != 50) throw new IllegalArgumentException("Invalid level cap"); levelCap = value; }
@@ -38,6 +51,8 @@ public final class GameSettings {
             settings.setGrowthFactor(Integer.parseInt(props.getProperty("growthFactor", "7")));
             settings.setLevelCap(Integer.parseInt(props.getProperty("levelCap", "30")));
             settings.setPartySize(Integer.parseInt(props.getProperty("partySize", "3")));
+            settings.setXpBoost(XpBoost.valueOf(props.getProperty("xpBoost", "NORMAL")));
+            settings.setDifficulty(Difficulty.valueOf(props.getProperty("difficulty", "NORMAL")));
             return settings;
         } catch (Exception invalid) { return new GameSettings(); }
     }
@@ -47,6 +62,7 @@ public final class GameSettings {
         var props = new java.util.Properties(); props.setProperty("battleSpeed", battleSpeed.name());
         props.setProperty("growthFactor", Integer.toString(growthFactor)); props.setProperty("levelCap", Integer.toString(levelCap));
         props.setProperty("partySize", Integer.toString(partySize));
+        props.setProperty("xpBoost", xpBoost.name()); props.setProperty("difficulty", difficulty.name());
         var temp = java.nio.file.Files.createTempFile(parent, "settings-", ".tmp");
         try {
             try (var writer = java.nio.file.Files.newBufferedWriter(temp)) { props.store(writer, "Capstone Fantasy settings"); }

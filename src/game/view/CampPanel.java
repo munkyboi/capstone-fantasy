@@ -38,6 +38,8 @@ public final class CampPanel extends JPanel {
     private int cursor;
     private boolean complete;
     private boolean allocating;
+    private boolean exitPrompt;
+    private boolean exitYes;
     private int statCursor;
     private String message = "";
 
@@ -88,17 +90,17 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "SPACE", "camp-use-space", this::confirm);
         Keys.bind(this, "C", "camp-continue", this::continueGame);
         Keys.bind(this, "E", "camp-equip", this::toggleVest);
-        Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null && !allocating) { this.inventory.accept(progress); } });
-        Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !allocating) { this.save.accept(progress); } });
-        Keys.bind(this, "L", "camp-allocate", () -> { if (progress != null) { allocating = !allocating; statCursor = 0; repaint(); } });
-        Keys.bind(this, "ESCAPE", "camp-menu", () -> { if (allocating) { allocating = false; repaint(); } else { this.menu.run(); } });
+        Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null && !allocating && !exitPrompt) { this.inventory.accept(progress); } });
+        Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !allocating && !exitPrompt) { this.save.accept(progress); } });
+        Keys.bind(this, "L", "camp-allocate", () -> { if (progress != null && !exitPrompt) { allocating = !allocating; statCursor = 0; repaint(); } });
+        Keys.bind(this, "ESCAPE", "camp-menu", this::escape);
     }
 
     /** Opens camp with the current party. */
     public void open(GameProgress progress, boolean complete) { open(progress, complete, null); }
     /** Opens camp and optionally shows a reward message. */
     public void open(GameProgress progress, boolean complete, String reward) {
-        this.progress = progress; this.complete = complete; cursor = 0; allocating = false;
+        this.progress = progress; this.complete = complete; cursor = 0; allocating = false; exitPrompt = false;
         cameraTarget = focusOffset(campParty().get(cursor)); cameraOffset = cameraTarget; animation.stop();
         refresh(reward != null ? "Victory reward: " + reward + "! Press I to equip."
                 : complete ? "The available encounters are complete." : "Choose a student to use a First-Aid Kit.");
@@ -110,6 +112,7 @@ public final class CampPanel extends JPanel {
     }
     private void move(int direction) {
         if (progress == null) { return; }
+        if (exitPrompt) { exitYes = !exitYes; repaint(); return; }
         if (allocating) { statCursor = Math.floorMod(statCursor + direction, Student.Stat.values().length); repaint(); return; }
         cursor = Math.floorMod(cursor + direction, campParty().size());
         cameraTarget = focusOffset(campParty().get(cursor));
@@ -124,6 +127,11 @@ public final class CampPanel extends JPanel {
     }
     private void confirm() {
         if (progress == null) { return; }
+        if (exitPrompt) {
+            exitPrompt = false;
+            if (exitYes) { menu.run(); } else { repaint(); }
+            return;
+        }
         Student student = campParty().get(cursor);
         if (allocating) {
             Student.Stat stat = Student.Stat.values()[statCursor];
@@ -137,12 +145,18 @@ public final class CampPanel extends JPanel {
                 : student.getName() + " already has full HP."); }
     }
     private void toggleVest() {
-        if (progress == null || allocating) { return; }
+        if (progress == null || allocating || exitPrompt) { return; }
         Student student = campParty().get(cursor); boolean equipped = student.hasVest();
         if (progress.toggleVest(student)) { refresh(equipped ? "Campus Vest returned to inventory."
                 : "Campus Vest equipped by " + student.getName() + "."); }
     }
-    private void continueGame() { if (progress != null && !allocating) { nextBattle.accept(progress); } }
+    private void continueGame() { if (progress != null && !allocating && !exitPrompt) { nextBattle.accept(progress); } }
+    private void escape() {
+        if (exitPrompt) { exitPrompt = false; }
+        else if (allocating) { allocating = false; }
+        else if (progress != null) { exitPrompt = true; exitYes = false; }
+        repaint();
+    }
     private void refresh(String text) { message = text; repaint(); }
 
     @Override protected void paintComponent(Graphics graphics) {
@@ -170,8 +184,21 @@ public final class CampPanel extends JPanel {
                         ? "← → Choose stat  •  Enter: Add point  •  Esc: Back"
                         : "← → Select  •  Enter: Kit  •  L: Stats  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
                 if (allocating) { drawAllocation(g, selected); }
+                if (exitPrompt) { drawExitPrompt(g); }
             }
         } finally { g.dispose(); }
+    }
+    private void drawExitPrompt(Graphics2D g) {
+        int x = 280, y = 195, w = 400, h = 140;
+        g.setColor(new Color(8, 18, 54, 245)); g.fillRect(x, y, w, h);
+        g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
+        g.setFont(ClassicUi.numbers(16)); g.setColor(Color.WHITE);
+        drawCentered(g, "Return to main menu?", x + w / 2, y + 33);
+        g.setFont(ClassicUi.body(14)); drawCentered(g, "Unsaved progress will be lost.", x + w / 2, y + 60);
+        g.setFont(ClassicUi.numbers(16));
+        g.drawImage(PixelPointer.ART, x + (exitYes ? 200 : 85), y + 84, 27, 20, null);
+        g.setColor(exitYes ? Color.WHITE : new Color(250, 218, 143)); g.drawString("No", x + 120, y + 102);
+        g.setColor(exitYes ? new Color(250, 218, 143) : Color.WHITE); g.drawString("Yes", x + 235, y + 102);
     }
     private void drawPixelScene(Graphics2D output) {
         Graphics2D pixels = scenePixels.createGraphics();
@@ -230,6 +257,13 @@ public final class CampPanel extends JPanel {
         }
     }
     private void drawCharacter(Graphics2D g, Student student, int center) {
+        BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
+        if (fallen != null) {
+            double scale = Math.min(125.0 / fallen.getWidth(), 65.0 / fallen.getHeight());
+            int width = (int) Math.round(fallen.getWidth() * scale), height = (int) Math.round(fallen.getHeight() * scale);
+            g.drawImage(fallen, center - width / 2, 429 - height, width, height, null);
+            return;
+        }
         BufferedImage image = characters[student.getId()];
         if (image == null) { return; }
         boolean angel = student.getId() == Student.ANGEL;

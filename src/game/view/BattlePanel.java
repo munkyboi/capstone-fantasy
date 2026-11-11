@@ -228,7 +228,7 @@ public final class BattlePanel extends JPanel {
     public void start(GameProgress progress, boolean ambushed, int stage) {
         ambushed = ambushed && settings.allowsAmbush(stage);
         this.progress = progress; encounterStage = stage;
-        battle = new Battle(progress, battleRandom, ambushed, stage); commandIndex = 0;
+        battle = new Battle(progress, battleRandom, ambushed, stage, settings.getDifficulty()); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of();
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
@@ -405,7 +405,12 @@ public final class BattlePanel extends JPanel {
                 victoryRewardItems = List.copyOf(rewards);
                 int earned = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getPetotDrop).sum();
                 victoryPetot = progress.addPetot(earned);
-                victoryExperience = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getExperienceDrop).sum();
+                int baseExperience = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getExperienceDrop).sum();
+                double multiplier = switch (progress.getParty().size()) {
+                    case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
+                    default -> throw new IllegalStateException("Invalid party size");
+                };
+                victoryExperience = (int) Math.round(baseExperience * multiplier * settings.getXpBoost().multiplier());
                 java.util.List<String> leveled = new java.util.ArrayList<>();
                 for (Student student : progress.getParty()) {
                     if (student.gainExperience(victoryExperience) > 0) { leveled.add(student.getName()); }

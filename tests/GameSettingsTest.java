@@ -12,9 +12,10 @@ public final class GameSettingsTest {
     private static void key(javax.swing.JComponent c, String name) { c.getActionMap().get(name).actionPerformed(new ActionEvent(c, 0, name)); }
     public static void main(String[] args) throws Exception {
         GameSettings settings = new GameSettings();
-        check(settings.getApPerSecond() == 3 && settings.getGrowthFactor() == 7 && settings.getLevelCap() == 30 && settings.getPartySize() == 3, "defaults");
-        settings.setBattleSpeed(GameSettings.BattleSpeed.SLOW); check(settings.getApPerSecond() == 2, "slow AP");
-        settings.setBattleSpeed(GameSettings.BattleSpeed.FAST); check(settings.getApPerSecond() == 5, "fast AP");
+        check(settings.getApPerSecond() == 10 && settings.getGrowthFactor() == 7 && settings.getLevelCap() == 30 && settings.getPartySize() == 3, "defaults");
+        settings.setBattleSpeed(GameSettings.BattleSpeed.SLOW); check(settings.getApPerSecond() == 5, "slow AP");
+        settings.setBattleSpeed(GameSettings.BattleSpeed.FAST); check(settings.getApPerSecond() == 15, "fast AP");
+        settings.setBattleSpeed(GameSettings.BattleSpeed.ULTRA); check(settings.getApPerSecond() == 20, "ultra AP");
         Student student = Student.create(0); student.configureProgression(7, 30);
         check(student.getXpRequired() == 100 && student.gainExperience(100) == 1 && student.getXpRequired() == 107, "growing XP curve");
         student.gainExperience(300); int level = student.getLevel(); int hp = student.getHp();
@@ -25,16 +26,30 @@ public final class GameSettingsTest {
         Path dir = Files.createTempDirectory("game-settings-");
         try {
             settings.setGrowthFactor(15); settings.setPartySize(4); settings.setLevelCap(50); Path file = dir.resolve("settings.properties"); settings.save(file);
-            GameSettings loaded = GameSettings.load(file); check(loaded.getGrowthFactor() == 15 && loaded.getPartySize() == 4 && loaded.getLevelCap() == 50 && loaded.getApPerSecond() == 5, "settings persist");
+            GameSettings loaded = GameSettings.load(file); check(loaded.getGrowthFactor() == 15 && loaded.getPartySize() == 4 && loaded.getLevelCap() == 50 && loaded.getApPerSecond() == 20, "settings persist");
+            SwingUtilities.invokeAndWait(() -> {
+                try {
+                    BattlePanel panel = new BattlePanel(() -> {}, ignored -> {}, loaded, new Random(1));
+                    GameProgress progress = new GameProgress(List.of(0, 1, 2)); panel.start(progress, true, 0);
+                    var advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
+                    advance.invoke(panel, 0.1);
+                    var points = BattlePanel.class.getDeclaredField("actionPoints"); points.setAccessible(true);
+                    var values = (Map<?, ?>) points.get(panel);
+                    check(progress.getParty().stream().allMatch(s -> Math.abs((double) values.get(s) - 2.0) < 0.0001), "ultra fills 2 AP in 0.1 seconds");
+                    var timer = BattlePanel.class.getDeclaredField("apTimer"); timer.setAccessible(true);
+                    check(((javax.swing.Timer) timer.get(panel)).getDelay() == 50, "ultra preserves animation frame interval");
+                    ((javax.swing.Timer) timer.get(panel)).stop();
+                } catch (ReflectiveOperationException ex) { throw new RuntimeException(ex); }
+            });
             GameSettings edited = new GameSettings(); Path uiFile = dir.resolve("ui-settings.properties");
             SwingUtilities.invokeAndWait(() -> {
                 SettingsPanel ui = new SettingsPanel(edited, uiFile, () -> {});
-                key(ui, "settings-right"); key(ui, "settings-down"); key(ui, "settings-right");
+                key(ui, "settings-right"); key(ui, "settings-right"); key(ui, "settings-down"); key(ui, "settings-right");
                 key(ui, "settings-down"); key(ui, "settings-right"); key(ui, "settings-down"); key(ui, "settings-right");
                 key(ui, "settings-confirm");
             });
             GameSettings uiSaved = GameSettings.load(uiFile);
-            check(uiSaved.getApPerSecond() == 5 && uiSaved.getGrowthFactor() == 8 && uiSaved.getLevelCap() == 40
+            check(uiSaved.getApPerSecond() == 20 && uiSaved.getGrowthFactor() == 8 && uiSaved.getLevelCap() == 40
                     && uiSaved.getPartySize() == 4, "keyboard settings persist");
             SwingUtilities.invokeAndWait(() -> {
                 List<List<Integer>> chosen = new ArrayList<>();

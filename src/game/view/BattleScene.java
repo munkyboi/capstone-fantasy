@@ -139,7 +139,12 @@ final class BattleScene extends JPanel {
                 for (Student student : battle.getParty()) {
                     int index = i++;
                     int x = partyX(index, slotWidth), y = partyFootY(h, index) - spriteHeight;
-                    if (sprites != null) {
+                    BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
+                    if (fallen != null) {
+                        int fallenWidth = spriteWidth + 4;
+                        int left = x + (slotWidth - fallenWidth) / 2;
+                        drawFit(g, fallen, 0, fallen.getWidth(), left, y, fallenWidth, spriteHeight);
+                    } else if (sprites != null) {
                         int slice = sprites.getWidth() / 4, id = student.getId();
                         int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
                         int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);

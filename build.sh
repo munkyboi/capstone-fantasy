@@ -30,6 +30,10 @@ assets/sprites/camp-charice-v1.png
 assets/sprites/camp-fire-v1.png
 assets/sprites/camp-zack-v1.png
 assets/sprites/crystal-guardian-v1.png
+assets/sprites/fallen-zack-v1.png
+assets/sprites/fallen-bogart-v1.png
+assets/sprites/fallen-charice-v1.png
+assets/sprites/fallen-angel-v1.png
 assets/sprites/library-wisp-v2.png
 assets/sprites/stone-sentinel-v1.png
 assets/sprites/student-party-idle-v1.png

@@ -8,7 +8,8 @@ import java.util.function.Consumer;
 final class TestBattles {
     private TestBattles() { }
     static BattlePanel twoEnemies(Runnable onDefeat) {
-        return twoEnemies(onDefeat, progress -> onDefeat.run(), new GameSettings());
+        GameSettings settings = new GameSettings(); settings.setApPerSecond(3.0);
+        return twoEnemies(onDefeat, progress -> onDefeat.run(), settings);
     }
     static BattlePanel twoEnemies(Runnable onDefeat, Consumer<GameProgress> onVictory, GameSettings settings) {
         Random random = new Random(12) {

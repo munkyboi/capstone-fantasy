@@ -20,6 +20,7 @@ public final class Enemy extends GameCharacter {
     private final boolean boss;
     private final int actionThreshold;
     private final int petotDrop;
+    private final double difficultyMultiplier;
     private int actionsTaken;
 
     /** Creates one Wisp with its own name and battle stats.
@@ -41,25 +42,32 @@ public final class Enemy extends GameCharacter {
      * @param boss whether this enemy uses the final-boss formation slot
      */
     public Enemy(String name, boolean sentinel, boolean boss) {
+        this(name, sentinel, boss, GameSettings.Difficulty.NORMAL);
+    }
+    /** Creates an enemy scaled for the selected difficulty. */
+    public Enemy(String name, boolean sentinel, boolean boss, GameSettings.Difficulty difficulty) {
         this.name = name;
         this.sentinel = sentinel;
         this.boss = boss;
+        difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         petotDrop = boss ? 150 : sentinel ? 35 : 12;
-        maxHp = boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP;
+        maxHp = Math.max(1, (int) Math.round((boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * difficultyMultiplier));
         hp = maxHp;
         attack = boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK;
         defense = boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE;
-        speed = sentinel ? SENTINEL_SPEED : WISP_SPEED;
+        speed = Math.max(1, (int) Math.round((sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
         int wispIndex = suffix >= 'A' && suffix <= 'F' ? suffix - 'A' : 0;
-        actionThreshold = boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex;
+        actionThreshold = Math.max(1, (int) Math.round((boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex) / difficultyMultiplier));
     }
     /** Returns whether the next action uses this monster's skill. */
     boolean usesSkillNext() { return (actionsTaken + 1) % 3 == 0; }
     /** Records an action only after it is performed. */
     void recordAction() { actionsTaken++; }
     /** Returns the experience earned by each student on victory. */
-    public int getExperienceDrop() { return boss ? 120 : sentinel ? 35 : 20; }
+    public int getExperienceDrop() { return (int) Math.round((boss ? 120 : sentinel ? 35 : 20) * difficultyMultiplier); }
+    /** Scales outgoing damage, including monster skills. */
+    public int scaleDamage(int damage) { return Math.max(1, (int) Math.round(damage * difficultyMultiplier)); }
     /** Returns the Petot awarded for defeating this enemy. */
     public int getPetotDrop() { return petotDrop; }
     /** Returns whether this enemy is the final boss.
