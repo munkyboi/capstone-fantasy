@@ -1,6 +1,7 @@
 package game;
 
 import game.view.MainMenuPanel;
+import game.view.AspectRatioPanel;
 import game.view.SelectionPanel;
 import game.view.BattlePanel;
 import game.view.CampPanel;
@@ -96,9 +97,9 @@ public final class Main {
             screens.add(camp, "camp");
             screens.add(map, "map");
             screens.add(slots, "slots");
-            window.setContentPane(screens);
+            window.setContentPane(new AspectRatioPanel(screens));
             window.pack();
-            window.setResizable(false);
+            window.setMinimumSize(window.getSize());
             window.setLocationRelativeTo(null);
             window.setVisible(true);
             menu.requestFocusInWindow();

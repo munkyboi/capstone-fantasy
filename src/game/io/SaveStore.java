@@ -2,6 +2,9 @@ package game.io;
 
 import game.model.GameProgress;
 import game.model.Student;
+import game.model.Hero;
+import game.model.GameCharacter;
+import game.model.Inventory;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -67,6 +70,8 @@ public final class SaveStore {
                 properties.setProperty("version", "1");
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
+                properties.setProperty("inventory.campusPass", "true");
+                properties.setProperty("inventory.campusVestOwner", Integer.toString(checked.getInventory().getVestOwner()));
                 for (int i = 0; i < 3; i++) {
                     Student student = checked.getParty().get(i);
                     String prefix = "student." + (i + 1) + ".";
@@ -110,7 +115,9 @@ public final class SaveStore {
                                 || info.arrayLength() > 16) { return ObjectInputFilter.Status.REJECTED; }
                         Class<?> type = info.serialClass();
                         if (type == null) { return ObjectInputFilter.Status.UNDECIDED; }
-                        if (type == GameProgress.class || type == Student.class || type == ArrayList.class
+                        if (type == GameProgress.class || type == Student.class || type == Hero.class || type == GameCharacter.class
+                                || type == Hero.Mage.class || type == Hero.Warrior.class || type == Hero.Hunter.class
+                                || type == Hero.Monk.class || type == Inventory.class || type == ArrayList.class
                                 || type == Object[].class) { return ObjectInputFilter.Status.ALLOWED; }
                         return ObjectInputFilter.Status.REJECTED;
                     });
@@ -135,8 +142,13 @@ public final class SaveStore {
                 }
                 ids.add(id); hp.add(Integer.parseInt(properties.getProperty(prefix + "hp")));
             }
-            return GameProgress.restore(ids, hp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
+            if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
+                throw new IOException("Invalid key item");
+            }
+            GameProgress restored = GameProgress.restore(ids, hp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
+            restored.setVestOwner(Integer.parseInt(properties.getProperty("inventory.campusVestOwner", "-1")));
+            return restored;
         } catch (IOException | ClassNotFoundException | RuntimeException ex) {
             throw new SaveException("This save is damaged or cannot be read.", ex);
         }
@@ -150,12 +162,14 @@ public final class SaveStore {
             boolean legacySpeed = (student.getId() == Student.ANGEL && student.getSpeed() == LEGACY_ANGEL_SPEED)
                     || (student.getId() == Student.BOGART && student.getSpeed() == LEGACY_BOGART_SPEED);
             if (!expected.getName().equals(student.getName()) || expected.getMaxHp() != student.getMaxHp()
-                    || (expected.getAttack() != student.getAttack() && !legacyAngel) || expected.getDefense() != student.getDefense()
+                    || (expected.getAttack() != student.getAttack() && !legacyAngel) || expected.getBaseDefense() != student.getBaseDefense()
                     || (expected.getSpeed() != student.getSpeed() && !legacySpeed) || expected.getLevel() != student.getLevel()) {
                 throw new IllegalArgumentException("Invalid student information");
             }
             ids.add(student.getId()); hp.add(student.getHp());
         }
-        return GameProgress.restore(ids, hp, progress.getKits(), progress.getEncounter());
+        GameProgress restored = GameProgress.restore(ids, hp, progress.getKits(), progress.getEncounter());
+        restored.setVestOwner(progress.getInventory().getVestOwner());
+        return restored;
     }
 }

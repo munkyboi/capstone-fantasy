@@ -1,7 +1,7 @@
 package game.model;
 
 /** A student taking part in the first battle. */
-public final class Student implements java.io.Serializable {
+public class Student extends GameCharacter {
     /** Character selection index for Zack. */
     public static final int ZACK = 0;
     /** Character selection index for Bogart. */
@@ -10,6 +10,26 @@ public final class Student implements java.io.Serializable {
     public static final int CHARICE = 2;
     /** Character selection index for Angel. */
     public static final int ANGEL = 3;
+    /** The available student abilities. */
+    public enum AbilityType { /** Mage ability. */ ARCANE_BURST, /** Warrior ability. */ CADET_STRIKE,
+        /** Hunter ability. */ TWIN_SHOT, /** Monk ability. */ HEALING_KISS }
+    /** Creates the appropriate playable class for a selection index.
+     * @param id character index
+     * @return corresponding hero
+     */
+    public static Student create(int id) {
+        return switch (id) {
+            case ZACK -> new Hero.Mage();
+            case BOGART -> new Hero.Warrior();
+            case CHARICE -> new Hero.Hunter();
+            case ANGEL -> new Hero.Monk();
+            default -> throw new IllegalArgumentException("Unknown student");
+        };
+    }
+    /** Returns the class-specific ability.
+     * @return ability type
+     */
+    public AbilityType getAbilityType() { return AbilityType.values()[id]; }
     private static final int STARTING_LEVEL = 1;
     private static final int MINIMUM_DAMAGE = 1;
     private static final long serialVersionUID = 1L;
@@ -28,6 +48,7 @@ public final class Student implements java.io.Serializable {
     private final int level = STARTING_LEVEL;
     private int hp;
     private boolean defending;
+    private boolean vestEquipped;
 
     /** Creates a student from the character-selection index.
      * @param id character index from zero to three
@@ -56,7 +77,16 @@ public final class Student implements java.io.Serializable {
      */ public int getAttack() { return attack; }
     /** Returns defense value.
      * @return defense value
-     */ public int getDefense() { return defense; }
+     */ public int getDefense() { return defense + (vestEquipped ? Equipment.DEFENSE_BONUS : 0); }
+    /** Returns defense before equipment bonuses.
+     * @return base defense
+     */
+    public int getBaseDefense() { return defense; }
+    /** Checks whether the campus vest is equipped.
+     * @return true if equipped
+     */
+    public boolean hasVest() { return vestEquipped; }
+    void setVestEquipped(boolean equipped) { vestEquipped = equipped; }
     /** Returns speed value.
      * @return speed value
      */ public int getSpeed() { return speed; }

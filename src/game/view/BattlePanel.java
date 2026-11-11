@@ -307,11 +307,11 @@ public final class BattlePanel extends JPanel {
 
     private boolean targetsParty() {
         return targeting == TargetAction.ITEM
-                || (targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ANGEL);
+                || (targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS);
     }
 
     private boolean targetsAllEnemies() {
-        return targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ZACK;
+        return targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST;
     }
 
     private void beginTargeting(TargetAction action) {
@@ -348,7 +348,7 @@ public final class BattlePanel extends JPanel {
             targeting = TargetAction.NONE;
             notice = null;
             boolean attacking = action == TargetAction.ATTACK
-                    || (action == TargetAction.ABILITY && battle.getCurrent().getId() != Student.ANGEL);
+                    || (action == TargetAction.ABILITY && battle.getCurrent().getAbilityType() != Student.AbilityType.HEALING_KISS);
             performAction(() -> {
                 if (action == TargetAction.ATTACK) { battle.attack(enemy); }
                 else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
@@ -371,7 +371,7 @@ public final class BattlePanel extends JPanel {
         refreshStatus();
         String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
-                : targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ZACK
+                : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
                 ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
         log.setText(targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage());
         log.setCaretPosition(0);

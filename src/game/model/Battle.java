@@ -98,7 +98,10 @@ public final class Battle {
      */ public boolean isVictory() { return enemies.stream().noneMatch(Enemy::isAlive); }
     /** Returns whether all students are knocked out.
      * @return whether all students are knocked out
-     */ public boolean isDefeat() { return party.stream().noneMatch(Student::isAlive); }
+     */ public boolean isDefeat() {
+        List<GameCharacter> participants = new ArrayList<>(party);
+        return participants.stream().noneMatch(GameCharacter::isAlive);
+    }
 
     /** Attacks a living enemy.
      * @param target chosen enemy
@@ -120,13 +123,13 @@ public final class Battle {
     public boolean ability(Student ally, Enemy enemy) {
         if (isOver() || getCurrent() == null) { return false; }
         Student actor = getCurrent();
-        if (actor.getId() == Student.ANGEL) {
+        if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
             if (!validAlly(ally)) { return false; }
             effects.clear();
             int healed = ally.heal(KISS_HEAL);
             if (healed > 0) { effects.add(new BattleEffect(ally, healed)); }
             finish("Angel uses Healing Kiss. " + ally.getName() + " recovers " + healed + " HP.");
-        } else if (actor.getId() == Student.ZACK) {
+        } else if (actor.getAbilityType() == Student.AbilityType.ARCANE_BURST) {
             effects.clear();
             StringBuilder text = new StringBuilder("Zack uses Arcane Burst!");
             for (Enemy target : enemies) {
@@ -139,9 +142,9 @@ public final class Battle {
         } else {
             if (!validEnemy(enemy)) { return false; }
             effects.clear();
-            int damage = hurt(enemy, actor.getAttack() + (actor.getId() == Student.BOGART ? CADET_STRIKE_BONUS : TWIN_SHOT_BONUS));
-            if (actor.getId() == Student.CHARICE && enemy.isAlive()) { damage += hurt(enemy, actor.getAttack()); }
-            String ability = actor.getId() == Student.BOGART ? "Cadet Strike" : "Twin Shot";
+            int damage = hurt(enemy, actor.getAttack() + (actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? CADET_STRIKE_BONUS : TWIN_SHOT_BONUS));
+            if (actor.getAbilityType() == Student.AbilityType.TWIN_SHOT && enemy.isAlive()) { damage += hurt(enemy, actor.getAttack()); }
+            String ability = actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? "Cadet Strike" : "Twin Shot";
             finish(actor.getName() + " uses " + ability + " on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy));
         }
         return true;

@@ -1,7 +1,8 @@
 package game.model;
 
 /** An opponent in a battle. */
-public final class Enemy {
+public final class Enemy extends GameCharacter {
+    private static final long serialVersionUID = 1L;
     private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 105;
     private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 20;
     private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 9;
