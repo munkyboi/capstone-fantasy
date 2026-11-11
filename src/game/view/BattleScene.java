@@ -122,7 +122,14 @@ final class BattleScene extends JPanel {
                 for (int i = 0; i < battle.getEnemies().size(); i++) {
                     Enemy enemy = battle.getEnemies().get(i);
                     int y = 27 + i * 36;
-                    output.setColor(Color.WHITE);
+                    boolean targeted = enemy.isAlive() && state.enemyTarget(i);
+                    if (targeted) {
+                        output.setColor(new Color(100, 83, 40, 180));
+                        output.fillRect(getWidth() - 243, y - 13, 218, 34);
+                        output.setColor(new Color(250, 218, 143));
+                        output.drawRect(getWidth() - 243, y - 13, 217, 33);
+                    }
+                    output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
                     output.drawString((enemy.isSentinel() ? "Sentinel" : "Wisp " + (char) ('A' + i)) + "  " + enemy.getHp() + " / "
                             + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), getWidth() - 237, y);
                     output.setColor(new Color(52, 68, 101));
