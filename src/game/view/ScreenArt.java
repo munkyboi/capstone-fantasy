@@ -9,8 +9,8 @@ import javax.imageio.ImageIO;
 
 /** Loads and renders the title and camp artwork with crisp pixel scaling. */
 final class ScreenArt {
-    private static final int PIXEL_WIDTH = 320;
-    private static final int PIXEL_HEIGHT = 180;
+    private static final int PIXEL_WIDTH = 640;
+    private static final int PIXEL_HEIGHT = 360;
     private ScreenArt() { }
 
     static BufferedImage load(String path) {

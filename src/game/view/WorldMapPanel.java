@@ -69,11 +69,13 @@ public final class WorldMapPanel extends JPanel {
     @Override protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
         if (progress == null || getWidth() <= 0 || getHeight() <= 0) { return; }
-        BufferedImage canvas = new BufferedImage(320, 180, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage canvas = new BufferedImage(640, 360, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = canvas.createGraphics();
         try {
+            g.scale(2.0, 2.0);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
             g.setColor(new Color(18, 42, 59)); g.fillRect(0, 0, 320, 180);
-            if (background != null) { g.drawImage(background, 0, 0, null); }
+            if (background != null) { g.drawImage(background, 0, 0, 320, 180, null); }
             g.setColor(new Color(7, 18, 38, 55)); g.fillRect(0, 0, 320, 180);
             g.setColor(new Color(17, 30, 48)); g.setStroke(new java.awt.BasicStroke(7));
             for (int i = 0; i < X.length - 1; i++) { g.drawLine(X[i], Y[i], X[i + 1], Y[i + 1]); }

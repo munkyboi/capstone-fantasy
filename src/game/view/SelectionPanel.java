@@ -187,12 +187,12 @@ public final class SelectionPanel extends JPanel {
                     int top = 60, bottom = Math.max(top + 40, h - 135);
                     int height = Math.min(bottom - top, (w - 16) * sprites.getHeight() / slice);
                     int width = height * slice / sprites.getHeight();
-                    BufferedImage pixels = new BufferedImage(48, 64, BufferedImage.TYPE_INT_ARGB);
+                    BufferedImage pixels = new BufferedImage(96, 128, BufferedImage.TYPE_INT_ARGB);
                     Graphics2D pixelGraphics = pixels.createGraphics();
                     try {
                         pixelGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-                        pixelGraphics.drawImage(sprites, 0, 0, 48, 64,
+                        pixelGraphics.drawImage(sprites, 0, 0, 96, 128,
                                 index * slice, 0, (index + 1) * slice, sprites.getHeight(), null);
                     } finally { pixelGraphics.dispose(); }
                     int left = (w - width) / 2;

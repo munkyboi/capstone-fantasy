@@ -79,10 +79,11 @@ final class BattleScene extends JPanel {
             if (getWidth() <= 0 || getHeight() <= 0) { return; }
             int virtualWidth = VIRTUAL_WIDTH;
             int virtualHeight = Math.max(1, getHeight() * virtualWidth / getWidth());
-            BufferedImage pixels = new BufferedImage(virtualWidth, virtualHeight, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage pixels = new BufferedImage(virtualWidth * 2, virtualHeight * 2, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g = pixels.createGraphics();
             try {
                 int w = virtualWidth, h = virtualHeight;
+                g.scale(2.0, 2.0);
                 g.setColor(new Color(30, 43, 71)); g.fillRect(0, 0, w, h);
                 g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 if (background != null) { drawCover(g, background, w, h); }

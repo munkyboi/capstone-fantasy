@@ -33,7 +33,7 @@ java -Djava.awt.headless=true -cp build/capstone-fantasy.jar:build/test-classes 
 
 ## Direction
 
-The game is intended to be suitable for a school audience, without profanity, innuendo, sexual content, or immoral themes. Its battle layout takes inspiration from classic 16-bit JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system); the application is being built in Java Swing. The battlefield and student portraits are rendered at low resolution and scaled with nearest-neighbor interpolation. The in-game shell also uses a reduced-resolution rendering layer for a consistent pixel-art appearance; native window controls remain unchanged.
+The game is intended to be suitable for a school audience, without profanity, innuendo, sexual content, or immoral themes. Its battle layout takes inspiration from classic JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system); the application is being built in Java Swing. The game uses a finer, 32-bit-inspired pixel-art treatment. The battlefield and student portraits are rendered at low resolution and scaled with nearest-neighbor interpolation. The in-game shell also uses a reduced-resolution rendering layer for a consistent pixel-art appearance; native window controls remain unchanged.
 
 ## AI assistance
 

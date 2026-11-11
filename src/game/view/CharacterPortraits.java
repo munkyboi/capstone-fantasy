@@ -7,7 +7,7 @@ import javax.swing.ImageIcon;
 
 /** Creates small pixel-art portraits from the party's existing sprite sheet. */
 final class CharacterPortraits {
-    private static final int PORTRAIT_PIXELS = 28;
+    private static final int PORTRAIT_PIXELS = 56;
     private static final int DISPLAY_SIZE = 56;
     private static final int[] HEAD_CENTERS = {230, 245, 240, 230};
     private CharacterPortraits() { }
