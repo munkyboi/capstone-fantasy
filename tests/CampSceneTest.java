@@ -23,7 +23,7 @@ public final class CampSceneTest {
             BufferedImage sprite = ImageIO.read(url);
             check(sprite.getColorModel().hasAlpha(), name + " camp sprite has transparency");
         }
-        check(CampPanel.class.getResource("/assets/backgrounds/camp-bonfire-v1.png") != null, "camp background packaged");
+        check(CampPanel.class.getResource("/assets/backgrounds/camp-parallax-base-v1.png") != null, "camp background packaged");
         SwingUtilities.invokeAndWait(() -> {
             for (int omitted = 0; omitted < 4; omitted++) {
                 final int missing = omitted;

@@ -36,7 +36,7 @@ public final class SkillPointsTest {
                 check(store.load(1, fmt).getParty().get(0).getSp() == 7, "SP persists in " + fmt);
             }
             Path text = dir.resolve("slot-1.txt");
-            String old = Files.readString(text).replace("version=6", "version=2").replaceAll("(?m)^student\\.[123]\\.sp=.*\\R", "");
+            String old = Files.readString(text).replace("version=7", "version=2").replaceAll("(?m)^student\\.[123]\\.sp=.*\\R", "");
             Files.writeString(text, old);
             check(store.load(1, SaveStore.Format.TEXT).getParty().stream().allMatch(s -> s.getSp() == s.getMaxSp()), "old save defaults to full SP");
             // A pre-SP binary has old stats and no initialized SP field.

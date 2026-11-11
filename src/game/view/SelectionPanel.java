@@ -23,7 +23,7 @@ import javax.swing.SwingConstants;
 
 /** Lets the player choose three distinct students. */
 public final class SelectionPanel extends JPanel {
-    private static final int PARTY_SIZE = 3;
+    private int partySize = 3;
     private static final Color GOLD = new Color(246, 213, 139);
     private static final Color LIGHT = new Color(238, 242, 255);
     private static final String[] NAMES = {"Zack", "Bogart", "Charice", "Angel"};
@@ -119,6 +119,11 @@ public final class SelectionPanel extends JPanel {
         cursor = 0;
         refresh();
     }
+    /** Configures how many students must be selected, optionally starting with an existing party. */
+    public void configure(int size, java.util.List<Integer> initial) {
+        if (size < 1 || size > 4) throw new IllegalArgumentException("Invalid party size");
+        partySize = size; selected.clear(); selected.addAll(initial); cursor = 0; refresh();
+    }
 
     private void moveCursor(int direction) {
         if (cursor >= 4) { cursor = cursor == 4 ? 5 : 4; }
@@ -135,15 +140,15 @@ public final class SelectionPanel extends JPanel {
     private void toggle(int index) {
         if (selected.contains(index)) {
             selected.remove(index);
-        } else if (selected.size() < PARTY_SIZE) {
+        } else if (selected.size() < partySize) {
             selected.add(index);
         }
         refresh();
     }
 
     private void refresh() {
-        count.setText("← → Select  •  Enter Choose  •  ↓ Buttons  •  " + selected.size() + " / " + PARTY_SIZE);
-        continueButton.setEnabled(selected.size() == PARTY_SIZE);
+        count.setText("← → Select  •  Enter Choose  •  ↓ Buttons  •  " + selected.size() + " / " + partySize);
+        continueButton.setEnabled(selected.size() == partySize);
         continueButton.setText("Continue");
         boolean focused = cursor == 4 && continueButton.isEnabled();
         continueButton.setForeground(focused ? new Color(20, 30, 55) : Color.WHITE);

@@ -31,7 +31,7 @@ public final class CarbonMarketTest {
                 check(loaded.getPetot() == 120 && loaded.getInventory().getEquipmentIds().contains("market_charm"), "save " + format);
             }
             Path text = dir.resolve("slot-1.txt");
-            Files.writeString(text, Files.readString(text).replace("version=6", "version=3").replaceAll("(?m)^inventory\\.petot=.*\\R", ""));
+            Files.writeString(text, Files.readString(text).replace("version=7", "version=3").replaceAll("(?m)^inventory\\.petot=.*\\R", ""));
             check(store.load(1, SaveStore.Format.TEXT).getPetot() == 0, "old saves start with zero Petot");
         } finally { try (var paths = Files.walk(dir)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(path); } } }
         SwingUtilities.invokeAndWait(() -> {

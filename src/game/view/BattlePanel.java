@@ -32,8 +32,8 @@ public final class BattlePanel extends JPanel {
     private final GameSettings settings;
     private final Random battleRandom;
     private final JLabel status = new JLabel();
-    private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel()};
-    private final JProgressBar[] apBars = {new JProgressBar(), new JProgressBar(), new JProgressBar()};
+    private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel(), new JLabel()};
+    private final JProgressBar[] apBars = {new JProgressBar(), new JProgressBar(), new JProgressBar(), new JProgressBar()};
     private final JTextArea log = new JTextArea();
     private final JScrollPane logScroll = new JScrollPane(log);
     private final JButton attack = new JButton("Attack");

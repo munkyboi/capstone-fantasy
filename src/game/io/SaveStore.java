@@ -68,7 +68,9 @@ public final class SaveStore {
             temp = Files.createTempFile(directory, "save-", ".tmp");
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
-                properties.setProperty("version", "6");
+                properties.setProperty("version", "7");
+                properties.setProperty("party.count", Integer.toString(checked.getRoster().size()));
+                properties.setProperty("party.active", checked.getParty().stream().map(s -> Integer.toString(s.getId())).collect(java.util.stream.Collectors.joining(",")));
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
                 properties.setProperty("inventory.petot", Integer.toString(checked.getPetot()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
@@ -77,8 +79,8 @@ public final class SaveStore {
                 for (int stage = 0; stage < 5; stage++) {
                     properties.setProperty("reward." + stage, Boolean.toString(checked.getInventory().isRewardClaimed(stage)));
                 }
-                for (int i = 0; i < 3; i++) {
-                    Student student = checked.getParty().get(i);
+                for (int i = 0; i < checked.getRoster().size(); i++) {
+                    Student student = checked.getRoster().get(i);
                     String prefix = "student." + (i + 1) + ".";
                     properties.setProperty(prefix + "id", Integer.toString(student.getId()));
                     properties.setProperty(prefix + "name", student.getName());
@@ -87,6 +89,8 @@ public final class SaveStore {
                     properties.setProperty(prefix + "maxHp", Integer.toString(student.getMaxHp()));
                     properties.setProperty(prefix + "level", Integer.toString(student.getLevel()));
                     properties.setProperty(prefix + "experience", Integer.toString(student.getExperience()));
+                    properties.setProperty(prefix + "growth", Integer.toString(student.getExperienceGrowth()));
+                    properties.setProperty(prefix + "levelCap", Integer.toString(student.getLevelCap()));
                     for (Student.Stat stat : Student.Stat.values()) {
                         properties.setProperty(prefix + "allocated." + stat.name(), Integer.toString(student.getAllocatedStatPoints(stat)));
                     }
@@ -96,7 +100,7 @@ public final class SaveStore {
                     }
                 }
                 try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
-                    properties.store(writer, "Capstone Fantasy camp save v6");
+                    properties.store(writer, "Capstone Fantasy camp save v7");
                 }
             } else {
                 try (ObjectOutputStream stream = new ObjectOutputStream(Files.newOutputStream(temp))) {
@@ -143,19 +147,24 @@ public final class SaveStore {
             Properties properties = new Properties();
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { properties.load(reader); }
             String version = properties.getProperty("version");
-            if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version) && !"4".equals(version) && !"5".equals(version) && !"6".equals(version)) { throw new IOException("Unsupported save version"); }
+            if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version) && !"4".equals(version) && !"5".equals(version) && !"6".equals(version) && !"7".equals(version)) { throw new IOException("Unsupported save version"); }
+            int count = "7".equals(version) ? Integer.parseInt(properties.getProperty("party.count")) : 3;
+            if (count < 1 || count > 4) throw new IOException("Invalid party size");
             List<Integer> ids = new ArrayList<>();
             List<Integer> hp = new ArrayList<>();
             List<Integer> xp = new ArrayList<>();
             List<int[]> allocations = new ArrayList<>();
-            for (int i = 1; i <= 3; i++) {
+            List<int[]> progression = new ArrayList<>();
+            for (int i = 1; i <= count; i++) {
                 String prefix = "student." + i + ".";
                 int id = Integer.parseInt(properties.getProperty(prefix + "id"));
                 Student expected = new Student(id);
-                int experience = ("5".equals(version) || "6".equals(version)) ? Integer.parseInt(properties.getProperty(prefix + "experience")) : 0;
+                int[] rules = "7".equals(version) ? new int[]{Integer.parseInt(properties.getProperty(prefix + "growth")), Integer.parseInt(properties.getProperty(prefix + "levelCap"))} : new int[]{0, 30};
+                expected.restoreProgression(rules[0], rules[1]); progression.add(rules);
+                int experience = ("5".equals(version) || "6".equals(version) || "7".equals(version)) ? Integer.parseInt(properties.getProperty(prefix + "experience")) : 0;
                 expected.restoreExperience(experience);
                 int[] points = new int[Student.Stat.values().length];
-                if ("6".equals(version)) {
+                if ("6".equals(version) || "7".equals(version)) {
                     for (Student.Stat stat : Student.Stat.values()) {
                         points[stat.ordinal()] = Integer.parseInt(properties.getProperty(prefix + "allocated." + stat.name()));
                     }
@@ -172,17 +181,17 @@ public final class SaveStore {
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
             }
-            GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
+            GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
-            if ("3".equals(version) || "4".equals(version) || "5".equals(version) || "6".equals(version)) {
-                for (int i = 1; i <= 3; i++) {
+            if ("3".equals(version) || "4".equals(version) || "5".equals(version) || "6".equals(version) || "7".equals(version)) {
+                for (int i = 1; i <= count; i++) {
                     int id = Integer.parseInt(properties.getProperty("student." + i + ".id"));
                     int sp = Integer.parseInt(properties.getProperty("student." + i + ".sp"));
                     restored.getParty().stream().filter(student -> student.getId() == id)
                             .findFirst().orElseThrow().restoreSp(sp);
                 }
             }
-            if ("4".equals(version) || "5".equals(version) || "6".equals(version)) {
+            if ("4".equals(version) || "5".equals(version) || "6".equals(version) || "7".equals(version)) {
                 restored.restorePetot(Integer.parseInt(properties.getProperty("inventory.petot")));
             }
             if ("1".equals(version)) {
@@ -192,15 +201,15 @@ public final class SaveStore {
                 String bag = properties.getProperty("inventory.equipment");
                 if (bag == null) { throw new IOException("Missing equipment"); }
                 List<String> equipment = bag.isEmpty() ? List.of() : List.of(bag.split(",", -1));
-                List<List<String>> slots = new ArrayList<>();
-                for (int i = 1; i <= 3; i++) {
+                java.util.Map<Integer, List<String>> slotsById = new java.util.HashMap<>();
+                for (int i = 1; i <= count; i++) {
                     List<String> itemSlots = new ArrayList<>();
                     for (Equipment.Slot gearSlot : Equipment.Slot.values()) {
                         String value = properties.getProperty("student." + i + "." + gearSlot.name().toLowerCase(java.util.Locale.ROOT));
                         if (value == null) { throw new IOException("Missing equipment slot"); }
                         itemSlots.add(value.isEmpty() ? null : value);
                     }
-                    slots.add(itemSlots);
+                    slotsById.put(ids.get(i - 1), itemSlots);
                 }
                 boolean[] claimed = new boolean[5];
                 for (int stage = 0; stage < claimed.length; stage++) {
@@ -208,7 +217,16 @@ public final class SaveStore {
                     if (!"true".equals(value) && !"false".equals(value)) { throw new IOException("Invalid reward state"); }
                     claimed[stage] = Boolean.parseBoolean(value);
                 }
+                List<List<String>> slots = new ArrayList<>();
+                for (Student student : restored.getParty()) slots.add(slotsById.get(student.getId()));
                 restored.restoreEquipment(equipment, slots, claimed);
+            }
+            if ("7".equals(version)) {
+                String active = properties.getProperty("party.active");
+                if (active == null || active.isBlank()) throw new IOException("Missing active party");
+                List<Integer> activeIds = java.util.Arrays.stream(active.split(",", -1)).map(Integer::parseInt).toList();
+                if (!ids.containsAll(activeIds)) throw new IOException("Unknown active student");
+                restored.setActiveParty(activeIds);
             }
             return restored;
         } catch (IOException | ClassNotFoundException | RuntimeException ex) {
@@ -222,9 +240,12 @@ public final class SaveStore {
         List<Integer> hp = new ArrayList<>();
         List<Integer> xp = new ArrayList<>();
         List<int[]> allocations = new ArrayList<>();
+        List<int[]> progression = new ArrayList<>();
         java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
-        for (Student student : progress.getParty()) {
+        for (Student student : progress.getRoster()) {
             Student expected = new Student(student.getId());
+            expected.restoreProgression(student.getExperienceGrowth(), student.getLevelCap());
+            progression.add(new int[]{student.getExperienceGrowth(), student.getLevelCap()});
             expected.restoreExperience(student.getExperience());
             int[] points = new int[Student.Stat.values().length];
             for (Student.Stat stat : Student.Stat.values()) { points[stat.ordinal()] = student.getAllocatedStatPoints(stat); }
@@ -249,18 +270,19 @@ public final class SaveStore {
             for (Equipment.Slot slot : Equipment.Slot.values()) { items.add(student.getEquipmentId(slot)); }
             slotsByStudent.put(student.getId(), items);
         }
-        GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progress.getKits(), progress.getEncounter());
+        GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, progress.getKits(), progress.getEncounter());
         restored.restorePetot(progress.getPetot());
         List<List<String>> slots = new ArrayList<>();
         for (Student student : restored.getParty()) {
             slots.add(slotsByStudent.get(student.getId()));
             int id = student.getId();
-            student.restoreSp(progress.getParty().stream().filter(old -> old.getId() == id).findFirst().orElseThrow().getSp());
+            student.restoreSp(progress.getRoster().stream().filter(old -> old.getId() == id).findFirst().orElseThrow().getSp());
         }
         boolean[] claimed = new boolean[5];
         for (int stage = 0; stage < claimed.length; stage++) { claimed[stage] = inventory.isRewardClaimed(stage); }
         restored.restoreEquipment(inventory.getEquipmentIds(), slots, claimed);
         if (legacy) { restored.grantLegacyRewards(); }
+        restored.setActiveParty(progress.getParty().stream().map(Student::getId).toList());
         return restored;
     }
 }

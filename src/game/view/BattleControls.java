@@ -51,7 +51,7 @@ final class BattleControls {
         logScroll.setFocusable(false);
         logScroll.getVerticalScrollBar().setFocusable(false);
         info.add(logScroll, BorderLayout.CENTER);
-        JPanel members = new JPanel(new GridLayout(3, 1));
+        JPanel members = new JPanel(new GridLayout(0, 1));
         members.setOpaque(false);
         for (int i = 0; i < partyStatus.length; i++) {
             JLabel member = partyStatus[i];
@@ -99,6 +99,8 @@ final class BattleControls {
     static void updateParty(Battle battle, JLabel[] partyStatus) {
         boolean over = battle.isOver();
         for (int i = 0; i < partyStatus.length; i++) {
+            partyStatus[i].getParent().setVisible(i < battle.getParty().size());
+            if (i >= battle.getParty().size()) { continue; }
             Student student = battle.getParty().get(i);
             partyStatus[i].setForeground(!over && student == battle.getCurrent()
                     ? new Color(250, 218, 143) : Color.WHITE);
@@ -110,6 +112,7 @@ final class BattleControls {
 
     static void updateBars(Battle battle, JProgressBar[] apBars, Map<Student, Double> actionPoints) {
         for (int i = 0; i < apBars.length; i++) {
+            if (i >= battle.getParty().size()) { continue; }
             Student student = battle.getParty().get(i);
             double value = actionPoints.get(student);
             apBars[i].setMaximum(student.getActionThreshold() * AP_DISPLAY_SCALE);

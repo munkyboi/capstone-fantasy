@@ -56,6 +56,9 @@ public class Student extends GameCharacter {
     private final int level = STARTING_LEVEL;
     private int hp;
     private int experience;
+    // Zero denotes the original fixed-100-XP curve in older saves.
+    private int experienceGrowth;
+    private int configuredLevelCap;
     private int allocatedHp, allocatedSp, allocatedAttack, allocatedDefense, allocatedSpeed;
     /** Maximum experience: level 30. */
     public static final int MAX_EXPERIENCE = 2900;
@@ -140,19 +143,58 @@ public class Student extends GameCharacter {
     */ public int getSpeed() { return speed + allocatedSpeed; }
     /** Returns current level.
      * @return current level
-     */ public int getLevel() { return STARTING_LEVEL + experience / 100; }
+    */ public int getLevel() {
+        int level = 1;
+        while (level < 50 && experience >= experienceForLevel(level + 1, experienceGrowth)) { level++; }
+        return level;
+    }
+    private static int experienceForLevel(int level, int growth) {
+        long total = 0;
+        for (int current = 1; current < level; current++) {
+            total += Math.round(100.0 * Math.pow(1.0 + growth / 100.0, current - 1));
+        }
+        return (int) Math.min(Integer.MAX_VALUE, total);
+    }
+    /** XP needed to advance from this level; zero at or above the current cap. */
+    public int getXpRequired() {
+        int level = getLevel();
+        return level >= getLevelCap() || level >= 50 ? 0
+                : experienceForLevel(level + 1, experienceGrowth) - experienceForLevel(level, experienceGrowth);
+    }
+    /** XP earned toward the next level. */
+    public int getXpProgress() { return getXpRequired() == 0 ? 0 : experience - experienceForLevel(getLevel(), experienceGrowth); }
+    public int getExperienceGrowth() { return experienceGrowth; }
+    public int getLevelCap() { return configuredLevelCap == 0 ? 30 : configuredLevelCap; }
+    /** Change progression while preserving level and fraction of progress toward the next level. */
+    public void configureProgression(int growth, int cap) {
+        if (growth < 0 || growth > 20 || (cap != 20 && cap != 30 && cap != 40 && cap != 50)) throw new IllegalArgumentException("Invalid progression");
+        int level = getLevel();
+        int oldStart = experienceForLevel(level, experienceGrowth);
+        int oldNext = level == 50 ? oldStart : experienceForLevel(level + 1, experienceGrowth);
+        double fraction = oldNext == oldStart ? 0 : (double) (experience - oldStart) / (oldNext - oldStart);
+        int newStart = experienceForLevel(level, growth);
+        int newNext = level == 50 ? newStart : experienceForLevel(level + 1, growth);
+        experience = newStart + Math.min(Math.max(0, newNext - newStart - 1), (int) Math.round(fraction * (newNext - newStart)));
+        experienceGrowth = growth; configuredLevelCap = cap;
+    }
+    /** Restores the progression rules before restoring experience. */
+    public void restoreProgression(int growth, int cap) {
+        if (growth < 0 || growth > 20 || (cap != 20 && cap != 30 && cap != 40 && cap != 50)) throw new IllegalArgumentException("Invalid progression");
+        experienceGrowth = growth; configuredLevelCap = cap;
+    }
     /** Returns total earned experience. */
     public int getExperience() { return experience; }
     /** Restores validated experience without applying healing. */
     public void restoreExperience(int value) {
-        if (value < 0 || value > MAX_EXPERIENCE) { throw new IllegalArgumentException("Invalid experience"); }
+        if (value < 0 || value > experienceForLevel(50, experienceGrowth)) { throw new IllegalArgumentException("Invalid experience"); }
         experience = value;
     }
     /** Grants XP and returns the number of levels gained; knocked-out students stay knocked out. */
     public int gainExperience(int amount) {
         if (amount < 0) { throw new IllegalArgumentException("Invalid experience"); }
         int oldLevel = getLevel(), oldSp = getSp();
-        experience = (int) Math.min(MAX_EXPERIENCE, (long) experience + amount);
+        int limit = experienceForLevel(getLevelCap(), experienceGrowth);
+        if (getLevel() < getLevelCap()) { experience = (int) Math.min(limit, (long) experience + amount); }
         int gained = getLevel() - oldLevel;
         if (hp > 0) { hp = Math.min(getMaxHp(), hp + gained * 5); }
         skillPoints = Math.min(getMaxSp(), oldSp + gained * 3); skillPointsInitialized = true;

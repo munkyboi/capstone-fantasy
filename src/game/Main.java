@@ -10,6 +10,7 @@ import game.view.InventoryPanel;
 import game.view.SaveSlotPanel;
 import game.view.WorldMapPanel;
 import game.view.ShopPanel;
+import game.view.SettingsPanel;
 import game.io.SaveStore;
 import game.model.GameProgress;
 import game.model.GameSettings;
@@ -38,7 +39,10 @@ public final class Main {
                 ((AspectRatioPanel) screens.getComponent(0)).getComponent(0).requestFocusInWindow();
             };
             BattlePanel[] battleHolder = new BattlePanel[1];
-            GameSettings settings = new GameSettings();
+            java.nio.file.Path settingsPath = SaveStore.defaultDirectory().getParent().resolve("settings.properties");
+            GameSettings settings = GameSettings.load(settingsPath);
+            GameProgress[] pendingParty = {null};
+            SelectionPanel[] selectionHolder = new SelectionPanel[1];
             CampPanel[] campHolder = new CampPanel[1];
             InventoryPanel[] inventoryHolder = new InventoryPanel[1];
             WorldMapPanel[] mapHolder = new WorldMapPanel[1];
@@ -49,9 +53,15 @@ public final class Main {
                 if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
                 else { showMenu.run(); }
             }, progress -> {
-                campHolder[0].open(progress, false);
-                layout.show(screens, "camp");
-                campHolder[0].requestFocusInWindow();
+                if (progress.getParty().size() != settings.getPartySize()) {
+                    pendingParty[0] = progress;
+                    selectionHolder[0].configure(settings.getPartySize(), progress.getParty().stream().map(game.model.Student::getId).toList());
+                    layout.show(screens, "selection"); selectionHolder[0].requestFocusInWindow();
+                } else {
+                    progress.applySettings(settings);
+                    campHolder[0].open(progress, false);
+                    layout.show(screens, "camp"); campHolder[0].requestFocusInWindow();
+                }
             });
             CampPanel camp = new CampPanel(progress -> {
                 mapHolder[0].open(progress);
@@ -104,12 +114,24 @@ public final class Main {
                 shop.open(progress); layout.show(screens, "shop"); shop.requestFocusInWindow();
             });
             SelectionPanel selection = new SelectionPanel(showMenu, party -> {
-                map.open(new GameProgress(party));
-                layout.show(screens, "map");
-                map.requestFocusInWindow();
+                if (pendingParty[0] != null) {
+                    GameProgress loaded = pendingParty[0];
+                    try { loaded.setActiveParty(party); }
+                    catch (IllegalArgumentException ex) {
+                        javax.swing.JOptionPane.showMessageDialog(window, "Choose at least one student who is not knocked out."); return;
+                    }
+                    pendingParty[0] = null; loaded.applySettings(settings); camp.open(loaded, false);
+                    layout.show(screens, "camp"); camp.requestFocusInWindow();
+                } else {
+                    GameProgress progress = new GameProgress(party); progress.applySettings(settings);
+                    map.open(progress); layout.show(screens, "map"); map.requestFocusInWindow();
+                }
             });
+            selectionHolder[0] = selection;
+            SettingsPanel settingsPanel = new SettingsPanel(settings, settingsPath, showMenu);
             MainMenuPanel menu = new MainMenuPanel(window, () -> {
-                selection.reset();
+                pendingParty[0] = null;
+                selection.configure(settings.getPartySize(), java.util.List.of());
                 layout.show(screens, "selection");
                 selection.requestFocusInWindow();
             }, () -> {
@@ -117,7 +139,7 @@ public final class Main {
                 slots.openLoad();
                 layout.show(screens, "slots");
                 slots.requestFocusInWindow();
-            });
+            }, () -> { layout.show(screens, "settings"); settingsPanel.requestFocusInWindow(); });
             screens.add(new AspectRatioPanel(menu), "menu");
             screens.add(new AspectRatioPanel(selection), "selection");
             screens.add(battle, "battle");
@@ -126,6 +148,7 @@ public final class Main {
             screens.add(new AspectRatioPanel(map), "map");
             screens.add(new AspectRatioPanel(shop), "shop");
             screens.add(new AspectRatioPanel(slots), "slots");
+            screens.add(new AspectRatioPanel(settingsPanel), "settings");
             window.setContentPane(PixelShell.wrap(screens));
             window.pack();
             window.setMinimumSize(window.getSize());

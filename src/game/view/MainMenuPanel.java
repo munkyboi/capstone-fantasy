@@ -40,6 +40,10 @@ public final class MainMenuPanel extends JPanel {
      * @param openLoad opens saved-game slots
      */
     public MainMenuPanel(Window window, Runnable startNewGame, Runnable openLoad) {
+        this(window, startNewGame, openLoad, null);
+    }
+    /** Creates a main menu including an optional settings action. */
+    public MainMenuPanel(Window window, Runnable startNewGame, Runnable openLoad, Runnable openSettings) {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         setLayout(new BorderLayout());
@@ -72,7 +76,7 @@ public final class MainMenuPanel extends JPanel {
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setBorder(BorderFactory.createEmptyBorder(0, 260, 44, 260));
-        JPanel menu = new JPanel(new GridLayout(3, 1, 0, 8));
+        JPanel menu = new JPanel(new GridLayout(openSettings == null ? 3 : 4, 1, 0, 8));
         menu.setOpaque(true);
         menu.setBackground(new Color(15, 25, 48, 230));
         menu.setBorder(BorderFactory.createCompoundBorder(
@@ -80,16 +84,19 @@ public final class MainMenuPanel extends JPanel {
                 BorderFactory.createEmptyBorder(12, 12, 12, 12)));
         JButton newGame = menuButton("New Game");
         JButton loadGame = menuButton("Load Game");
+        JButton settings = menuButton("Settings");
         JButton quit = menuButton("Quit");
         newGame.addActionListener(event -> startNewGame.run());
         loadGame.addActionListener(event -> openLoad.run());
+        if (openSettings != null) { settings.addActionListener(event -> openSettings.run()); }
         quit.addActionListener(event -> window.dispose());
         menu.add(newGame);
         menu.add(loadGame);
+        if (openSettings != null) { menu.add(settings); }
         menu.add(quit);
-        JButton[] buttons = {newGame, loadGame, quit};
+        JButton[] buttons = openSettings == null ? new JButton[]{newGame, loadGame, quit} : new JButton[]{newGame, loadGame, settings, quit};
         Runnable refresh = () -> {
-            String[] labels = {"New Game", "Load Game", "Quit"};
+            String[] labels = openSettings == null ? new String[]{"New Game", "Load Game", "Quit"} : new String[]{"New Game", "Load Game", "Settings", "Quit"};
             for (int i = 0; i < buttons.length; i++) {
                 buttons[i].setText(labels[i]);
                 ViewportFonts.setScaledIcon(buttons[i], i == cursor ? PixelPointer.HAND : PixelPointer.EMPTY);

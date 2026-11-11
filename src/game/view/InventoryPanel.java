@@ -33,7 +33,7 @@ public final class InventoryPanel extends JPanel {
     private final JLabel heading = new JLabel("INVENTORY & EQUIPMENT", SwingConstants.CENTER);
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
     private final JLabel messageLabel = new JLabel("", SwingConstants.CENTER);
-    private final JLabel[] partyRows = {new JLabel(), new JLabel(), new JLabel()};
+    private final JLabel[] partyRows = {new JLabel(), new JLabel(), new JLabel(), new JLabel()};
     private final JLabel profile = new JLabel();
     private final JLabel stats = new JLabel();
     private final JLabel[] slots = {new JLabel(), new JLabel(), new JLabel()};
@@ -65,7 +65,7 @@ public final class InventoryPanel extends JPanel {
         JPanel center = new JPanel(new BorderLayout(10, 0)); center.setOpaque(false);
         JPanel partyCard = panel("PARTY"); partyCard.setPreferredSize(new Dimension(205, 300));
         ViewportFonts.scalePreferredSize(partyCard);
-        JPanel partyList = new JPanel(new GridLayout(3, 1, 0, 6)); partyList.setOpaque(false);
+        JPanel partyList = new JPanel(new GridLayout(0, 1, 0, 6)); partyList.setOpaque(false);
         for (int i = 0; i < partyRows.length; i++) {
             partyRows[i] = row(); partyRows[i].setVerticalAlignment(SwingConstants.CENTER);
             partyList.add(partyRows[i]);
@@ -231,6 +231,8 @@ public final class InventoryPanel extends JPanel {
     private void refresh() {
         Student current = student();
         for (int i = 0; i < partyRows.length; i++) {
+            partyRows[i].setVisible(i < progress.getParty().size());
+            if (i >= progress.getParty().size()) { continue; }
             Student member = progress.getParty().get(i);
             ViewportFonts.setScaledIcon(partyRows[i], i == studentIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
             partyRows[i].setText("<html>" + member.getName()

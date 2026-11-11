@@ -22,8 +22,8 @@ final class BattleScene extends JPanel {
     private static final double HOP_DURATION_MILLIS = 180.0;
     private static final int VIRTUAL_WIDTH = 320;
     private static final int VIRTUAL_HEIGHT = 180;
-    private static final int[] PARTY_CENTERS_X = {44, 69, 27};
-    private static final int[] PARTY_FEET_Y = {119, 130, 141};
+    private static final int[] PARTY_CENTERS_X = {44, 69, 27, 95};
+    private static final int[] PARTY_FEET_Y = {119, 130, 141, 141};
     private static final int[] ENEMY_CENTERS_X = {299, 250, 300, 200, 210, 185};
     private static final int[] ENEMY_FEET_Y = {119, 130, 141, 119, 141, 130};
     /** Supplies battle state and animation details to the scene. */

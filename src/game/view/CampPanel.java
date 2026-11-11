@@ -252,8 +252,9 @@ public final class CampPanel extends JPanel {
                 + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
         drawResourceBar(g, x, y + 39, w, "HP", student.getHp(), student.getMaxHp(), HP_COLOR);
         drawResourceBar(g, x, y + 63, w, "SP", student.getSp(), student.getMaxSp(), SP_COLOR);
-        int xp = student.getExperience() == Student.MAX_EXPERIENCE ? 100 : student.getExperience() % 100;
-        drawResourceBar(g, x, y + 87, w, "XP", xp, 100, XP_COLOR);
+        int requiredXp = student.getXpRequired();
+        drawResourceBar(g, x, y + 87, w, "XP", requiredXp == 0 ? 1 : student.getXpProgress(),
+                requiredXp == 0 ? 1 : requiredXp, XP_COLOR);
         g.setColor(new Color(120, 149, 182)); g.drawLine(x + 12, y + 109, x + w - 12, y + 109);
         g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
         g.drawString("ATK " + student.getAttack(), x + 12, y + 131);
@@ -265,8 +266,9 @@ public final class CampPanel extends JPanel {
         g.setFont(ClassicUi.numbers(12)); g.setColor(Color.WHITE); g.drawString(label, x + 12, row + 9);
         g.setColor(new Color(38, 49, 76)); g.fillRect(x + 48, row, 113, 9);
         g.setColor(color); g.fillRect(x + 48, row, (int) (113L * value / Math.max(1, maximum)), 9);
-        String text = value + "/" + maximum;
+        String text = label.equals("XP") && maximum == 1 ? "MAX" : value + "/" + maximum;
         g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
+        if (g.getFontMetrics().stringWidth(text) > width - 173) { g.setFont(ClassicUi.numbers(8)); }
         g.drawString(text, x + width - 10 - g.getFontMetrics().stringWidth(text), row + 9);
     }
     private static void drawCentered(Graphics2D g, String text, int center, int y) {

@@ -12,6 +12,7 @@ public final class GameProgress implements java.io.Serializable {
     private static final int STARTING_KITS = 3;
 
     private final List<Student> party = new ArrayList<>();
+    private List<Student> reserve = new ArrayList<>();
     private int kits = STARTING_KITS;
     private Inventory inventory = new Inventory(STARTING_KITS);
     private int encounter;
@@ -23,8 +24,8 @@ public final class GameProgress implements java.io.Serializable {
      * @param ids selected character indices
      */
     public GameProgress(List<Integer> ids) {
-        if (ids.size() != 3 || ids.stream().distinct().count() != 3) {
-            throw new IllegalArgumentException("Choose three different students");
+        if (ids == null || ids.isEmpty() || ids.size() > 4 || ids.stream().distinct().count() != ids.size()) {
+            throw new IllegalArgumentException("Choose one to four different students");
         }
         for (int id : ids) {
             Student student = Student.create(id);
@@ -36,6 +37,26 @@ public final class GameProgress implements java.io.Serializable {
     /** Returns the current party in speed order.
      * @return the current party in speed order
      */ public List<Student> getParty() { return List.copyOf(party); }
+    /** All recruited students, including those currently resting. */
+    public List<Student> getRoster() {
+        List<Student> members = new ArrayList<>(party);
+        if (reserve != null) members.addAll(reserve);
+        return List.copyOf(members);
+    }
+    /** Change active students while keeping inactive students and their equipment. */
+    public void setActiveParty(List<Integer> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 4 || ids.stream().distinct().count() != ids.size()) throw new IllegalArgumentException("Invalid party");
+        List<Student> roster = new ArrayList<>(getRoster());
+        List<Student> selected = new ArrayList<>();
+        for (int id : ids) {
+            Student member = roster.stream().filter(s -> s.getId() == id).findFirst().orElse(null);
+            if (member == null) { member = Student.create(id); member.setEquipmentId(Equipment.Slot.WEAPON, Equipment.starterWeapon(id)); roster.add(member); }
+            selected.add(member);
+        }
+        if (selected.stream().noneMatch(Student::isAlive)) throw new IllegalArgumentException("Select a living student");
+        party.clear(); party.addAll(selected); party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
+        roster.removeAll(selected); reserve = roster;
+    }
     /** Returns first-aid kits remaining.
      * @return first-aid kits remaining
      */ public int getKits() { return getInventory().getKits(); }
@@ -208,7 +229,7 @@ public final class GameProgress implements java.io.Serializable {
      * @return reconstructed progress
      */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, int kits, int encounter) {
-        return restore(ids, hitPoints, java.util.List.of(0, 0, 0), kits, encounter);
+        return restore(ids, hitPoints, java.util.Collections.nCopies(ids.size(), 0), kits, encounter);
     }
     /** Reconstructs a saved party including experience. */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience, int kits, int encounter) {
@@ -217,8 +238,14 @@ public final class GameProgress implements java.io.Serializable {
     /** Reconstructs a saved party with its level-up allocations. */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience,
             List<int[]> allocations, int kits, int encounter) {
-        if (ids == null || hitPoints == null || experience == null || ids.size() != 3 || hitPoints.size() != 3 || experience.size() != 3
-                || (allocations != null && allocations.size() != 3)
+        return restore(ids, hitPoints, experience, allocations, null, kits, encounter);
+    }
+    /** Reconstructs a saved party with progression settings per student. */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience,
+            List<int[]> allocations, List<int[]> progression, int kits, int encounter) {
+        if (ids == null || hitPoints == null || experience == null || ids.isEmpty() || ids.size() > 4 || hitPoints.size() != ids.size() || experience.size() != ids.size()
+                || (allocations != null && allocations.size() != ids.size())
+                || (progression != null && progression.size() != ids.size())
                 || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 5) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
@@ -226,6 +253,11 @@ public final class GameProgress implements java.io.Serializable {
         for (int i = 0; i < ids.size(); i++) {
             final int id = ids.get(i);
             Student student = result.party.stream().filter(s -> s.getId() == id).findFirst().orElseThrow();
+            if (progression != null) {
+                int[] rules = progression.get(i);
+                if (rules == null || rules.length != 2) throw new IllegalArgumentException("Invalid progression");
+                student.restoreProgression(rules[0], rules[1]);
+            }
             student.restoreExperience(experience.get(i));
             if (allocations != null) {
                 int[] points = allocations.get(i);
@@ -239,6 +271,10 @@ public final class GameProgress implements java.io.Serializable {
         result.inventory = new Inventory(kits);
         result.encounter = encounter;
         return result;
+    }
+    /** Applies changed XP rules without removing earned levels or allocated stats. */
+    public void applySettings(GameSettings settings) {
+        for (Student student : getRoster()) student.configureProgression(settings.getGrowthFactor(), settings.getLevelCap());
     }
     /** Uses a kit on a living, injured member.
      * @param target the student to heal
