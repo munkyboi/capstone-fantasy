@@ -7,6 +7,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -19,6 +22,7 @@ public final class CampPanel extends JPanel {
     private final JLabel title = new JLabel("CAMP", SwingConstants.CENTER);
     private final JLabel supplies = new JLabel("", SwingConstants.CENTER);
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
+    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-v1.png");
     private final Consumer<GameProgress> nextBattle;
     private final Runnable menu;
     private final Consumer<GameProgress> save;
@@ -50,11 +54,15 @@ public final class CampPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(35, 125, 35, 125));
         title.setForeground(new Color(250, 218, 143));
         title.setFont(new Font(Font.SERIF, Font.BOLD, 32));
+        title.setOpaque(true);
+        title.setBackground(new Color(15, 25, 48, 220));
         add(title, BorderLayout.NORTH);
         JPanel center = new JPanel(new GridLayout(4, 1, 0, 8));
         center.setOpaque(false);
         for (JLabel label : students) {
             label.setForeground(Color.WHITE);
+            label.setOpaque(true);
+            label.setBackground(new Color(15, 25, 48, 225));
             label.setFont(new Font(Font.MONOSPACED, Font.BOLD, 19));
             label.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(new Color(162, 184, 215), 2),
@@ -62,10 +70,14 @@ public final class CampPanel extends JPanel {
             center.add(label);
         }
         supplies.setForeground(new Color(250, 218, 143));
+        supplies.setOpaque(true);
+        supplies.setBackground(new Color(15, 25, 48, 230));
         supplies.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
         center.add(supplies);
         add(center, BorderLayout.CENTER);
         help.setForeground(Color.WHITE);
+        help.setOpaque(true);
+        help.setBackground(new Color(15, 25, 48, 230));
         help.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         add(help, BorderLayout.SOUTH);
         Keys.bind(this, "UP", "camp-up", () -> move(-1));
@@ -116,6 +128,16 @@ public final class CampPanel extends JPanel {
                     student.getName(), student.getHp(), student.getMaxHp(), student.isAlive() ? "" : "  KO"));
         }
         supplies.setText("First-Aid Kits: " + progress.getKits() + "   •   " + message);
-        help.setText(complete ? "Enter: Return to menu" : "↑ ↓ Select   •   Enter: Use kit   •   S: Save   •   C: Continue   •   Esc: Menu");
+        help.setText(complete ? "Enter: Return to menu" : "↑ ↓ Select   •   Enter: Use kit   •   S: Save   •   C: Campus route   •   Esc: Menu");
+    }
+
+    /** Draws the camp scene beneath the party controls.
+     * @param graphics drawing context
+     */
+    @Override protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics);
+        Graphics2D g = (Graphics2D) graphics.create();
+        try { ScreenArt.drawBackground(g, background, getWidth(), getHeight(), 65); }
+        finally { g.dispose(); }
     }
 }

@@ -3,6 +3,7 @@ package game.model;
 /** A student taking part in the first battle. */
 public final class Student implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
+    private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 45};
     private final int id;
     private final String name;
     private final int maxHp;
@@ -35,6 +36,8 @@ public final class Student implements java.io.Serializable {
     /** @return defense value */ public int getDefense() { return defense; }
     /** @return speed value */ public int getSpeed() { return speed; }
     /** @return current level */ public int getLevel() { return level; }
+    /** @return AP required before this student can act */
+    public int getActionThreshold() { return ACTION_THRESHOLDS[id]; }
     /** @return whether the student can act */ public boolean isAlive() { return hp > 0; }
     /** Protects against the next incoming attack. */ public void defend() { defending = true; }
     /** Clears defense between encounters. */ public void clearDefense() { defending = false; }

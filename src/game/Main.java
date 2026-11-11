@@ -5,7 +5,10 @@ import game.view.SelectionPanel;
 import game.view.BattlePanel;
 import game.view.CampPanel;
 import game.view.SaveSlotPanel;
+import game.view.WorldMapPanel;
 import game.io.SaveStore;
+import game.model.GameProgress;
+import game.model.GameSettings;
 import java.awt.CardLayout;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
@@ -29,7 +32,9 @@ public final class Main {
                 screens.getComponent(0).requestFocusInWindow();
             };
             BattlePanel[] battleHolder = new BattlePanel[1];
+            GameSettings settings = new GameSettings();
             CampPanel[] campHolder = new CampPanel[1];
+            WorldMapPanel[] mapHolder = new WorldMapPanel[1];
             boolean[] saving = {false};
             SaveSlotPanel slots = new SaveSlotPanel(new SaveStore(SaveStore.defaultDirectory()), () -> {
                 if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
@@ -40,9 +45,9 @@ public final class Main {
                 campHolder[0].requestFocusInWindow();
             });
             CampPanel camp = new CampPanel(progress -> {
-                battleHolder[0].start(progress);
-                layout.show(screens, "battle");
-                battleHolder[0].requestFocusInWindow();
+                mapHolder[0].open(progress);
+                layout.show(screens, "map");
+                mapHolder[0].requestFocusInWindow();
             }, showMenu, progress -> {
                 saving[0] = true;
                 slots.openSave(progress);
@@ -55,12 +60,22 @@ public final class Main {
                 camp.open(progress, !hasNext);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();
-            });
+            }, settings);
             battleHolder[0] = battle;
-            SelectionPanel selection = new SelectionPanel(showMenu, party -> {
-                battle.start(party);
+            WorldMapPanel map = new WorldMapPanel(progress -> {
+                battle.start(progress);
                 layout.show(screens, "battle");
                 battle.requestFocusInWindow();
+            }, progress -> {
+                camp.open(progress, false);
+                layout.show(screens, "camp");
+                camp.requestFocusInWindow();
+            }, showMenu);
+            mapHolder[0] = map;
+            SelectionPanel selection = new SelectionPanel(showMenu, party -> {
+                map.open(new GameProgress(party));
+                layout.show(screens, "map");
+                map.requestFocusInWindow();
             });
             MainMenuPanel menu = new MainMenuPanel(window, () -> {
                 selection.reset();
@@ -76,6 +91,7 @@ public final class Main {
             screens.add(selection, "selection");
             screens.add(battle, "battle");
             screens.add(camp, "camp");
+            screens.add(map, "map");
             screens.add(slots, "slots");
             window.setContentPane(screens);
             window.pack();

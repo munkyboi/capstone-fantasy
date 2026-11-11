@@ -2,6 +2,9 @@ package game.model;
 
 /** An opponent in a battle. */
 public final class Enemy {
+    private static final int WISP_A_AP = 24;
+    private static final int WISP_B_AP = 26;
+    private static final int SENTINEL_AP = 32;
     private final String name;
     private final int maxHp;
     private final int attack;
@@ -9,6 +12,7 @@ public final class Enemy {
     private final int speed;
     private int hp;
     private final boolean sentinel;
+    private final int actionThreshold;
 
     /** Creates one Wisp with its own name and battle stats.
      * @param name display name
@@ -28,6 +32,7 @@ public final class Enemy {
         attack = sentinel ? 20 : 16;
         defense = sentinel ? 9 : 5;
         speed = sentinel ? 5 : 8;
+        actionThreshold = sentinel ? SENTINEL_AP : name.endsWith("B") ? WISP_B_AP : WISP_A_AP;
     }
     /** @return whether this enemy is a Stone Sentinel */ public boolean isSentinel() { return sentinel; }
     /** @return enemy name */ public String getName() { return name; }
@@ -36,6 +41,7 @@ public final class Enemy {
     /** @return attack stat */ public int getAttack() { return attack; }
     /** @return defense stat */ public int getDefense() { return defense; }
     /** @return speed stat */ public int getSpeed() { return speed; }
+    /** @return AP required before this enemy can attack */ public int getActionThreshold() { return actionThreshold; }
     /** @return whether this enemy can act */ public boolean isAlive() { return hp > 0; }
     /** Applies damage and returns the actual HP lost.
      * @param amount incoming damage

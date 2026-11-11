@@ -8,6 +8,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.awt.Window;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -21,6 +22,8 @@ public final class MainMenuPanel extends JPanel {
     private static final int HEIGHT = 540;
     private static final Color GOLD = new Color(250, 218, 143);
     private static final Color INK = new Color(24, 30, 58);
+    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/title-campus-v1.png");
+    private final BufferedImage logo = ScreenArt.load("/assets/ui/title-logo-v1.png");
     private int cursor;
 
     /** Creates the menu for the given game window.
@@ -41,17 +44,37 @@ public final class MainMenuPanel extends JPanel {
         setFocusable(true);
         setLayout(new BorderLayout());
 
-        JLabel title = new JLabel("CAPSTONE FANTASY", SwingConstants.CENTER);
-        title.setFont(new Font(Font.SERIF, Font.BOLD, 42));
-        title.setForeground(GOLD);
-        title.setBorder(BorderFactory.createEmptyBorder(55, 10, 0, 10));
+        JPanel title = new JPanel() {
+            @Override protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                Graphics2D g = (Graphics2D) graphics.create();
+                try {
+                    if (logo == null) {
+                        g.setFont(new Font(Font.SERIF, Font.BOLD, 42));
+                        g.setColor(GOLD);
+                        String text = "CAPSTONE FANTASY";
+                        g.drawString(text, (getWidth() - g.getFontMetrics().stringWidth(text)) / 2, 100);
+                    } else {
+                        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                        double scale = Math.min(460.0 / logo.getWidth(), 205.0 / logo.getHeight());
+                        int width = (int) Math.round(logo.getWidth() * scale);
+                        int height = (int) Math.round(logo.getHeight() * scale);
+                        g.drawImage(logo, (getWidth() - width) / 2, (getHeight() - height) / 2, width, height, null);
+                    }
+                } finally { g.dispose(); }
+            }
+        };
+        title.setOpaque(false);
+        title.setPreferredSize(new Dimension(WIDTH, 220));
+        title.getAccessibleContext().setAccessibleName("Capstone Fantasy");
         add(title, BorderLayout.NORTH);
 
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setBorder(BorderFactory.createEmptyBorder(0, 260, 44, 260));
         JPanel menu = new JPanel(new GridLayout(3, 1, 0, 8));
-        menu.setOpaque(false);
+        menu.setOpaque(true);
+        menu.setBackground(new Color(15, 25, 48, 230));
         menu.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GOLD, 3),
                 BorderFactory.createEmptyBorder(12, 12, 12, 12)));
@@ -99,7 +122,7 @@ public final class MainMenuPanel extends JPanel {
         return button;
     }
 
-    /** Draws a simple pixel-art campus and crystal behind the menu.
+    /** Draws the campus artwork behind the menu.
      * @param graphics drawing context
      */
     @Override
@@ -107,33 +130,7 @@ public final class MainMenuPanel extends JPanel {
         super.paintComponent(graphics);
         Graphics2D g = (Graphics2D) graphics.create();
         try {
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g.scale(getWidth() / 160.0, getHeight() / 120.0);
-            g.setColor(new Color(35, 46, 86));
-            g.fillRect(0, 0, 160, 120);
-            g.setColor(new Color(59, 73, 112));
-            g.fillRect(0, 40, 160, 29);
-            g.setColor(new Color(42, 52, 78));
-            g.fillRect(0, 64, 160, 56);
-            g.setColor(new Color(71, 78, 98));
-            g.fillRect(8, 43, 40, 28);
-            g.fillRect(112, 43, 40, 28);
-            g.setColor(new Color(98, 110, 130));
-            for (int x = 12; x <= 140; x += 8) {
-                if (x > 42 && x < 112) { continue; }
-                g.fillRect(x, 48, 4, 6);
-                g.fillRect(x, 59, 4, 6);
-            }
-            g.setColor(new Color(24, 34, 61));
-            g.fillRect(65, 65, 30, 8);
-            g.fillRect(70, 61, 20, 4);
-            g.setColor(new Color(96, 219, 220));
-            g.fillPolygon(new int[] {80, 88, 80, 72},
-                    new int[] {32, 46, 62, 46}, 4);
-            g.setColor(new Color(192, 255, 242));
-            g.fillPolygon(new int[] {80, 84, 80, 77},
-                    new int[] {34, 45, 58, 45}, 4);
+            ScreenArt.drawBackground(g, background, getWidth(), getHeight(), 65);
         } finally {
             g.dispose();
         }

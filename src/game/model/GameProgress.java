@@ -26,10 +26,10 @@ public final class GameProgress implements java.io.Serializable {
     /** @return the current party in speed order */ public List<Student> getParty() { return List.copyOf(party); }
     /** @return first-aid kits remaining */ public int getKits() { return kits; }
     /** @return zero-based current encounter */ public int getEncounter() { return encounter; }
-    /** Advances from the first encounter to the second.
-     * @return whether another encounter was available
+    /** Unlocks the next route location after an encounter.
+     * @return whether the route position advanced
      */
-    public boolean advance() { if (encounter >= 1) { return false; } encounter++; return true; }
+    public boolean advance() { if (encounter >= 2) { return false; } encounter++; return true; }
     /** Reconstructs and validates a saved camp state.
      * @param ids student indices
      * @param hitPoints corresponding current HP values
@@ -39,7 +39,7 @@ public final class GameProgress implements java.io.Serializable {
      */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, int kits, int encounter) {
         if (ids == null || hitPoints == null || ids.size() != 3 || hitPoints.size() != 3
-                || kits < 0 || kits > STARTING_KITS || encounter != 1) {
+                || kits < 0 || kits > STARTING_KITS || encounter < 1 || encounter > 2) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
         GameProgress result = new GameProgress(ids);
