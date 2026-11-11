@@ -17,9 +17,11 @@ In battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, 
 
 Normal battles start with the party AP bars full. At the start of each non-boss stage battle, there is a 50% chance of an ambush: party AP starts empty, monsters start with 80% of their AP, and enemies may act first. The final boss is exempt from ambushes. The stage retains its usual enemies and advances normally after victory. Entering camp does not trigger ambushes. The AP charge rate is kept in the shared `GameSettings` configuration, with a default of 3 AP per second. A player-facing settings screen and persistent settings have not yet been implemented.
 
-## Optional classic font
+## Optional classic fonts
 
-The battle and inventory screens can use Eight Bit Dragon by Chequered Ink. Its [non-commercial license](https://www.fontspace.com/eight-bit-dragon-font-f30428) restricts redistribution, so the font is not included in this repository or the game archive. On macOS, download it from the linked page and install the original `EightBitDragon-anqx.ttf` at `~/Library/Fonts/EightBitDragon-anqx.ttf`. For another location, launch with `java -Dcapstone.font=/path/to/EightBitDragon-anqx.ttf -jar build/capstone-fantasy.jar`. If it is unavailable, the game uses a built-in font. Review the downloaded font license before distributing the game or using it commercially.
+Headings use Eight Bit Dragon by Chequered Ink and body labels use Gome Pixel by Fitrah Type when installed locally. Neither font is included in this repository or the game archive. On macOS, install the original `EightBitDragon-anqx.ttf` and `GomePixel-Regular.otf` in `~/Library/Fonts/`. To use files elsewhere, launch with `-Dcapstone.font=/path/to/EightBitDragon-anqx.ttf` and `-Dcapstone.bodyFont=/path/to/GomePixel-Regular.otf` before `-jar`. Missing fonts fall back to a built-in font. The Gome Pixel demo replaces digits with placeholders, so numeric game information uses a legible built-in font.
+
+[Eight Bit Dragon](https://www.fontspace.com/eight-bit-dragon-font-f30428) has a non-commercial license restricting redistribution. [Gome Pixel](https://www.fontspace.com/gome-pixel-font-f119163) is a personal-use demo. Review their licenses before distributing the game or using it commercially.
 
 ## Saving and loading
 

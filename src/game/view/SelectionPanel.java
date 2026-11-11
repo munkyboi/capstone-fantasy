@@ -56,7 +56,7 @@ public final class SelectionPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
         JLabel heading = new JLabel("CHOOSE YOUR PARTY", SwingConstants.CENTER);
         heading.setForeground(GOLD);
-        heading.setFont(new Font(Font.SERIF, Font.BOLD, 30));
+        heading.setFont(ClassicUi.title(30));
         add(heading, BorderLayout.NORTH);
 
         JPanel cards = new JPanel(new GridLayout(1, 4, 10, 0));
@@ -71,7 +71,7 @@ public final class SelectionPanel extends JPanel {
         JPanel footer = new JPanel(new BorderLayout(12, 8));
         footer.setOpaque(false);
         count.setForeground(LIGHT);
-        count.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
+        count.setFont(ClassicUi.numbers(15));
         footer.add(count, BorderLayout.CENTER);
         JButton back = new JButton("Back");
         back.setFocusable(false);
@@ -120,7 +120,7 @@ public final class SelectionPanel extends JPanel {
     private void refresh() {
         count.setText("← → Select  •  Enter Choose  •  ↓ Continue  •  " + selected.size() + " / " + PARTY_SIZE);
         continueButton.setEnabled(selected.size() == PARTY_SIZE);
-        continueButton.setText(cursor == 4 ? "▶ Continue" : "Continue");
+        continueButton.setText(cursor == 4 ? "> Continue" : "Continue");
         for (int i = 0; i < choices.length; i++) {
             choices[i].getAccessibleContext().setAccessibleName(NAMES[i] + ", " + CLASSES[i]
                     + (selected.contains(i) ? ", selected" : ", not selected"));
@@ -200,19 +200,19 @@ public final class SelectionPanel extends JPanel {
                     g.drawImage(pixels, left, top, width, height, null);
                 }
                 g.setColor(GOLD);
-                g.setFont(new Font(Font.SERIF, Font.BOLD, ViewportFonts.pixels(21, scale)));
+                g.setFont(ClassicUi.title(ViewportFonts.pixels(21, scale)));
                 drawCentered(g, NAMES[index], w / 2, ViewportFonts.pixels(30, scale));
                 g.setColor(LIGHT);
-                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, ViewportFonts.pixels(13, scale)));
+                g.setFont(ClassicUi.body(ViewportFonts.pixels(13, scale)));
                 drawCentered(g, CLASSES[index], w / 2, ViewportFonts.pixels(49, scale));
-                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, ViewportFonts.pixels(11, scale)));
+                g.setFont(ClassicUi.numbers(ViewportFonts.pixels(11, scale)));
                 drawCentered(g, STATS[index], w / 2, h - ViewportFonts.pixels(102, scale));
-                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, ViewportFonts.pixels(13, scale)));
+                g.setFont(ClassicUi.body(ViewportFonts.pixels(13, scale)));
                 drawCentered(g, ABILITIES[index], w / 2, h - ViewportFonts.pixels(72, scale));
-                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, ViewportFonts.pixels(11, scale)));
+                g.setFont(ClassicUi.body(ViewportFonts.pixels(11, scale)));
                 drawCentered(g, EFFECTS[index], w / 2, h - ViewportFonts.pixels(53, scale));
                 g.setColor(selected.contains(index) ? GOLD : LIGHT);
-                drawCentered(g, (index == cursor ? "▶ " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - ViewportFonts.pixels(32, scale));
+                drawCentered(g, (index == cursor ? "> " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - ViewportFonts.pixels(32, scale));
                 if (hasFocus()) { g.drawRect(6, 6, w - 13, h - 13); }
             } finally { g.dispose(); }
         }

@@ -12,18 +12,21 @@ import javax.swing.border.Border;
 
 /** Shared, translucent classic RPG panels and the locally licensed display font. */
 final class ClassicUi {
-    private static final Font PIXEL_FONT = loadFont();
+    private static final Font TITLE_FONT = loadFont("capstone.font", "EightBitDragon-anqx.ttf");
+    private static final Font BODY_FONT = loadFont("capstone.bodyFont", "GomePixel-Regular.otf");
     private ClassicUi() { }
 
-    private static Font loadFont() {
-        String path = System.getProperty("capstone.font", new File(System.getProperty("user.home"),
-                "Library/Fonts/EightBitDragon-anqx.ttf").getPath());
-        File file = new File(path);
-        try { return Font.createFont(Font.TRUETYPE_FONT, file); }
+    private static Font loadFont(String property, String name) {
+        String path = System.getProperty(property, new File(System.getProperty("user.home"),
+                "Library/Fonts/" + name).getPath());
+        try { return Font.createFont(Font.TRUETYPE_FONT, new File(path)); }
         catch (Exception unavailable) { return new Font(Font.MONOSPACED, Font.BOLD, 12); }
     }
 
-    static Font font(int size) { return PIXEL_FONT.deriveFont(Font.PLAIN, (float) size); }
+    static Font title(int size) { return TITLE_FONT.deriveFont(Font.PLAIN, (float) size); }
+    static Font body(int size) { return BODY_FONT.deriveFont(Font.PLAIN, (float) size); }
+    // The Gome Pixel demo replaces digits with placeholders, so numbers need a legible font.
+    static Font numbers(int size) { return new Font(Font.MONOSPACED, Font.BOLD, size); }
 
     static Border border() {
         return BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(7, 12, 32), 2),

@@ -90,7 +90,7 @@ public final class WorldMapPanel extends JPanel {
                         : i == progress.getEncounter() ? new Color(242, 205, 128) : new Color(91, 111, 123));
                 g.fillOval(X[i] - 7, Y[i] - 7, 15, 15);
                 g.setColor(new Color(24, 39, 60)); g.fillOval(X[i] - 5, Y[i] - 5, 11, 11);
-                g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 8));
+                g.setFont(ClassicUi.numbers(8));
                 g.setColor(i <= progress.getEncounter() ? new Color(250, 226, 166) : new Color(159, 176, 178));
                 String number = Integer.toString(i + 1);
                 g.drawString(number, X[i] - g.getFontMetrics().stringWidth(number) / 2, Y[i] + 3);
@@ -112,12 +112,12 @@ public final class WorldMapPanel extends JPanel {
             out.scale(uiScale, uiScale);
             int uiWidth = 960, uiHeight = 540;
             out.setColor(new Color(12, 25, 48, 225)); out.fillRect(0, 0, uiWidth, 60); out.fillRect(0, uiHeight - 108, uiWidth, 108);
-            out.setColor(new Color(250, 218, 143)); out.setFont(new Font(Font.SERIF, Font.BOLD, 27));
+            out.setColor(new Color(250, 218, 143)); out.setFont(ClassicUi.title(27));
             out.drawString("CAMPUS ROUTE", 30, 40);
-            out.setColor(Color.WHITE); out.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
+            out.setColor(Color.WHITE); out.setFont(ClassicUi.numbers(17));
             String state = cursor < progress.getEncounter() ? "COMPLETED" : cursor > progress.getEncounter() ? "LOCKED" : cursor > 1 ? "COMING SOON" : "AVAILABLE";
             out.drawString(LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
-            out.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+            out.setFont(ClassicUi.body(14));
             out.drawString(notice != null ? notice : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
         } finally { out.dispose(); }
     }

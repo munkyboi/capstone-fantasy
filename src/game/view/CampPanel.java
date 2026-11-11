@@ -67,7 +67,7 @@ public final class CampPanel extends JPanel {
         setBackground(new Color(18, 31, 62));
         setBorder(BorderFactory.createEmptyBorder(35, 125, 35, 125));
         title.setForeground(new Color(250, 218, 143));
-        title.setFont(new Font(Font.SERIF, Font.BOLD, 32));
+        title.setFont(ClassicUi.title(32));
         title.setOpaque(true);
         title.setBackground(new Color(15, 25, 48, 220));
         add(title, BorderLayout.NORTH);
@@ -78,7 +78,7 @@ public final class CampPanel extends JPanel {
             label.setIconTextGap(12);
             label.setOpaque(true);
             label.setBackground(new Color(15, 25, 48, 225));
-            label.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
+            label.setFont(ClassicUi.numbers(15));
             label.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(new Color(162, 184, 215), 2),
                     BorderFactory.createEmptyBorder(8, 18, 8, 18)));
@@ -87,13 +87,13 @@ public final class CampPanel extends JPanel {
         supplies.setForeground(new Color(250, 218, 143));
         supplies.setOpaque(true);
         supplies.setBackground(new Color(15, 25, 48, 230));
-        supplies.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
+        supplies.setFont(ClassicUi.numbers(17));
         center.add(supplies);
         add(center, BorderLayout.CENTER);
         help.setForeground(Color.WHITE);
         help.setOpaque(true);
         help.setBackground(new Color(15, 25, 48, 230));
-        help.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        help.setFont(ClassicUi.body(14));
         add(help, BorderLayout.SOUTH);
         Keys.bind(this, "UP", "camp-up", () -> move(-1));
         Keys.bind(this, "DOWN", "camp-down", () -> move(1));
@@ -163,7 +163,7 @@ public final class CampPanel extends JPanel {
         for (int i = 0; i < students.length; i++) {
             Student student = progress.getParty().get(i);
             ViewportFonts.setScaledIcon(students[i], portraits[student.getId()]);
-            students[i].setText(String.format("%s %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s", i == cursor ? "▶" : " ",
+            students[i].setText(String.format("%s %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s", i == cursor ? ">" : " ",
                     student.getName(), student.getHp(), student.getMaxHp(), student.getAttack(), student.getDefense(),
                     student.getSpeed(), student.hasVest() ? "[Vest]" : "", student.isAlive() ? "" : " KO"));
         }

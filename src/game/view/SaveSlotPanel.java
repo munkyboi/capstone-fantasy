@@ -39,18 +39,18 @@ public final class SaveSlotPanel extends JPanel {
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);
         setLayout(new BorderLayout(20, 20)); setBackground(new Color(18, 31, 62));
         setBorder(BorderFactory.createEmptyBorder(35, 125, 35, 125));
-        heading.setFont(new Font(Font.SERIF, Font.BOLD, 30)); heading.setForeground(new Color(250, 218, 143));
+        heading.setFont(ClassicUi.title(30)); heading.setForeground(new Color(250, 218, 143));
         add(heading, BorderLayout.NORTH);
         JPanel center = new JPanel(new GridLayout(4, 1, 0, 8)); center.setOpaque(false);
         for (JLabel label : slots) {
-            label.setForeground(Color.WHITE); label.setFont(new Font(Font.MONOSPACED, Font.BOLD, 19));
+            label.setForeground(Color.WHITE); label.setFont(ClassicUi.numbers(19));
             label.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(162, 184, 215), 2),
                     BorderFactory.createEmptyBorder(8, 18, 8, 18)));
             center.add(label);
         }
-        info.setForeground(new Color(250, 218, 143)); info.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
+        info.setForeground(new Color(250, 218, 143)); info.setFont(ClassicUi.numbers(15));
         center.add(info); add(center, BorderLayout.CENTER);
-        help.setForeground(Color.WHITE); help.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14)); add(help, BorderLayout.SOUTH);
+        help.setForeground(Color.WHITE); help.setFont(ClassicUi.body(14)); add(help, BorderLayout.SOUTH);
         Keys.bind(this, "UP", "slot-up", () -> move(-1));
         Keys.bind(this, "DOWN", "slot-down", () -> move(1));
         Keys.bind(this, "LEFT", "slot-left", this::switchFormat);
@@ -86,7 +86,7 @@ public final class SaveSlotPanel extends JPanel {
     private void refresh(String message) {
         heading.setText((saving ? "SAVE GAME" : "LOAD GAME") + "  •  " + formatName().toUpperCase());
         for (int i = 0; i < slots.length; i++) {
-            slots[i].setText((i == slot ? "▶  " : "   ") + "SLOT " + (i + 1) + "     "
+            slots[i].setText((i == slot ? ">  " : "   ") + "SLOT " + (i + 1) + "     "
                     + (store.exists(i + 1, format) ? "Saved game" : "Empty"));
         }
         info.setText(message);

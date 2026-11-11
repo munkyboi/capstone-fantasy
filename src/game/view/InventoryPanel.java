@@ -57,7 +57,7 @@ public final class InventoryPanel extends JPanel {
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
-        heading.setFont(ClassicUi.font(27)); heading.setForeground(GOLD);
+        heading.setFont(ClassicUi.title(27)); heading.setForeground(GOLD);
         heading.setOpaque(true); heading.setBackground(INK); heading.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
         add(heading, BorderLayout.NORTH);
 
@@ -74,8 +74,8 @@ public final class InventoryPanel extends JPanel {
         JPanel equipmentCard = panel("EQUIPPED"); equipmentCard.setPreferredSize(new Dimension(300, 300));
         ViewportFonts.scalePreferredSize(equipmentCard);
         JPanel equipmentBody = new JPanel(new BorderLayout(0, 8)); equipmentBody.setOpaque(false);
-        profile.setFont(ClassicUi.font(16)); profile.setForeground(GOLD); profile.setIconTextGap(8);
-        stats.setFont(ClassicUi.font(13)); stats.setForeground(Color.WHITE);
+        profile.setFont(ClassicUi.body(16)); profile.setForeground(GOLD); profile.setIconTextGap(8);
+        stats.setFont(ClassicUi.numbers(13)); stats.setForeground(Color.WHITE);
         JPanel summary = new JPanel(new BorderLayout(0, 5)); summary.setOpaque(false);
         summary.add(profile, BorderLayout.CENTER); summary.add(stats, BorderLayout.SOUTH);
         equipmentBody.add(summary, BorderLayout.NORTH);
@@ -88,16 +88,16 @@ public final class InventoryPanel extends JPanel {
         right.setPreferredSize(new Dimension(330, 300)); ViewportFonts.scalePreferredSize(right);
         JPanel bagCard = panel("SHARED BAG");
         bagScroll = scroll(bagContents); bagCard.add(bagScroll, BorderLayout.CENTER);
-        JPanel choiceCard = panel(null); choiceHeading.setFont(ClassicUi.font(14));
+        JPanel choiceCard = panel(null); choiceHeading.setFont(ClassicUi.title(14));
         choiceHeading.setForeground(GOLD); choiceHeading.setBorder(BorderFactory.createEmptyBorder(0, 0, 7, 0));
         choiceCard.add(choiceHeading, BorderLayout.NORTH); choiceCard.add(scroll(details), BorderLayout.CENTER);
         right.add(bagCard); right.add(choiceCard); center.add(right, BorderLayout.EAST);
         add(center, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new GridLayout(2, 1, 0, 2)); footer.setOpaque(false);
-        messageLabel.setFont(ClassicUi.font(13)); messageLabel.setForeground(GOLD);
+        messageLabel.setFont(ClassicUi.body(13)); messageLabel.setForeground(GOLD);
         messageLabel.setOpaque(true); messageLabel.setBackground(INK);
-        help.setFont(ClassicUi.font(13)); help.setForeground(Color.WHITE);
+        help.setFont(ClassicUi.body(13)); help.setForeground(Color.WHITE);
         help.setOpaque(true); help.setBackground(INK);
         footer.add(messageLabel); footer.add(help); add(footer, BorderLayout.SOUTH);
         Keys.bind(this, "UP", "inventory-up", () -> move(-1));
@@ -115,19 +115,19 @@ public final class InventoryPanel extends JPanel {
         panel.setBorder(BorderFactory.createCompoundBorder(ClassicUi.border(),
                 BorderFactory.createEmptyBorder(9, 10, 9, 10)));
         if (title != null) {
-            JLabel label = new JLabel(title); label.setFont(ClassicUi.font(14));
+            JLabel label = new JLabel(title); label.setFont(ClassicUi.title(14));
             label.setForeground(GOLD); label.setBorder(BorderFactory.createEmptyBorder(0, 0, 7, 0));
             panel.add(label, BorderLayout.NORTH);
         }
         return panel;
     }
     private static JLabel row() {
-        JLabel label = new JLabel(); label.setOpaque(true); label.setFont(ClassicUi.font(13));
+        JLabel label = new JLabel(); label.setOpaque(true); label.setFont(ClassicUi.numbers(13));
         label.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8)); return label;
     }
     private static JTextArea textArea() {
         JTextArea text = new JTextArea(); text.setEditable(false); text.setFocusable(false);
-        text.setFont(ClassicUi.font(13)); text.setForeground(Color.WHITE);
+        text.setFont(ClassicUi.numbers(13)); text.setForeground(Color.WHITE);
         text.setOpaque(false); text.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         return text;
     }

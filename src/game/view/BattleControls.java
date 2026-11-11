@@ -32,7 +32,7 @@ final class BattleControls {
         bottom.setOpaque(false);
         bottom.setBorder(BorderFactory.createEmptyBorder(2, 6, 4, 6));
         status.setForeground(new Color(250, 218, 143));
-        status.setFont(ClassicUi.font(13));
+        status.setFont(ClassicUi.numbers(13));
         status.setBorder(BorderFactory.createEmptyBorder(1, 8, 1, 8));
         JPanel statusFrame = translucent(new Color(8, 14, 38));
         statusFrame.setLayout(new BorderLayout());
@@ -41,7 +41,7 @@ final class BattleControls {
         log.setEditable(false); log.setLineWrap(true); log.setWrapStyleWord(true);
         log.setFocusable(false);
         log.setRows(1); log.setOpaque(false);
-        log.setForeground(Color.WHITE); log.setFont(ClassicUi.font(13));
+        log.setForeground(Color.WHITE); log.setFont(ClassicUi.numbers(13));
         log.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
         JPanel info = frame();
         info.setLayout(new BorderLayout());
@@ -56,14 +56,14 @@ final class BattleControls {
         for (int i = 0; i < partyStatus.length; i++) {
             JLabel member = partyStatus[i];
             member.setForeground(Color.WHITE);
-            member.setFont(ClassicUi.font(13));
+            member.setFont(ClassicUi.numbers(13));
             member.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
             JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
             JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 15));
             ViewportFonts.scalePreferredSize(bar);
             bar.setUI(new BasicProgressBarUI());
             bar.setBackground(new Color(15, 26, 61));
-            bar.setStringPainted(true); bar.setFont(ClassicUi.font(11));
+            bar.setStringPainted(true); bar.setFont(ClassicUi.numbers(11));
             row.add(member, BorderLayout.CENTER); row.add(bar, BorderLayout.EAST);
             members.add(row);
         }
@@ -77,7 +77,7 @@ final class BattleControls {
             button.setFocusable(false);
             button.setForeground(Color.WHITE);
             button.setBackground(new Color(18, 39, 111));
-            button.setFont(ClassicUi.font(13));
+            button.setFont(ClassicUi.body(13));
             button.setHorizontalAlignment(JButton.LEFT);
             button.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 8));
             button.setOpaque(false);

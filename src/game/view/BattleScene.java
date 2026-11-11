@@ -141,7 +141,7 @@ final class BattleScene extends JPanel {
                 output.setColor(new Color(15, 25, 47, 204));
                 output.fillRect(listLeft, 12, listWidth, listHeight);
                 output.setColor(Color.WHITE);
-                output.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
+                output.setFont(ClassicUi.numbers(12));
                 for (int i = 0; i < battle.getEnemies().size(); i++) {
                     Enemy enemy = battle.getEnemies().get(i);
                     int column = twoColumns ? i / 3 : 0;
@@ -177,7 +177,7 @@ final class BattleScene extends JPanel {
         private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
 
         private void drawBattleAlert(Graphics2D g, String text) {
-            g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
+            g.setFont(ClassicUi.body(17));
             int width = g.getFontMetrics().stringWidth(text) + 28;
             int x = (960 - width) / 2;
             int y = Math.max(18, hudHeight() / 5);
@@ -200,7 +200,7 @@ final class BattleScene extends JPanel {
             }
             int slotWidth = Math.max(27, w / 7);
             int spriteHeight = Math.max(28, h * 3 / 8);
-            g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 18));
+            g.setFont(ClassicUi.numbers(18));
             for (Map.Entry<Object, int[]> entry : changes.entrySet()) {
                 int index = battle.getParty().indexOf(entry.getKey());
                 int x;

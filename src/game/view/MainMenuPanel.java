@@ -50,7 +50,7 @@ public final class MainMenuPanel extends JPanel {
                 Graphics2D g = (Graphics2D) graphics.create();
                 try {
                     if (logo == null) {
-                        g.setFont(new Font(Font.SERIF, Font.BOLD, 42));
+                        g.setFont(ClassicUi.title(42));
                         g.setColor(GOLD);
                         String text = "CAPSTONE FANTASY";
                         g.drawString(text, (getWidth() - g.getFontMetrics().stringWidth(text)) / 2, 100);
@@ -91,7 +91,7 @@ public final class MainMenuPanel extends JPanel {
         Runnable refresh = () -> {
             String[] labels = {"New Game", "Load Game", "Quit"};
             for (int i = 0; i < buttons.length; i++) {
-                buttons[i].setText((i == cursor ? "▶  " : "     ") + labels[i]);
+                buttons[i].setText((i == cursor ? ">  " : "     ") + labels[i]);
             }
         };
         Keys.bind(this, "UP", "menu-up", () -> { cursor = Math.floorMod(cursor - 1, buttons.length); refresh.run(); });
@@ -102,7 +102,7 @@ public final class MainMenuPanel extends JPanel {
         bottom.add(menu, BorderLayout.CENTER);
         JLabel subtitle = new JLabel("↑ ↓ MOVE   •   ENTER CONFIRM", SwingConstants.CENTER);
         subtitle.setForeground(Color.WHITE);
-        subtitle.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        subtitle.setFont(ClassicUi.body(12));
         subtitle.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
         bottom.add(subtitle, BorderLayout.SOUTH);
         add(bottom, BorderLayout.SOUTH);
@@ -111,7 +111,7 @@ public final class MainMenuPanel extends JPanel {
     private JButton menuButton(String label) {
         JButton button = new JButton(label);
         button.setFocusable(false);
-        button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
+        button.setFont(ClassicUi.body(17));
         button.setForeground(Color.WHITE);
         button.setBackground(INK);
         button.setFocusPainted(true);
