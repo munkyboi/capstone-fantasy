@@ -24,7 +24,7 @@ public final class BattlePanel extends JPanel {
     private static final double AP_EPSILON = 0.0000001;
     private static final int EFFECT_MILLIS = 1600;
     private static final int AMBUSH_ALERT_MILLIS = 3000;
-    private static final double AMBUSH_ENEMY_AP_FRACTION = 0.9;
+    private static final double AMBUSH_ENEMY_AP_FRACTION = 0.8;
     private static final int ANIMATION_FRAME_MILLIS = 50;
     private static final int VICTORY_ANIMATION_MILLIS = 1800;
     private final Runnable returnToMenu;
@@ -191,6 +191,7 @@ public final class BattlePanel extends JPanel {
      * @param ambushed whether students start with empty AP bars
      */
     public void start(GameProgress progress, boolean ambushed) {
+        ambushed = ambushed && settings.allowsAmbush(progress.getEncounter());
         this.progress = progress;
         battle = new Battle(progress, new Random(), ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;

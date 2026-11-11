@@ -6,6 +6,8 @@ import java.util.List;
 
 /** Party and shared supplies carried between encounters. */
 public final class GameProgress implements java.io.Serializable {
+    /** Zero-based route position reserved for the final boss. */
+    public static final int FINAL_BOSS_ENCOUNTER = 4;
     private static final long serialVersionUID = 1L;
     private static final int STARTING_KITS = 3;
     private static final int KIT_HEAL = 30;

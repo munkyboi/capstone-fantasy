@@ -82,7 +82,7 @@ public final class AnimationTest {
                 check(hasWhiteOutline(player, 0xff6464), "damage text has a white outline");
 
                 BattlePanel monster = new BattlePanel(() -> { }); monster.start(new GameProgress(List.of(0, 1, 3)), true);
-                advance.invoke(monster, 0.8);
+                advance.invoke(monster, 1.6);
                 Object attackingEnemy = attackerField.get(monster);
                 check(attackingEnemy instanceof Enemy && showingField.getBoolean(monster), "monster attack animates");
                 Object monsterScene = sceneField.get(monster);

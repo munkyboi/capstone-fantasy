@@ -65,7 +65,7 @@ public final class Main {
             }, settings);
             battleHolder[0] = battle;
             WorldMapPanel map = new WorldMapPanel(progress -> {
-                boolean ambushed = settings.rollAmbush(random);
+                boolean ambushed = settings.rollAmbush(progress.getEncounter(), random);
                 battle.start(progress, ambushed);
                 layout.show(screens, "battle");
                 battle.requestFocusInWindow();

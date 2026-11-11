@@ -35,9 +35,15 @@ public final class RouteBattleTest {
     public static void main(String[] args) throws Exception {
         GameSettings ambushSettings = new GameSettings();
         check(ambushSettings.getAmbushChance() == 0.5, "ambush chance is 50 percent");
-        check(ambushSettings.rollAmbush(new Random() { @Override public double nextDouble() { return 0.499; } })
-                && !ambushSettings.rollAmbush(new Random() { @Override public double nextDouble() { return 0.5; } }),
+        check(ambushSettings.rollAmbush(0, new Random() { @Override public double nextDouble() { return 0.499; } })
+                && !ambushSettings.rollAmbush(0, new Random() { @Override public double nextDouble() { return 0.5; } }),
                 "ambush roll uses the 50 percent boundary");
+        check(!ambushSettings.rollAmbush(GameProgress.FINAL_BOSS_ENCOUNTER,
+                new Random() { @Override public double nextDouble() { return 0.0; } }),
+                "final boss never triggers an ambush, even with a winning roll");
+        check(ambushSettings.rollAmbush(GameProgress.FINAL_BOSS_ENCOUNTER - 1,
+                new Random() { @Override public double nextDouble() { return 0.0; } }),
+                "ordinary stages remain eligible for ambushes");
         GameProgress progress = new GameProgress(List.of(0, 1, 3));
         check(new Student(0).getActionThreshold() == 35 && new Student(1).getActionThreshold() == 30
                 && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 45, "student AP thresholds");
@@ -100,8 +106,8 @@ public final class RouteBattleTest {
                             "normal battle starts with empty enemy AP");
                     Map<?, ?> ambushEnemyPoints = (Map<?, ?>) enemyField.get(panel);
                     check(active.getEnemies().stream().allMatch(monster ->
-                            Math.abs((double) ambushEnemyPoints.get(monster) - monster.getActionThreshold() * 0.9) < 0.0001),
-                            "ambush enemies start at 90% of their individual thresholds");
+                            Math.abs((double) ambushEnemyPoints.get(monster) - monster.getActionThreshold() * 0.8) < 0.0001),
+                            "ambush enemies start at 80% of their individual thresholds");
                     Field logField = BattlePanel.class.getDeclaredField("log"); logField.setAccessible(true);
                     check(((javax.swing.JTextArea) logField.get(panel)).getText().contains("You have been ambushed!"),
                             "ambush alert appears in the battle log");
@@ -120,23 +126,23 @@ public final class RouteBattleTest {
                     Battle secondBattle = (Battle) field.get(secondPanel);
                     Map<?, ?> secondEnemyPoints = (Map<?, ?>) enemyField.get(secondPanel);
                     check(secondBattle.getEnemies().stream().allMatch(monster ->
-                            Math.abs((double) secondEnemyPoints.get(monster) - monster.getActionThreshold() * 0.9) < 0.0001),
-                            "ambush starts Wisp and Sentinel at 90% AP");
+                            Math.abs((double) secondEnemyPoints.get(monster) - monster.getActionThreshold() * 0.8) < 0.0001),
+                            "ambush starts Wisp and Sentinel at 80% AP");
                     int hpBefore = active.getParty().stream().mapToInt(Student::getHp).sum();
                     advance.invoke(panel, 0.5);
                     check(((Map<?, ?>) pointsField.get(panel)).values().stream().allMatch(v -> v.equals(1.5))
                             && active.getEnemies().stream().allMatch(monster ->
-                                    Math.abs((double) ambushEnemyPoints.get(monster) - (monster.getActionThreshold() * 0.9 + 1.5)) < 0.0001),
+                                    Math.abs((double) ambushEnemyPoints.get(monster) - (monster.getActionThreshold() * 0.8 + 1.5)) < 0.0001),
                             "students and enemies fill smoothly at 3 AP per second");
                     Field barsField = BattlePanel.class.getDeclaredField("apBars"); barsField.setAccessible(true);
                     javax.swing.JProgressBar[] bars = (javax.swing.JProgressBar[]) barsField.get(panel);
                     check(bars[0].getValue() == 150 && bars[0].getMaximum() == 2800,
                             "fractional AP is visible on the bar");
-                    advance.invoke(panel, 0.3);
+                    advance.invoke(panel, 1.1);
                     check(active.getCurrent() == null && active.getParty().stream().mapToInt(Student::getHp).sum() < hpBefore,
                             "Wisp A attacks before any student is ready");
                     check(Math.abs((double) ((Map<?, ?>) enemyField.get(panel)).get(active.getEnemies().get(0))) < 0.0001, "enemy AP reset");
-                    advance.invoke(panel, 25.6 / 3.0);
+                    advance.invoke(panel, 23.2 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 2, "Charice selected at 28 AP");
                     @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(panel);
                     double zackPoints = points.get(active.getParty().stream().filter(s -> s.getId() == 0).findFirst().orElseThrow());

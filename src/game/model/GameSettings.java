@@ -21,11 +21,20 @@ public final class GameSettings {
      */
     public double getAmbushChance() { return AMBUSH_CHANCE; }
 
-    /** Rolls whether a stage begins with an ambush.
+    /** Checks whether a route encounter may start as an ambush.
+     * @param encounter zero-based route position
+     * @return false for the final boss encounter
+     */
+    public boolean allowsAmbush(int encounter) { return encounter != GameProgress.FINAL_BOSS_ENCOUNTER; }
+
+    /** Rolls whether an eligible stage begins with an ambush.
+     * @param encounter zero-based route position
      * @param random random number source
      * @return true when the stage is an ambush
      */
-    public boolean rollAmbush(java.util.Random random) { return random.nextDouble() < AMBUSH_CHANCE; }
+    public boolean rollAmbush(int encounter, java.util.Random random) {
+        return allowsAmbush(encounter) && random.nextDouble() < AMBUSH_CHANCE;
+    }
 
     /** Changes the charge rate for subsequent elapsed time.
      * @param rate AP per second, between 0.5 and 30
