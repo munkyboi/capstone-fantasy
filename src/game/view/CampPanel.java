@@ -15,9 +15,9 @@ import javax.swing.JPanel;
 public final class CampPanel extends JPanel {
     private static final int WIDTH = 960, HEIGHT = 540;
     private static final int[] POSITIONS = {220, 370, 730};
-    private static final String[] STAT_NAMES = {"HP", "ATK", "DEF", "SPD", "SP"};
-    private static final Color[] STAT_COLORS = {new Color(224, 73, 79), new Color(246, 149, 62),
-        new Color(192, 202, 215), new Color(240, 110, 178), new Color(76, 155, 245)};
+    private static final Color HP_COLOR = new Color(224, 73, 79);
+    private static final Color SP_COLOR = new Color(76, 155, 245);
+    private static final Color XP_COLOR = new Color(250, 218, 75);
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-bonfire-v1.png");
     private final BufferedImage[] characters = loadCharacters();
     private final Consumer<GameProgress> nextBattle;
@@ -126,7 +126,9 @@ public final class CampPanel extends JPanel {
             if (progress != null) {
                 for (int i = 0; i < progress.getParty().size(); i++) { drawCharacter(g, progress.getParty().get(i), POSITIONS[i]); }
                 drawStatus(g, progress.getParty().get(cursor), POSITIONS[cursor]);
-                g.drawImage(PixelPointer.ART, POSITIONS[cursor] - 97, 285, 38, 28, null);
+                Student selected = progress.getParty().get(cursor);
+                g.drawImage(PixelPointer.ART, POSITIONS[cursor] - (selected.getId() == Student.ANGEL ? 115 : 97),
+                        285, 38, 28, null);
                 g.setColor(new Color(7, 17, 39, 225)); g.fillRect(0, 451, WIDTH, 89);
                 g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143));
                 drawCentered(g, "Kits: " + progress.getKits() + "    •    " + progress.getPetot() + " Petot", WIDTH / 2, 474);
@@ -138,7 +140,9 @@ public final class CampPanel extends JPanel {
     private void drawCharacter(Graphics2D g, Student student, int center) {
         BufferedImage image = characters[student.getId()];
         if (image == null) { return; }
-        double scale = Math.min(135.0 / image.getWidth(), 160.0 / image.getHeight());
+        boolean angel = student.getId() == Student.ANGEL;
+        double scale = Math.min((angel ? 160.0 : 135.0) / image.getWidth(),
+                (angel ? 190.0 : 160.0) / image.getHeight());
         int width = (int) Math.round(image.getWidth() * scale), height = (int) Math.round(image.getHeight() * scale);
         int left = center - width / 2;
         if (student.getId() == Student.CHARICE || student.getId() == Student.ANGEL) {
@@ -148,23 +152,29 @@ public final class CampPanel extends JPanel {
         }
     }
     private void drawStatus(Graphics2D g, Student student, int center) {
-        int x = Math.max(8, Math.min(WIDTH - 246, center - 123)), y = 57, w = 238, h = 177;
+        int x = Math.max(8, Math.min(WIDTH - 246, center - 123)), y = 57, w = 238, h = 154;
         g.setColor(new Color(8, 18, 54, 235)); g.fillRect(x, y, w, h);
         g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
         g.setFont(ClassicUi.numbers(15)); g.setColor(new Color(250, 218, 143));
         g.drawString(student.getName() + "  L" + student.getLevel() + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
-        int[] values = {student.getHp(), student.getAttack(), student.getDefense(), student.getSpeed(), student.getSp()};
-        int[] maxima = {student.getMaxHp(), Math.max(25, student.getAttack()), Math.max(13, student.getDefense()),
-            Math.max(18, student.getSpeed()), student.getMaxSp()};
-        for (int i = 0; i < STAT_NAMES.length; i++) {
-            int row = y + 40 + i * 25;
-            g.setFont(ClassicUi.numbers(12)); g.setColor(Color.WHITE); g.drawString(STAT_NAMES[i], x + 12, row + 9);
-            g.setColor(new Color(38, 49, 76)); g.fillRect(x + 48, row, 113, 9);
-            g.setColor(STAT_COLORS[i]); g.fillRect(x + 48, row, (int) (113L * values[i] / Math.max(1, maxima[i])), 9);
-            String value = (i == 0 || i == 4) ? values[i] + "/" + maxima[i] : Integer.toString(values[i]);
-            g.setColor(Color.WHITE); g.setFont(ClassicUi.numbers(10));
-            g.drawString(value, x + w - 10 - g.getFontMetrics().stringWidth(value), row + 9);
-        }
+        drawResourceBar(g, x, y + 39, w, "HP", student.getHp(), student.getMaxHp(), HP_COLOR);
+        drawResourceBar(g, x, y + 63, w, "SP", student.getSp(), student.getMaxSp(), SP_COLOR);
+        int xp = student.getExperience() == Student.MAX_EXPERIENCE ? 100 : student.getExperience() % 100;
+        drawResourceBar(g, x, y + 87, w, "XP", xp, 100, XP_COLOR);
+        g.setColor(new Color(120, 149, 182)); g.drawLine(x + 12, y + 109, x + w - 12, y + 109);
+        g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
+        g.drawString("ATK " + student.getAttack(), x + 12, y + 131);
+        g.drawString("DEF " + student.getDefense(), x + 87, y + 131);
+        g.drawString("SPD " + student.getSpeed(), x + 162, y + 131);
+    }
+    private static void drawResourceBar(Graphics2D g, int x, int row, int width, String label,
+            int value, int maximum, Color color) {
+        g.setFont(ClassicUi.numbers(12)); g.setColor(Color.WHITE); g.drawString(label, x + 12, row + 9);
+        g.setColor(new Color(38, 49, 76)); g.fillRect(x + 48, row, 113, 9);
+        g.setColor(color); g.fillRect(x + 48, row, (int) (113L * value / Math.max(1, maximum)), 9);
+        String text = value + "/" + maximum;
+        g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
+        g.drawString(text, x + width - 10 - g.getFontMetrics().stringWidth(text), row + 9);
     }
     private static void drawCentered(Graphics2D g, String text, int center, int y) {
         g.drawString(text, center - g.getFontMetrics().stringWidth(text) / 2, y);
