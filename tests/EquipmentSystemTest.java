@@ -26,6 +26,15 @@ public final class EquipmentSystemTest {
     public static void main(String[] args) throws Exception {
         GameProgress unboosted = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL));
         GameProgress boosted = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL));
+        GameProgress rewardItems = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL));
+        java.util.List<String> firstRewards = rewardItems.claimStageRewardItems();
+        check(firstRewards.size() == 4 && firstRewards.contains("focus_charm")
+                && firstRewards.contains("scholar_staff") && firstRewards.contains("cadet_blade")
+                && firstRewards.contains("champion_wraps"), "reward IDs match selected party");
+        check(rewardItems.claimStageRewardItems().isEmpty(), "reward IDs are not granted twice");
+        rewardItems.advance();
+        check(rewardItems.claimStageRewardItems().equals(java.util.List.of("training_uniform")),
+                "second-stage popup receives the actual uniform reward");
         boosted.claimStageReward();
         check(boosted.equip(find(boosted, Student.ZACK), Equipment.Slot.WEAPON, "scholar_staff"), "equip upgraded staff");
         java.util.Random fixed = new java.util.Random() { @Override public int nextInt(int bound) { return 0; } };

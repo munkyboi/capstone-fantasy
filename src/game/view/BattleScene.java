@@ -3,6 +3,7 @@ package game.view;
 import game.model.Battle;
 import game.model.BattleEffect;
 import game.model.Enemy;
+import game.model.Equipment;
 import game.model.Student;
 import java.awt.Color;
 import java.awt.Font;
@@ -30,6 +31,7 @@ final class BattleScene extends JPanel {
         Battle battle();
         boolean partyTarget(int index);
         boolean enemyTarget(int index);
+        default java.util.List<String> rewardItems() { return java.util.List.of(); }
         boolean showEffects();
         boolean showAmbush();
         double victoryProgress();
@@ -73,6 +75,33 @@ final class BattleScene extends JPanel {
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v2.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
+        private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
+        private final BufferedImage uniformIcon = trimIcon(image("/assets/ui/reward-uniform-v1.png"));
+        private final BufferedImage[] rewardArt = rewardArt();
+
+        private BufferedImage[] rewardArt() {
+            BufferedImage[] icons = new BufferedImage[5];
+            if (rewardIcons != null) {
+                int cellWidth = rewardIcons.getWidth() / icons.length;
+                for (int i = 0; i < icons.length; i++) {
+                    icons[i] = trimIcon(rewardIcons.getSubimage(i * cellWidth, 0, cellWidth, rewardIcons.getHeight()));
+                }
+            }
+            return icons;
+        }
+
+        private BufferedImage trimIcon(BufferedImage image) {
+            if (image == null) { return null; }
+            int left = image.getWidth(), top = image.getHeight(), right = -1, bottom = -1;
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    if ((image.getRGB(x, y) >>> 24) < 128) { continue; }
+                    left = Math.min(left, x); top = Math.min(top, y);
+                    right = Math.max(right, x); bottom = Math.max(bottom, y);
+                }
+            }
+            return right < left ? image : image.getSubimage(left, top, right - left + 1, bottom - top + 1);
+        }
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
             Battle battle = state.battle();
@@ -170,13 +199,55 @@ final class BattleScene extends JPanel {
                             enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 8);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
-                if (battle.isOver()) { drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!"); }
+                if (battle.isOver()) {
+                    drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!");
+                    if (battle.isVictory()) { drawRewards(output); }
+                }
                 else if (state.showAmbush()) { drawBattleAlert(output, "You have been ambushed!"); }
             } finally { output.dispose(); }
         }
 
         private double hudScale() { return getWidth() / 960.0; }
         private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
+
+        private void drawRewards(Graphics2D g) {
+            java.util.List<String> items = state.rewardItems();
+            if (items.isEmpty()) { return; }
+            int width = 360, x = (960 - width) / 2;
+            int y = Math.max(18, hudHeight() / 5) + 52;
+            int height = 43 + items.size() * 28;
+            g.setColor(new Color(12, 25, 48, 224));
+            g.fillRect(x, y, width, height);
+            g.setColor(new Color(247, 204, 114));
+            g.drawRect(x, y, width - 1, height - 1);
+            g.drawRect(x + 3, y + 3, width - 7, height - 7);
+            g.setFont(ClassicUi.body(17));
+            g.drawString("You gain:", x + 16, y + 27);
+            g.setFont(ClassicUi.numbers(14));
+            for (int i = 0; i < items.size(); i++) {
+                String id = items.get(i);
+                int rowY = y + 36 + i * 28;
+                drawRewardIcon(g, id, x + 16, rowY, 24);
+                g.setColor(Color.WHITE);
+                g.drawString("1x " + Equipment.fromId(id).getName(), x + 50, rowY + 18);
+            }
+        }
+
+        private void drawRewardIcon(Graphics2D g, String id, int x, int y, int size) {
+            if ("training_uniform".equals(id) && uniformIcon != null) {
+                drawFit(g, uniformIcon, 0, uniformIcon.getWidth(), x, y, size, size);
+                return;
+            }
+            int cell = switch (id) {
+                case "scholar_staff" -> 1;
+                case "cadet_blade" -> 2;
+                case "hunter_crossbows" -> 3;
+                case "champion_wraps" -> 4;
+                default -> 0;
+            };
+            BufferedImage icon = rewardArt[cell];
+            if (icon != null) { drawFit(g, icon, 0, icon.getWidth(), x, y, size, size); }
+        }
 
         private void drawBattleAlert(Graphics2D g, String text) {
             g.setFont(ClassicUi.body(17));

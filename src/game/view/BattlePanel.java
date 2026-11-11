@@ -50,7 +50,7 @@ public final class BattlePanel extends JPanel {
     private TargetAction targeting = TargetAction.NONE;
     private int targetIndex;
     private String notice;
-    private String victoryReward;
+    private List<String> victoryRewardItems = List.of();
     private boolean rewardRecorded;
     private final Map<Student, Double> actionPoints = new HashMap<>();
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
@@ -109,6 +109,7 @@ public final class BattlePanel extends JPanel {
                 return targeting != TargetAction.NONE && !targetsParty()
                         && (targetsAllEnemies() || index == targetIndex);
             }
+            @Override public List<String> rewardItems() { return victoryRewardItems; }
             @Override public boolean showEffects() { return showEffects; }
             @Override public boolean showAmbush() { return showAmbush; }
             @Override public double victoryProgress() {
@@ -209,7 +210,7 @@ public final class BattlePanel extends JPanel {
         this.progress = progress;
         battle = new Battle(progress, battleRandom, ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
-        victoryReward = null; rewardRecorded = false;
+        victoryRewardItems = List.of(); rewardRecorded = false;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
@@ -379,7 +380,7 @@ public final class BattlePanel extends JPanel {
             showAmbush = false;
             ambushAlertTimer.stop();
             if (battle.isVictory() && !rewardRecorded) {
-                victoryReward = progress.claimStageReward();
+                victoryRewardItems = progress.claimStageRewardItems();
                 rewardRecorded = true;
             }
             if (battle.isVictory() && victoryStartedNanos == 0) {
@@ -393,9 +394,6 @@ public final class BattlePanel extends JPanel {
                 : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
                 ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
         String message = targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage();
-        if (battle.isVictory() && victoryReward != null) {
-            message += "\nVictory reward: " + victoryReward + "!";
-        }
         log.setText(message);
         log.setCaretPosition(0);
         BattleControls.updateParty(battle, partyStatus);

@@ -60,7 +60,12 @@ public final class BattleOutcomeTest {
                 GameProgress rewardProgress = (GameProgress) progressField.get(panel);
                 Field logField = BattlePanel.class.getDeclaredField("log"); logField.setAccessible(true);
                 javax.swing.JTextArea log = (javax.swing.JTextArea) logField.get(panel);
-                check(log.getText().contains("Victory reward: Focus Charm"), "victory rewards shown in battle");
+                Field rewardsField = BattlePanel.class.getDeclaredField("victoryRewardItems"); rewardsField.setAccessible(true);
+                java.util.List<?> rewards = (java.util.List<?>) rewardsField.get(panel);
+                check(rewards.contains("focus_charm") && rewards.contains("scholar_staff")
+                        && rewards.contains("hunter_crossbows") && rewards.contains("champion_wraps")
+                        && rewards.size() == 4, "popup uses exactly the awarded party equipment");
+                check(!log.getText().contains("Victory reward:"), "rewards appear in the popup instead of the battle log");
                 int gearCount = rewardProgress.getInventory().getEquipmentIds().size();
                 refresh.invoke(panel);
                 check(rewardProgress.getInventory().getEquipmentIds().size() == gearCount, "refresh does not grant rewards twice");

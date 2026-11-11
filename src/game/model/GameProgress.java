@@ -103,6 +103,18 @@ public final class GameProgress implements java.io.Serializable {
      * @return reward name, or null if already claimed
      */
     public String claimStageReward() { return claimReward(encounter); }
+    /** Grants the stage reward once and returns the actual equipment IDs added to the bag.
+     * @return newly awarded equipment IDs, or an empty list when already claimed
+     */
+    public List<String> claimStageRewardItems() {
+        List<String> previous = new ArrayList<>(getInventory().getEquipmentIds());
+        if (claimReward(encounter) == null) { return List.of(); }
+        List<String> awarded = new ArrayList<>();
+        for (String id : getInventory().getEquipmentIds()) {
+            if (!previous.remove(id)) { awarded.add(id); }
+        }
+        return List.copyOf(awarded);
+    }
     private String claimReward(int stage) {
         String[] rewards = {"focus_charm", "training_uniform", "guardian_band", "courage_charm", "campus_medal"};
         if (stage < 0 || stage >= rewards.length || getInventory().isRewardClaimed(stage)) { return null; }
