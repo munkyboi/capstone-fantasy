@@ -7,7 +7,12 @@ public final class GameSettings {
     private static final double MAX_AP_PER_SECOND = 30.0;
     private double apPerSecond = DEFAULT_AP_PER_SECOND;
 
-    /** @return action-point charge rate per second */
+    /** Creates settings with the default action-point rate. */
+    public GameSettings() { }
+
+    /** Returns action-point charge rate per second.
+     * @return action-point charge rate per second
+     */
     public double getApPerSecond() { return apPerSecond; }
 
     /** Changes the charge rate for subsequent elapsed time.

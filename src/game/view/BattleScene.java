@@ -19,6 +19,7 @@ import javax.swing.JPanel;
 final class BattleScene extends JPanel {
     private static final double EFFECT_DURATION_MILLIS = 1600.0;
     private static final double HOP_DURATION_MILLIS = 180.0;
+    /** Supplies battle state and animation details to the scene. */
     interface State {
         Battle battle();
         boolean partyTarget(int index);

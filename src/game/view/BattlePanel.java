@@ -5,17 +5,11 @@ import game.model.Enemy;
 import game.model.GameProgress;
 import game.model.GameSettings;
 import game.model.Student;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
 import java.util.List;
 import java.util.Random;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.function.Consumer;
-import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -28,7 +22,6 @@ import javax.swing.Timer;
 public final class BattlePanel extends JPanel {
     private static final int AP_FRAME_MILLIS = 50;
     private static final double AP_EPSILON = 0.0000001;
-    private static final int AP_DISPLAY_SCALE = 100;
     private static final int EFFECT_MILLIS = 1600;
     private static final int ANIMATION_FRAME_MILLIS = 50;
     private final Runnable returnToMenu;
@@ -108,59 +101,8 @@ public final class BattlePanel extends JPanel {
             }
             scene.repaint();
         });
-        setPreferredSize(new Dimension(960, 540));
-        setFocusable(true);
-        setLayout(new BorderLayout());
-        add(scene, BorderLayout.CENTER);
-        JPanel bottom = new JPanel(new BorderLayout(4, 4));
-        bottom.setBackground(new Color(8, 14, 38));
-        bottom.setBorder(BorderFactory.createEmptyBorder(4, 6, 6, 6));
-        status.setForeground(new Color(250, 218, 143));
-        status.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
-        status.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
-        bottom.add(status, BorderLayout.NORTH);
-        log.setEditable(false); log.setLineWrap(true); log.setWrapStyleWord(true);
-        log.setFocusable(false);
-        log.setRows(2); log.setBackground(new Color(18, 39, 111));
-        log.setForeground(Color.WHITE); log.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
-        log.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-        JPanel info = frame();
-        info.setLayout(new BorderLayout());
-        logScroll.setBorder(null);
-        logScroll.setFocusable(false);
-        logScroll.getVerticalScrollBar().setFocusable(false);
-        info.add(logScroll, BorderLayout.CENTER);
-        JPanel members = new JPanel(new GridLayout(3, 1));
-        members.setOpaque(false);
-        for (int i = 0; i < partyStatus.length; i++) {
-            JLabel member = partyStatus[i];
-            member.setForeground(Color.WHITE);
-            member.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
-            member.setBorder(BorderFactory.createEmptyBorder(1, 10, 1, 10));
-            JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
-            JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 18));
-            bar.setForeground(new Color(102, 198, 223)); bar.setBackground(new Color(15, 26, 61));
-            bar.setStringPainted(true); bar.setFont(new Font(Font.MONOSPACED, Font.BOLD, 11));
-            row.add(member, BorderLayout.CENTER); row.add(bar, BorderLayout.EAST);
-            members.add(row);
-        }
-        info.add(members, BorderLayout.SOUTH);
-        bottom.add(info, BorderLayout.CENTER);
-        JPanel actions = frame();
-        actions.setLayout(new GridLayout(5, 1, 0, 1));
-        actions.setPreferredSize(new Dimension(190, 160));
-        for (JButton button : new JButton[] {attack, ability, item, defend, finish}) {
-            button.setFocusable(false);
-            button.setForeground(Color.WHITE);
-            button.setBackground(new Color(18, 39, 111));
-            button.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
-            button.setHorizontalAlignment(JButton.LEFT);
-            button.setBorder(BorderFactory.createEmptyBorder(3, 12, 3, 8));
-            button.setOpaque(true);
-        }
-        actions.add(attack); actions.add(ability); actions.add(item); actions.add(defend); actions.add(finish);
-        bottom.add(actions, BorderLayout.WEST);
-        add(bottom, BorderLayout.SOUTH);
+        BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
+                attack, ability, item, defend, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
         defend.addActionListener(e -> performAction(() -> { notice = null; battle.defend(); }, false));
         ability.addActionListener(e -> beginTargeting(TargetAction.ABILITY));
@@ -200,15 +142,6 @@ public final class BattlePanel extends JPanel {
             effectStartedNanos = System.nanoTime();
             effectTimer.restart();
         }
-    }
-
-    private static JPanel frame() {
-        JPanel panel = new JPanel();
-        panel.setBackground(new Color(18, 39, 111));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 225, 239), 3),
-                BorderFactory.createLineBorder(new Color(63, 100, 166), 2)));
-        return panel;
     }
 
     private void scrollLog(int direction) {
@@ -295,7 +228,7 @@ public final class BattlePanel extends JPanel {
         }
         if (battle.isOver()) { apTimer.stop(); }
         if (changed) { refresh(); }
-        else { refreshBars(); scene.repaint(); }
+        else { BattleControls.updateBars(battle, apBars, actionPoints); scene.repaint(); }
     }
 
     private boolean selectReadyStudent() {
@@ -328,16 +261,16 @@ public final class BattlePanel extends JPanel {
         if (battle == null || battle.isOver()) { return; }
         if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
         commandIndex = Math.floorMod(commandIndex + direction, commands.length);
-        updateCommands();
+        BattleControls.updateCommands(commands, commandIndex);
     }
 
     private boolean targetsParty() {
         return targeting == TargetAction.ITEM
-                || (targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 3);
+                || (targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ANGEL);
     }
 
     private boolean targetsAllEnemies() {
-        return targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 0;
+        return targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ZACK;
     }
 
     private void beginTargeting(TargetAction action) {
@@ -374,7 +307,7 @@ public final class BattlePanel extends JPanel {
             targeting = TargetAction.NONE;
             notice = null;
             boolean attacking = action == TargetAction.ATTACK
-                    || (action == TargetAction.ABILITY && battle.getCurrent().getId() != 3);
+                    || (action == TargetAction.ABILITY && battle.getCurrent().getId() != Student.ANGEL);
             performAction(() -> {
                 if (action == TargetAction.ATTACK) { battle.attack(enemy); }
                 else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
@@ -384,34 +317,22 @@ public final class BattlePanel extends JPanel {
         else if (battle.getCurrent() != null) { commands[commandIndex].doClick(); }
     }
 
-    private void updateCommands() {
-        String[] names = {"Attack", "Ability", "Item", "Defend"};
-        for (int i = 0; i < commands.length; i++) {
-            commands[i].setText((i == commandIndex ? "▶ " : "  ") + names[i]);
-        }
-    }
-
     private void refresh() {
         boolean over = battle.isOver();
         refreshStatus();
         String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
-                : targeting == TargetAction.ABILITY && battle.getCurrent().getId() == 0
+                : targeting == TargetAction.ABILITY && battle.getCurrent().getId() == Student.ZACK
                 ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
         log.setText(targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage());
         log.setCaretPosition(0);
-        for (int i = 0; i < partyStatus.length; i++) {
-            Student student = battle.getParty().get(i);
-            String marker = !over && student == battle.getCurrent() ? "▶ " : "  ";
-            partyStatus[i].setText(String.format("%s%-9s  HP %3d / %3d%s", marker,
-                    student.getName(), student.getHp(), student.getMaxHp(), student.isAlive() ? "" : "  KO"));
-        }
-        refreshBars();
+        BattleControls.updateParty(battle, partyStatus);
+        BattleControls.updateBars(battle, apBars, actionPoints);
         boolean canChoose = !over && targeting == TargetAction.NONE && battle.getCurrent() != null;
         attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
-        updateCommands();
+        BattleControls.updateCommands(commands, commandIndex);
         scene.repaint();
     }
 
@@ -425,14 +346,6 @@ public final class BattlePanel extends JPanel {
                 + "  |  First-Aid Kits: " + battle.getKits() + "  |  " + hint);
     }
 
-    private void refreshBars() {
-        for (int i = 0; i < apBars.length; i++) {
-            Student student = battle.getParty().get(i);
-            double value = actionPoints.get(student);
-            apBars[i].setMaximum(student.getActionThreshold() * AP_DISPLAY_SCALE);
-            apBars[i].setValue((int) (value * AP_DISPLAY_SCALE));
-            apBars[i].setString(!student.isAlive() ? "KO" : (int) value + " / " + student.getActionThreshold() + " AP");
-        }
-    }
+
 
 }

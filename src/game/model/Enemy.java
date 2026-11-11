@@ -2,6 +2,10 @@ package game.model;
 
 /** An opponent in a battle. */
 public final class Enemy {
+    private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 105;
+    private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 20;
+    private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 9;
+    private static final int WISP_SPEED = 8, SENTINEL_SPEED = 5;
     private static final int WISP_A_AP = 24;
     private static final int WISP_B_AP = 26;
     private static final int SENTINEL_AP = 32;
@@ -27,22 +31,40 @@ public final class Enemy {
     public Enemy(String name, boolean sentinel) {
         this.name = name;
         this.sentinel = sentinel;
-        maxHp = sentinel ? 105 : 65;
+        maxHp = sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP;
         hp = maxHp;
-        attack = sentinel ? 20 : 16;
-        defense = sentinel ? 9 : 5;
-        speed = sentinel ? 5 : 8;
+        attack = sentinel ? SENTINEL_ATTACK : WISP_ATTACK;
+        defense = sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE;
+        speed = sentinel ? SENTINEL_SPEED : WISP_SPEED;
         actionThreshold = sentinel ? SENTINEL_AP : name.endsWith("B") ? WISP_B_AP : WISP_A_AP;
     }
-    /** @return whether this enemy is a Stone Sentinel */ public boolean isSentinel() { return sentinel; }
-    /** @return enemy name */ public String getName() { return name; }
-    /** @return current HP */ public int getHp() { return hp; }
-    /** @return maximum HP */ public int getMaxHp() { return maxHp; }
-    /** @return attack stat */ public int getAttack() { return attack; }
-    /** @return defense stat */ public int getDefense() { return defense; }
-    /** @return speed stat */ public int getSpeed() { return speed; }
-    /** @return AP required before this enemy can attack */ public int getActionThreshold() { return actionThreshold; }
-    /** @return whether this enemy can act */ public boolean isAlive() { return hp > 0; }
+    /** Returns whether this enemy is a Stone Sentinel.
+     * @return whether this enemy is a Stone Sentinel
+     */ public boolean isSentinel() { return sentinel; }
+    /** Returns enemy name.
+     * @return enemy name
+     */ public String getName() { return name; }
+    /** Returns current HP.
+     * @return current HP
+     */ public int getHp() { return hp; }
+    /** Returns maximum HP.
+     * @return maximum HP
+     */ public int getMaxHp() { return maxHp; }
+    /** Returns attack stat.
+     * @return attack stat
+     */ public int getAttack() { return attack; }
+    /** Returns defense stat.
+     * @return defense stat
+     */ public int getDefense() { return defense; }
+    /** Returns speed stat.
+     * @return speed stat
+     */ public int getSpeed() { return speed; }
+    /** Returns AP required before this enemy can attack.
+     * @return AP required before this enemy can attack
+     */ public int getActionThreshold() { return actionThreshold; }
+    /** Returns whether this enemy can act.
+     * @return whether this enemy can act
+     */ public boolean isAlive() { return hp > 0; }
     /** Applies damage and returns the actual HP lost.
      * @param amount incoming damage
      * @return HP lost

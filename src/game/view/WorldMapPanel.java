@@ -17,7 +17,8 @@ public final class WorldMapPanel extends JPanel {
         "Campus Entrance", "Library Hall", "Training Ground", "Old Campus Building", "Crystal Chamber"
     };
     private static final int[] X = {35, 94, 156, 218, 282};
-    private static final int[] Y = {104, 70, 104, 70, 104};
+    private static final int[] Y = {105, 82, 105, 82, 105};
+    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/campus-route-v1.png");
     private final Consumer<GameProgress> battle;
     private final Consumer<GameProgress> camp;
     private final Runnable menu;
@@ -71,30 +72,33 @@ public final class WorldMapPanel extends JPanel {
         BufferedImage canvas = new BufferedImage(320, 180, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = canvas.createGraphics();
         try {
-            g.setColor(new Color(38, 73, 73)); g.fillRect(0, 0, 320, 180);
-            g.setColor(new Color(47, 88, 81));
-            for (int x = 0; x < 320; x += 20) { for (int y = 28; y < 145; y += 20) { g.fillRect(x, y, 9, 9); } }
-            g.setColor(new Color(160, 155, 119)); g.setStroke(new java.awt.BasicStroke(6));
+            g.setColor(new Color(18, 42, 59)); g.fillRect(0, 0, 320, 180);
+            if (background != null) { g.drawImage(background, 0, 0, null); }
+            g.setColor(new Color(7, 18, 38, 55)); g.fillRect(0, 0, 320, 180);
+            g.setColor(new Color(17, 30, 48)); g.setStroke(new java.awt.BasicStroke(7));
             for (int i = 0; i < X.length - 1; i++) { g.drawLine(X[i], Y[i], X[i + 1], Y[i + 1]); }
-            for (int i = 0; i < X.length; i++) {
-                int bx = X[i] - 8, by = Y[i] - 38;
-                g.setColor(new Color(40, 48, 70)); g.fillRect(bx - 2, by + 4, 20, 13);
-                g.setColor(i <= progress.getEncounter() ? new Color(105, 132, 151) : new Color(67, 82, 89));
-                g.fillRect(bx, by + 5, 16, 11);
-                g.setColor(new Color(25, 39, 58));
-                g.fillPolygon(new int[] {bx - 3, bx + 8, bx + 19}, new int[] {by + 5, by, by + 5}, 3);
-                g.setColor(new Color(224, 200, 140)); g.fillRect(bx + 3, by + 8, 3, 4); g.fillRect(bx + 10, by + 8, 3, 4);
+            g.setStroke(new java.awt.BasicStroke(4));
+            for (int i = 0; i < X.length - 1; i++) {
+                g.setColor(i < progress.getEncounter() ? new Color(222, 188, 116) : new Color(92, 111, 119));
+                g.drawLine(X[i], Y[i], X[i + 1], Y[i + 1]);
             }
             for (int i = 0; i < X.length; i++) {
-                g.setColor(i <= progress.getEncounter() ? new Color(233, 196, 113) : new Color(81, 93, 97));
-                g.fillRect(X[i] - 8, Y[i] - 8, 17, 17);
-                g.setColor(new Color(32, 42, 56)); g.drawRect(X[i] - 8, Y[i] - 8, 17, 17);
-                g.setColor(new Color(245, 233, 190));
-                if (i < progress.getEncounter()) { g.fillRect(X[i] - 2, Y[i] - 2, 5, 5); }
+                g.setColor(new Color(15, 27, 46)); g.fillOval(X[i] - 9, Y[i] - 9, 19, 19);
+                g.setColor(i < progress.getEncounter() ? new Color(100, 198, 199)
+                        : i == progress.getEncounter() ? new Color(242, 205, 128) : new Color(91, 111, 123));
+                g.fillOval(X[i] - 7, Y[i] - 7, 15, 15);
+                g.setColor(new Color(24, 39, 60)); g.fillOval(X[i] - 5, Y[i] - 5, 11, 11);
+                g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 8));
+                g.setColor(i <= progress.getEncounter() ? new Color(250, 226, 166) : new Color(159, 176, 178));
+                String number = Integer.toString(i + 1);
+                g.drawString(number, X[i] - g.getFontMetrics().stringWidth(number) / 2, Y[i] + 3);
                 if (i == cursor) {
-                    g.setColor(Color.WHITE);
-                    g.fillPolygon(new int[] {X[i] - 5, X[i] + 5, X[i]},
-                            new int[] {Y[i] - 20, Y[i] - 20, Y[i] - 12}, 3);
+                    g.setColor(new Color(15, 27, 46));
+                    g.fillPolygon(new int[] {X[i] - 6, X[i] + 6, X[i]},
+                            new int[] {Y[i] - 22, Y[i] - 22, Y[i] - 12}, 3);
+                    g.setColor(new Color(255, 239, 190));
+                    g.fillPolygon(new int[] {X[i] - 4, X[i] + 4, X[i]},
+                            new int[] {Y[i] - 21, Y[i] - 21, Y[i] - 14}, 3);
                 }
             }
         } finally { g.dispose(); }

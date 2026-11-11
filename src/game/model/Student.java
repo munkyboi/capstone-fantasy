@@ -2,7 +2,22 @@ package game.model;
 
 /** A student taking part in the first battle. */
 public final class Student implements java.io.Serializable {
+    /** Character selection index for Zack. */
+    public static final int ZACK = 0;
+    /** Character selection index for Bogart. */
+    public static final int BOGART = 1;
+    /** Character selection index for Charice. */
+    public static final int CHARICE = 2;
+    /** Character selection index for Angel. */
+    public static final int ANGEL = 3;
+    private static final int STARTING_LEVEL = 1;
+    private static final int MINIMUM_DAMAGE = 1;
     private static final long serialVersionUID = 1L;
+    private static final int[] STARTING_HEALTH = {80, 120, 90, 105};
+    private static final int[] STARTING_ATTACK = {18, 15, 14, 10};
+    private static final int[] STARTING_DEFENSE = {6, 14, 8, 10};
+    private static final int[] STARTING_SPEED = {10, 7, 16, 9};
+    private static final int DEFENSE_DIVISOR = 2;
     private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 45};
     private final int id;
     private final String name;
@@ -10,7 +25,7 @@ public final class Student implements java.io.Serializable {
     private final int attack;
     private final int defense;
     private final int speed;
-    private final int level = 1;
+    private final int level = STARTING_LEVEL;
     private int hp;
     private boolean defending;
 
@@ -19,26 +34,42 @@ public final class Student implements java.io.Serializable {
      */
     public Student(int id) {
         String[] names = {"Zack", "Bogart", "Charice", "Angel"};
-        int[] health = {80, 120, 90, 105};
-        int[] attacks = {18, 15, 14, 10};
-        int[] defenses = {6, 14, 8, 10};
-        int[] speeds = {10, 7, 16, 9};
         if (id < 0 || id >= names.length) { throw new IllegalArgumentException("Unknown student"); }
-        this.id = id; name = names[id]; maxHp = health[id]; hp = maxHp;
-        attack = attacks[id]; defense = defenses[id]; speed = speeds[id];
+        this.id = id; name = names[id]; maxHp = STARTING_HEALTH[id]; hp = maxHp;
+        attack = STARTING_ATTACK[id]; defense = STARTING_DEFENSE[id]; speed = STARTING_SPEED[id];
     }
 
-    /** @return character index */ public int getId() { return id; }
-    /** @return student name */ public String getName() { return name; }
-    /** @return current HP */ public int getHp() { return hp; }
-    /** @return maximum HP */ public int getMaxHp() { return maxHp; }
-    /** @return attack value */ public int getAttack() { return attack; }
-    /** @return defense value */ public int getDefense() { return defense; }
-    /** @return speed value */ public int getSpeed() { return speed; }
-    /** @return current level */ public int getLevel() { return level; }
-    /** @return AP required before this student can act */
+    /** Returns character index.
+     * @return character index
+     */ public int getId() { return id; }
+    /** Returns student name.
+     * @return student name
+     */ public String getName() { return name; }
+    /** Returns current HP.
+     * @return current HP
+     */ public int getHp() { return hp; }
+    /** Returns maximum HP.
+     * @return maximum HP
+     */ public int getMaxHp() { return maxHp; }
+    /** Returns attack value.
+     * @return attack value
+     */ public int getAttack() { return attack; }
+    /** Returns defense value.
+     * @return defense value
+     */ public int getDefense() { return defense; }
+    /** Returns speed value.
+     * @return speed value
+     */ public int getSpeed() { return speed; }
+    /** Returns current level.
+     * @return current level
+     */ public int getLevel() { return level; }
+    /** Returns AP required before this student can act.
+     * @return AP required before this student can act
+     */
     public int getActionThreshold() { return ACTION_THRESHOLDS[id]; }
-    /** @return whether the student can act */ public boolean isAlive() { return hp > 0; }
+    /** Returns whether the student can act.
+     * @return whether the student can act
+     */ public boolean isAlive() { return hp > 0; }
     /** Protects against the next incoming attack. */ public void defend() { defending = true; }
     /** Clears defense between encounters. */ public void clearDefense() { defending = false; }
     /** Restores validated HP from a saved game.
@@ -59,7 +90,7 @@ public final class Student implements java.io.Serializable {
      * @return actual HP lost
      */
     public int takeDamage(int amount) {
-        int damage = Math.max(1, defending ? amount / 2 : amount);
+        int damage = Math.max(MINIMUM_DAMAGE, defending ? amount / DEFENSE_DIVISOR : amount);
         defending = false;
         int old = hp; hp = Math.max(0, hp - damage); return old - hp;
     }

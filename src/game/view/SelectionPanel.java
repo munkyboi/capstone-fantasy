@@ -157,6 +157,7 @@ public final class SelectionPanel extends JPanel {
         } finally { g.dispose(); }
     }
 
+    /** Draws and selects one student on the party selection screen. */
     private final class CharacterCard extends JButton {
         private final int index;
 

@@ -23,9 +23,15 @@ public final class GameProgress implements java.io.Serializable {
         for (int id : ids) { party.add(new Student(id)); }
         party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
     }
-    /** @return the current party in speed order */ public List<Student> getParty() { return List.copyOf(party); }
-    /** @return first-aid kits remaining */ public int getKits() { return kits; }
-    /** @return zero-based current encounter */ public int getEncounter() { return encounter; }
+    /** Returns the current party in speed order.
+     * @return the current party in speed order
+     */ public List<Student> getParty() { return List.copyOf(party); }
+    /** Returns first-aid kits remaining.
+     * @return first-aid kits remaining
+     */ public int getKits() { return kits; }
+    /** Returns zero-based current encounter.
+     * @return zero-based current encounter
+     */ public int getEncounter() { return encounter; }
     /** Unlocks the next route location after an encounter.
      * @return whether the route position advanced
      */

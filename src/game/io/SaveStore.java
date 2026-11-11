@@ -22,12 +22,19 @@ public final class SaveStore {
     private static final long MAX_SAVE_BYTES = 65536;
     private final Path directory;
     /** Supported save formats. */
-    public enum Format { TEXT, BINARY }
+    public enum Format {
+        /** Human-readable save file. */
+        TEXT,
+        /** Serialized save file. */
+        BINARY
+    }
     /** Creates a store rooted at a directory.
      * @param directory directory for save files
      */
     public SaveStore(Path directory) { this.directory = directory; }
-    /** @return the normal save directory */
+    /** Returns the normal save directory.
+     * @return the normal save directory
+     */
     public static Path defaultDirectory() { return Path.of(System.getProperty("user.home"), ".capstone-fantasy", "saves"); }
     private Path file(int slot, Format format) {
         if (slot < 1 || slot > 3 || format == null) { throw new IllegalArgumentException("Invalid save slot"); }
