@@ -84,7 +84,7 @@ final class BattleScene extends JPanel {
             image("/assets/backgrounds/stage-5-crystal-chamber-v3.png")
         };
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
-        private final BufferedImage wisp = image("/assets/sprites/library-wisp-v2.png");
+        private final BufferedImage wisp = image("/assets/sprites/library-wisp-v3.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
         private final BufferedImage boss = image("/assets/sprites/crystal-guardian-v1.png");
         private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
@@ -161,13 +161,16 @@ final class BattleScene extends JPanel {
                         drawCursor(g, x + slotWidth / 2, partyFootY(h, index) - drawnHeight - 3);
                     }
                 }
-                for (int enemyIndex = 0; enemyIndex < battle.getEnemies().size(); enemyIndex++) {
+                java.util.List<Integer> drawOrder = new java.util.ArrayList<>();
+                for (int index = 0; index < battle.getEnemies().size(); index++) { drawOrder.add(index); }
+                drawOrder.sort(java.util.Comparator.comparingInt(index -> enemyFootY(h, enemySlot(index, battle.getEnemies()))));
+                for (int enemyIndex : drawOrder) {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int slot = enemySlot(enemyIndex, battle.getEnemies());
                     int x = enemyX(slot, slotWidth);
                     BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
                     if (enemyImage != null && enemy.isAlive()) {
-                        int enemyWidth = enemy.isBoss() ? slotWidth + 25 : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                        int enemyWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                         int enemyHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                         int enemyX = x + (slotWidth - enemyWidth) / 2 + attackOffset(enemy, -1);
                         int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
@@ -209,7 +212,7 @@ final class BattleScene extends JPanel {
                         output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    output.drawString((enemy.isBoss() ? "Guardian" : enemy.isSentinel() ? "Sentinel" : enemy.getName().replace("Library ", "")) + "  " + enemy.getHp() + " / "
+                    output.drawString((enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " / "
                             + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), left + 7, y);
                     output.setColor(new Color(52, 68, 101));
                     output.fillRect(left + 7, y + 5, 122, 4);
@@ -339,7 +342,7 @@ final class BattleScene extends JPanel {
                     ground = enemyFootY(h, slot);
                     Enemy enemy = (Enemy) entry.getKey();
                     BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
-                    int boxWidth = enemy.isBoss() ? slotWidth + 25 : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                    int boxWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                     int boxHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
                 }
@@ -389,11 +392,13 @@ final class BattleScene extends JPanel {
         }
 
         private int enemyX(int index, int slotWidth) {
-            return ENEMY_CENTERS_X[index] - slotWidth / 2;
+            int[] centers = state.encounterStage() == 4 ? new int[]{294, 250, 294, 172, 185, 210} : ENEMY_CENTERS_X;
+            return centers[index] - slotWidth / 2;
         }
 
         private int enemyFootY(int height, int index) {
-            return ENEMY_FEET_Y[index] * height / VIRTUAL_HEIGHT;
+            int[] feet = state.encounterStage() == 4 ? new int[]{110, 130, 145, 110, 145, 128} : ENEMY_FEET_Y;
+            return feet[index] * height / VIRTUAL_HEIGHT;
         }
 
         private int victoryLift(Student student, int index) {

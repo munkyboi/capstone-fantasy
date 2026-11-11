@@ -140,7 +140,7 @@ public class Student extends GameCharacter {
     }
     /** Returns speed value.
      * @return speed value
-    */ public int getSpeed() { return speed + allocatedSpeed; }
+    */ public int getSpeed() { return speed + allocatedSpeed + (getLevel() - 1) / 5; }
     /** Returns current level.
      * @return current level
     */ public int getLevel() {

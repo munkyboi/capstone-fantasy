@@ -18,6 +18,12 @@ public final class FinalStagesLevelTest {
         check(hero.gainExperience(201) == 3 && hero.getLevel() == 4 && hero.getMaxHp() == 95
                 && hero.getBaseAttack() == 28 && hero.getBaseDefense() == 9 && hero.getHp() == hero.getMaxHp()
                 && hero.getSp() == hero.getMaxSp(), "multiple levels grow stats and restore HP and SP");
+        Student runner = new Student(Student.ZACK);
+        int startingSpeed = runner.getSpeed();
+        runner.gainExperience(400); check(runner.getSpeed() == startingSpeed, "speed stays stable through level five");
+        runner.gainExperience(100); check(runner.getSpeed() == startingSpeed + 1, "speed grows at level six");
+        runner.gainExperience(500); check(runner.getSpeed() == startingSpeed + 2, "speed grows again at level eleven");
+        check(runner.allocateStatPoint(Student.Stat.SPD) && runner.getSpeed() == startingSpeed + 3, "allocated speed stacks with growth");
         hero.takeDamage(999); hero.gainExperience(100);
         check(hero.isAlive() && hero.getHp() == hero.getMaxHp() && hero.getSp() == hero.getMaxSp()
                 && hero.getLevel() == 5, "level-up restores a KO student");
@@ -30,7 +36,8 @@ public final class FinalStagesLevelTest {
             final int value = roll;
             Random random = new Random() { @Override public int nextInt(int bound) { return Math.min(value, bound - 1); } };
             Battle fourth = new Battle(p, random, false, 3);
-            check(fourth.getEnemies().size() == 4 + roll && fourth.getEnemies().stream().anyMatch(Enemy::isSentinel), "stage four count and guardian");
+            check(fourth.getEnemies().size() == 4 + roll && fourth.getEnemies().stream().filter(Enemy::isSentinel).count() == 1 + roll, "stage four count and sentinel range");
+            check(fourth.getEnemies().stream().map(Enemy::getName).distinct().count() == fourth.getEnemies().size(), "stage four enemy names are unique");
         }
         p.claimStageRewardItems(3); p.advance();
         check(!new Battle(p, new Random(2), true, 4).getMessage().contains("ambushed"), "model enforces boss ambush exemption");
@@ -39,8 +46,10 @@ public final class FinalStagesLevelTest {
                 BattlePanel panel = new BattlePanel(() -> {}); panel.start(p, true, 4);
                 Field field = BattlePanel.class.getDeclaredField("battle"); field.setAccessible(true);
                 Battle b = (Battle) field.get(panel);
-                check(b.getEnemies().size() == 6 && b.getEnemies().stream().filter(Enemy::isBoss).count() == 1,
-                        "final encounter has guardian and five Wisps");
+                check(b.getEnemies().size() == 6 && b.getEnemies().stream().filter(Enemy::isBoss).count() == 1
+                        && b.getEnemies().stream().filter(e -> e.isSentinel() && !e.isBoss()).count() == 5
+                        && b.getEnemies().stream().map(Enemy::getName).distinct().count() == 6,
+                        "final encounter has guardian and five distinct Sentinels");
                 check(!b.getMessage().contains("ambushed"), "final boss cannot be ambushed");
                 int xp = (int) Math.round(b.getEnemies().stream().mapToInt(Enemy::getExperienceDrop).sum() * 1.5);
                 for (Enemy e : b.getEnemies()) { e.takeDamage(999); }
@@ -68,7 +77,8 @@ public final class FinalStagesLevelTest {
                 store.save(2, format, capped); Student restored = store.load(2, format).getParty().get(0);
                 check(restored.getLevel() == 30 && restored.getExperience() == 2900
                         && restored.getMaxHp() == capped.getParty().get(0).getMaxHp()
-                        && restored.getSp() == capped.getParty().get(0).getSp(), "level 30 save " + format);
+                        && restored.getSp() == capped.getParty().get(0).getSp()
+                        && restored.getSpeed() == capped.getParty().get(0).getSpeed(), "level 30 save " + format);
             }
         } finally { try (var paths = Files.walk(dir)) { for (Path file : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(file); } }
         System.out.println("Final stages and level-up checks passed");

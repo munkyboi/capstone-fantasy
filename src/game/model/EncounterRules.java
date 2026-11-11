@@ -5,7 +5,7 @@ import java.util.Random;
 /** Defines encounter sizes for the five planned route stages. */
 public final class EncounterRules {
     private static final int[] MINIMUM_MONSTERS = {1, 2, 3, 4, 6};
-    private static final int[] MAXIMUM_MONSTERS = {3, 4, 5, 6, 6};
+    private static final int[] MAXIMUM_MONSTERS = {2, 3, 4, 6, 6};
     private EncounterRules() { }
 
     /** Rolls the number of monsters for a route stage.

@@ -65,14 +65,18 @@ public final class Battle {
         int count = EncounterRules.rollMonsterCount(encounter, random);
         boolean finalEncounter = encounter == GameProgress.FINAL_BOSS_ENCOUNTER;
         ambushed = ambushed && !finalEncounter;
-        boolean sentinelEncounter = encounter >= 1 && !finalEncounter;
-        int wisps = (sentinelEncounter || finalEncounter) ? count - 1 : count;
+        int sentinels = finalEncounter ? 5 : encounter == 3 ? 1 + random.nextInt(3) : encounter >= 1 ? 1 : 0;
+        int wisps = count - sentinels - (finalEncounter ? 1 : 0);
         for (int index = 0; index < wisps; index++) {
             enemies.add(new Enemy("Library Wisp " + (char) ('A' + index), false, false, difficulty));
         }
-        if (sentinelEncounter) { enemies.add(new Enemy("Stone Sentinel", true, false, difficulty)); }
+        for (int index = 0; index < sentinels; index++) {
+            String name = sentinels == 1 ? "Stone Sentinel" : "Stone Sentinel " + (char) ('A' + index);
+            enemies.add(new Enemy(name, true, false, difficulty));
+        }
         if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true, difficulty)); }
-        message = finalEncounter ? "The Crystal Guardian and its five Wisps appear!" : sentinelEncounter ? "A Stone Sentinel" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appears!")
+        message = finalEncounter ? "The Crystal Guardian and five Stone Sentinels appear!"
+                : sentinels > 0 ? sentinels + " Stone Sentinel(s)" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appear!")
                 : count + " Library Wisp(s) appear! Choose an action.";
         if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());

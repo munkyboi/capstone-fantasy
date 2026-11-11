@@ -18,7 +18,7 @@ public final class StageThreeTest {
             final int roll = offset;
             Random random = new Random() { @Override public int nextInt(int bound) { return Math.min(roll, bound - 1); } };
             Battle battle = new Battle(progress, random, false, 2);
-            check(battle.getEnemies().size() == 3 + offset, "stage three spawn range");
+            check(battle.getEnemies().size() == 3 + Math.min(offset, 1), "stage three spawn range");
             check(battle.getEnemies().stream().filter(Enemy::isSentinel).count() == 1, "stage three guardian composition");
         }
         SwingUtilities.invokeAndWait(() -> {

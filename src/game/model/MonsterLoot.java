@@ -35,7 +35,7 @@ public final class MonsterLoot {
     }
     private static boolean owns(GameProgress progress, String id) {
         return progress.getInventory().getEquipmentIds().contains(id)
-                || progress.getParty().stream().anyMatch(s -> java.util.Arrays.stream(Equipment.Slot.values())
+                || progress.getRoster().stream().anyMatch(s -> java.util.Arrays.stream(Equipment.Slot.values())
                         .anyMatch(slot -> id.equals(s.getEquipmentId(slot))));
     }
 }

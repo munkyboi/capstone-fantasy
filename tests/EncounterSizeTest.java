@@ -17,7 +17,7 @@ public final class EncounterSizeTest {
     private static void check(boolean value, String message) { if (!value) { throw new AssertionError(message); } }
     private static Random roll(int offset) {
         return new Random(12) {
-            @Override public int nextInt(int bound) { return bound == 3 ? offset : super.nextInt(bound); }
+            @Override public int nextInt(int bound) { return Math.min(offset, bound - 1); }
         };
     }
     private static void key(BattlePanel panel, String action) {
@@ -28,7 +28,7 @@ public final class EncounterSizeTest {
      * @throws Exception if a check fails
      */
     public static void main(String[] args) throws Exception {
-        int[] minimum = {1, 2, 3, 4, 6}, maximum = {3, 4, 5, 6, 6};
+        int[] minimum = {1, 2, 3, 4, 6}, maximum = {2, 3, 4, 6, 6};
         for (int stage = 0; stage < minimum.length; stage++) {
             check(EncounterRules.rollMonsterCount(stage, roll(0)) == minimum[stage], "stage minimum " + (stage + 1));
             check(EncounterRules.rollMonsterCount(stage, roll(2)) == maximum[stage], "stage maximum " + (stage + 1));
@@ -36,10 +36,10 @@ public final class EncounterSizeTest {
         for (int offset = 0; offset < 3; offset++) {
             GameProgress first = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.CHARICE));
             Battle wisps = new Battle(first, roll(offset));
-            check(wisps.getEnemies().size() == 1 + offset && wisps.getEnemies().stream().noneMatch(Enemy::isSentinel), "stage 1 size");
+            check(wisps.getEnemies().size() == 1 + Math.min(offset, 1) && wisps.getEnemies().stream().noneMatch(Enemy::isSentinel), "stage 1 size");
             GameProgress second = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.CHARICE)); second.advance();
             Battle guardian = new Battle(second, roll(offset));
-            check(guardian.getEnemies().size() == 2 + offset && guardian.getEnemies().stream().filter(Enemy::isSentinel).count() == 1,
+            check(guardian.getEnemies().size() == 2 + Math.min(offset, 1) && guardian.getEnemies().stream().filter(Enemy::isSentinel).count() == 1,
                     "stage 2 size and sentinel");
         }
         SwingUtilities.invokeAndWait(() -> {

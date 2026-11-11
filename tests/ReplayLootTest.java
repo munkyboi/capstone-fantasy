@@ -46,6 +46,12 @@ public final class ReplayLootTest {
                 }
             }
         }
+        GameProgress reserves = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL));
+        reserves.getInventory().addEquipment("sentinel_band");
+        Student reserve = reserves.getParty().get(0);
+        check(reserves.equip(reserve, Equipment.Slot.ACCESSORY, "sentinel_band"), "equip unique band");
+        reserves.setActiveParty(reserves.getParty().stream().filter(s -> s != reserve).map(Student::getId).toList());
+        check(MonsterLoot.award(List.of(sentinel), reserves, new Always()).isEmpty(), "unique band equipped by reserve is not duplicated");
         SwingUtilities.invokeAndWait(() -> {
             int[] started = {-1};
             WorldMapPanel map = new WorldMapPanel((p, stage) -> started[0] = stage, p -> {}, () -> {});

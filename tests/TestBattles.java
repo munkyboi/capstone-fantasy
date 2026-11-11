@@ -13,7 +13,7 @@ final class TestBattles {
     }
     static BattlePanel twoEnemies(Runnable onDefeat, Consumer<GameProgress> onVictory, GameSettings settings) {
         Random random = new Random(12) {
-            @Override public int nextInt(int bound) { return bound == 3 ? 1 : super.nextInt(bound); }
+            @Override public int nextInt(int bound) { return bound == 2 || bound == 3 ? 1 : super.nextInt(bound); }
         };
         return new BattlePanel(onDefeat, onVictory, settings, random);
     }

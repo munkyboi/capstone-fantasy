@@ -254,10 +254,12 @@ public final class SaveStore {
             boolean oldAttack = (student.getId() == Student.ZACK && student.getBaseAttack() == 18)
                     || (student.getId() == Student.ANGEL && (student.getBaseAttack() == 10 || student.getBaseAttack() == 39));
             boolean oldDefense = student.getId() == Student.BOGART && student.getBaseDefense() == 14;
-            boolean oldSpeed = (student.getId() == Student.ZACK && student.getSpeed() == 10)
-                    || (student.getId() == Student.BOGART && (student.getSpeed() == 7 || student.getSpeed() == 11))
-                    || (student.getId() == Student.CHARICE && student.getSpeed() == 16)
-                    || (student.getId() == Student.ANGEL && (student.getSpeed() == 7 || student.getSpeed() == 9));
+            int originalSpeed = student.getSpeed() - student.getAllocatedStatPoints(Student.Stat.SPD)
+                    - (student.getLevel() - 1) / 5;
+            boolean oldSpeed = (student.getId() == Student.ZACK && originalSpeed == 10)
+                    || (student.getId() == Student.BOGART && (originalSpeed == 7 || originalSpeed == 11))
+                    || (student.getId() == Student.CHARICE && originalSpeed == 16)
+                    || (student.getId() == Student.ANGEL && (originalSpeed == 7 || originalSpeed == 9));
             if (!expected.getName().equals(student.getName()) || expected.getMaxHp() != student.getMaxHp()
                     || (expected.getBaseAttack() != student.getBaseAttack() && !oldAttack)
                     || (expected.getBaseDefense() != student.getBaseDefense() && !oldDefense)

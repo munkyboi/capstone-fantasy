@@ -34,7 +34,7 @@ assets/sprites/fallen-zack-v1.png
 assets/sprites/fallen-bogart-v1.png
 assets/sprites/fallen-charice-v1.png
 assets/sprites/fallen-angel-v1.png
-assets/sprites/library-wisp-v2.png
+assets/sprites/library-wisp-v3.png
 assets/sprites/stone-sentinel-v1.png
 assets/sprites/student-party-idle-v1.png
 assets/ui/carbon-market-icon-v1.png
