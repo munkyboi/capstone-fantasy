@@ -131,13 +131,14 @@ final class BattleScene extends JPanel {
                 output.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                         RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 output.drawImage(pixels, 0, 0, getWidth(), getHeight(), null);
+                output.scale(hudScale(), hudScale());
                 boolean twoColumns = battle.getEnemies().size() > 3;
                 int listWidth = twoColumns ? 400 : 220;
-                int listLeft = getWidth() - listWidth - 24;
+                int listLeft = 960 - listWidth - 24;
                 int listRows = twoColumns ? 3 : battle.getEnemies().size();
                 int listHeight = Math.max(82, listRows * 36 + 10);
                 int columnWidth = listWidth / (twoColumns ? 2 : 1);
-                output.setColor(new Color(15, 25, 47, 225));
+                output.setColor(new Color(15, 25, 47, 204));
                 output.fillRect(listLeft, 12, listWidth, listHeight);
                 output.setColor(Color.WHITE);
                 output.setFont(new Font(Font.MONOSPACED, Font.BOLD, 12));
@@ -172,12 +173,15 @@ final class BattleScene extends JPanel {
             } finally { output.dispose(); }
         }
 
+        private double hudScale() { return getWidth() / 960.0; }
+        private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
+
         private void drawBattleAlert(Graphics2D g, String text) {
             g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
             int width = g.getFontMetrics().stringWidth(text) + 28;
-            int x = (getWidth() - width) / 2;
-            int y = Math.max(18, getHeight() / 5);
-            g.setColor(new Color(12, 25, 48, 235));
+            int x = (960 - width) / 2;
+            int y = Math.max(18, hudHeight() / 5);
+            g.setColor(new Color(12, 25, 48, 204));
             g.fillRect(x, y, width, 42);
             g.setColor(new Color(247, 204, 114));
             g.drawRect(x, y, width - 1, 41);
@@ -221,11 +225,11 @@ final class BattleScene extends JPanel {
                 }
                 double progress = state.effectProgress();
                 int alpha = (int) Math.round(255 * Math.min(1.0, Math.max(0.0, (1.0 - progress) * 2.0)));
-                int py = Math.max(22, Math.round((float) (ground - 4 - height) * getHeight() / h) - (int) (progress * 28));
+                int py = Math.max(22, Math.round((float) (ground - 4 - height) * hudHeight() / h) - (int) (progress * 28));
                 for (int amount : entry.getValue()) {
                     if (amount == 0) { continue; }
                     String text = (amount > 0 ? "+" : "") + amount + " HP";
-                    int px = Math.round((float) x * getWidth() / w) - g.getFontMetrics().stringWidth(text) / 2;
+                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(text) / 2;
                     g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
                     g.setColor(new Color(255, 255, 255, alpha));
                     for (int dx = -1; dx <= 1; dx++) {

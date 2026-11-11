@@ -30,5 +30,6 @@ public final class AspectRatioPanel extends JPanel {
             width = (int) ((long) height * WIDTH / HEIGHT);
         }
         screens.setBounds((getWidth() - width) / 2, (getHeight() - height) / 2, width, height);
+        if (width > 0) { ViewportFonts.apply(screens, ViewportFonts.factor(width)); }
     }
 }

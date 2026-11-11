@@ -175,6 +175,7 @@ public final class SelectionPanel extends JPanel {
             Graphics2D g = (Graphics2D) graphics.create();
             try {
                 int w = getWidth(), h = getHeight();
+                double scale = ViewportFonts.factor(SelectionPanel.this.getWidth());
                 g.setColor(new Color(17, 28, 52, 224));
                 g.fillRect(0, 0, w, h);
                 g.setColor(index == cursor ? Color.WHITE : selected.contains(index) ? GOLD : new Color(120, 149, 182));
@@ -184,8 +185,8 @@ public final class SelectionPanel extends JPanel {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                     int slice = sprites.getWidth() / 4;
-                    int top = 60, bottom = Math.max(top + 40, h - 135);
-                    int height = Math.min(bottom - top, (w - 16) * sprites.getHeight() / slice);
+                    int top = ViewportFonts.pixels(60, scale), bottom = Math.max(top + ViewportFonts.pixels(40, scale), h - ViewportFonts.pixels(135, scale));
+                    int height = Math.min(bottom - top, (w - ViewportFonts.pixels(16, scale)) * sprites.getHeight() / slice);
                     int width = height * slice / sprites.getHeight();
                     BufferedImage pixels = new BufferedImage(96, 128, BufferedImage.TYPE_INT_ARGB);
                     Graphics2D pixelGraphics = pixels.createGraphics();
@@ -199,19 +200,19 @@ public final class SelectionPanel extends JPanel {
                     g.drawImage(pixels, left, top, width, height, null);
                 }
                 g.setColor(GOLD);
-                g.setFont(new Font(Font.SERIF, Font.BOLD, 21));
-                drawCentered(g, NAMES[index], w / 2, 30);
+                g.setFont(new Font(Font.SERIF, Font.BOLD, ViewportFonts.pixels(21, scale)));
+                drawCentered(g, NAMES[index], w / 2, ViewportFonts.pixels(30, scale));
                 g.setColor(LIGHT);
-                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
-                drawCentered(g, CLASSES[index], w / 2, 49);
-                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-                drawCentered(g, STATS[index], w / 2, h - 102);
-                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
-                drawCentered(g, ABILITIES[index], w / 2, h - 72);
-                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-                drawCentered(g, EFFECTS[index], w / 2, h - 53);
+                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, ViewportFonts.pixels(13, scale)));
+                drawCentered(g, CLASSES[index], w / 2, ViewportFonts.pixels(49, scale));
+                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, ViewportFonts.pixels(11, scale)));
+                drawCentered(g, STATS[index], w / 2, h - ViewportFonts.pixels(102, scale));
+                g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, ViewportFonts.pixels(13, scale)));
+                drawCentered(g, ABILITIES[index], w / 2, h - ViewportFonts.pixels(72, scale));
+                g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, ViewportFonts.pixels(11, scale)));
+                drawCentered(g, EFFECTS[index], w / 2, h - ViewportFonts.pixels(53, scale));
                 g.setColor(selected.contains(index) ? GOLD : LIGHT);
-                drawCentered(g, (index == cursor ? "▶ " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - 32);
+                drawCentered(g, (index == cursor ? "▶ " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - ViewportFonts.pixels(32, scale));
                 if (hasFocus()) { g.drawRect(6, 6, w - 13, h - 13); }
             } finally { g.dispose(); }
         }

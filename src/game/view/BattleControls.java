@@ -28,25 +28,26 @@ final class BattleControls {
         owner.setPreferredSize(new Dimension(960, 540));
         owner.setFocusable(true);
         owner.setLayout(new BorderLayout());
-        JPanel battlefield = new JPanel(new BorderLayout());
-        battlefield.setBackground(Color.BLACK);
-        battlefield.add(new AspectRatioPanel(scene), BorderLayout.CENTER);
-        owner.add(battlefield, BorderLayout.CENTER);
-        JPanel bottom = new JPanel(new BorderLayout(4, 4));
-        bottom.setBackground(new Color(8, 14, 38));
-        bottom.setBorder(BorderFactory.createEmptyBorder(4, 6, 6, 6));
+        JPanel bottom = new JPanel(new BorderLayout(4, 2));
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(2, 6, 4, 6));
         status.setForeground(new Color(250, 218, 143));
-        status.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
-        status.setBorder(BorderFactory.createEmptyBorder(3, 8, 3, 8));
-        bottom.add(status, BorderLayout.NORTH);
+        status.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        status.setBorder(BorderFactory.createEmptyBorder(1, 8, 1, 8));
+        JPanel statusFrame = translucent(new Color(8, 14, 38));
+        statusFrame.setLayout(new BorderLayout());
+        statusFrame.add(status, BorderLayout.CENTER);
+        bottom.add(statusFrame, BorderLayout.NORTH);
         log.setEditable(false); log.setLineWrap(true); log.setWrapStyleWord(true);
         log.setFocusable(false);
-        log.setRows(2); log.setBackground(new Color(18, 39, 111));
-        log.setForeground(Color.WHITE); log.setFont(new Font(Font.MONOSPACED, Font.BOLD, 14));
-        log.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        log.setRows(1); log.setOpaque(false);
+        log.setForeground(Color.WHITE); log.setFont(new Font(Font.MONOSPACED, Font.BOLD, 13));
+        log.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
         JPanel info = frame();
         info.setLayout(new BorderLayout());
         logScroll.setBorder(null);
+        logScroll.setOpaque(false);
+        logScroll.getViewport().setOpaque(false);
         logScroll.setFocusable(false);
         logScroll.getVerticalScrollBar().setFocusable(false);
         info.add(logScroll, BorderLayout.CENTER);
@@ -55,10 +56,11 @@ final class BattleControls {
         for (int i = 0; i < partyStatus.length; i++) {
             JLabel member = partyStatus[i];
             member.setForeground(Color.WHITE);
-            member.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
-            member.setBorder(BorderFactory.createEmptyBorder(1, 10, 1, 10));
+            member.setFont(new Font(Font.MONOSPACED, Font.BOLD, 13));
+            member.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
             JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
-            JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 18));
+            JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 15));
+            ViewportFonts.scalePreferredSize(bar);
             bar.setUI(new BasicProgressBarUI());
             bar.setBackground(new Color(15, 26, 61));
             bar.setStringPainted(true); bar.setFont(new Font(Font.MONOSPACED, Font.BOLD, 11));
@@ -70,18 +72,20 @@ final class BattleControls {
         JPanel actions = frame();
         actions.setLayout(new GridLayout(5, 1, 0, 1));
         actions.setPreferredSize(new Dimension(190, 160));
+        ViewportFonts.scalePreferredSize(actions);
         for (JButton button : new JButton[] {attack, ability, item, defend, finish}) {
             button.setFocusable(false);
             button.setForeground(Color.WHITE);
             button.setBackground(new Color(18, 39, 111));
-            button.setFont(new Font(Font.MONOSPACED, Font.BOLD, 15));
+            button.setFont(new Font(Font.MONOSPACED, Font.BOLD, 13));
             button.setHorizontalAlignment(JButton.LEFT);
-            button.setBorder(BorderFactory.createEmptyBorder(3, 12, 3, 8));
-            button.setOpaque(true);
+            button.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 8));
+            button.setOpaque(false);
+            button.setContentAreaFilled(false);
         }
         actions.add(attack); actions.add(ability); actions.add(item); actions.add(defend); actions.add(finish);
         bottom.add(actions, BorderLayout.WEST);
-        owner.add(bottom, BorderLayout.SOUTH);
+        owner.add(new AspectRatioPanel(new BattleOverlay(scene, bottom)), BorderLayout.CENTER);
     }
 
     static void updateCommands(JButton[] commands, int commandIndex) {
@@ -113,9 +117,23 @@ final class BattleControls {
         }
     }
 
+    private static JPanel translucent(Color color) {
+        JPanel panel = new JPanel() {
+            @Override protected void paintComponent(java.awt.Graphics graphics) {
+                super.paintComponent(graphics);
+                java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+                try {
+                    g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 204));
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                } finally { g.dispose(); }
+            }
+        };
+        panel.setOpaque(false);
+        return panel;
+    }
+
     private static JPanel frame() {
-        JPanel panel = new JPanel();
-        panel.setBackground(new Color(18, 39, 111));
+        JPanel panel = translucent(new Color(18, 39, 111));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(220, 225, 239), 3),
                 BorderFactory.createLineBorder(new Color(63, 100, 166), 2)));

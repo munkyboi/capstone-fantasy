@@ -25,7 +25,34 @@ public final class WindowLayoutTest {
         JPanel scene = (JPanel) sceneField.get(battle);
         check(Math.abs(scene.getWidth() * 9 - scene.getHeight() * 16) <= 16, "battlefield remains 16:9");
         Rectangle sceneBounds = SwingUtilities.convertRectangle(scene.getParent(), scene.getBounds(), battle);
-        check(sceneBounds.y + sceneBounds.height < battle.getHeight(), "battle controls remain below the battlefield");
+        JPanel controls = (JPanel) scene.getParent().getComponent(0);
+        Rectangle controlsBounds = SwingUtilities.convertRectangle(controls.getParent(), controls.getBounds(), battle);
+        check(sceneBounds.intersects(controlsBounds)
+                && controlsBounds.y + controlsBounds.height == sceneBounds.y + sceneBounds.height,
+                "battle controls overlay the bottom of the battlefield");
+        JPanel info = (JPanel) ((java.awt.BorderLayout) controls.getLayout()).getLayoutComponent(java.awt.BorderLayout.CENTER);
+        var image = new java.awt.image.BufferedImage(info.getWidth(), info.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var graphics = image.createGraphics();
+        try { info.paint(graphics); } finally { graphics.dispose(); }
+        check((image.getRGB(info.getWidth() - 12, 10) >>> 24) == 204, "panel background is 80 percent opaque");
+    }
+    private static void checkFontScaling() throws Exception {
+        BattlePanel battle = new BattlePanel(() -> { });
+        battle.start(List.of(Student.ZACK, Student.BOGART, Student.ANGEL));
+        var statusField = BattlePanel.class.getDeclaredField("status"); statusField.setAccessible(true);
+        var barsField = BattlePanel.class.getDeclaredField("apBars"); barsField.setAccessible(true);
+        javax.swing.JLabel status = (javax.swing.JLabel) statusField.get(battle);
+        javax.swing.JProgressBar bar = ((javax.swing.JProgressBar[]) barsField.get(battle))[0];
+        battle.setSize(960, 720); layout(battle);
+        float base = status.getFont().getSize2D(); int baseBar = bar.getPreferredSize().width;
+        battle.setSize(1440, 900); layout(battle);
+        check(Math.abs(status.getFont().getSize2D() - base * 1.5) < 0.2, "battle text scales with viewport");
+        check(bar.getPreferredSize().width == Math.round(baseBar * 1.5f), "AP bar scales alongside text");
+        battle.setSize(2000, 900); layout(battle);
+        check(Math.abs(status.getFont().getSize2D() - base * (1600.0 / 960)) < 0.2, "font follows viewport rather than window width");
+        battle.setSize(960, 720); layout(battle);
+        check(Math.abs(status.getFont().getSize2D() - base) < 0.2 && bar.getPreferredSize().width == baseBar,
+                "font and controls return to baseline after resizing back");
     }
     /** Runs the window layout checks.
      * @param args unused
@@ -40,7 +67,7 @@ public final class WindowLayoutTest {
         frame.setSize(960, 540); frame.doLayout();
         check(screens.getBounds().equals(new Rectangle(0, 0, 960, 540)), "fills the initial window");
         SwingUtilities.invokeAndWait(() -> {
-            try { checkBattle(960, 720); checkBattle(1440, 900); }
+            try { checkBattle(960, 720); checkBattle(1440, 900); checkFontScaling(); }
             catch (Exception error) { throw new RuntimeException(error); }
         });
         System.out.println("Window layout checks passed");

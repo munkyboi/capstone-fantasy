@@ -108,14 +108,17 @@ public final class WorldMapPanel extends JPanel {
         try {
             out.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
             out.drawImage(canvas, 0, 0, getWidth(), getHeight(), null);
-            out.setColor(new Color(12, 25, 48, 225)); out.fillRect(0, 0, getWidth(), 60); out.fillRect(0, getHeight() - 108, getWidth(), 108);
+            double uiScale = getWidth() / 960.0;
+            out.scale(uiScale, uiScale);
+            int uiWidth = 960, uiHeight = 540;
+            out.setColor(new Color(12, 25, 48, 225)); out.fillRect(0, 0, uiWidth, 60); out.fillRect(0, uiHeight - 108, uiWidth, 108);
             out.setColor(new Color(250, 218, 143)); out.setFont(new Font(Font.SERIF, Font.BOLD, 27));
             out.drawString("CAMPUS ROUTE", 30, 40);
             out.setColor(Color.WHITE); out.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
             String state = cursor < progress.getEncounter() ? "COMPLETED" : cursor > progress.getEncounter() ? "LOCKED" : cursor > 1 ? "COMING SOON" : "AVAILABLE";
-            out.drawString(LOCATIONS[cursor] + "   [" + state + "]", 30, getHeight() - 75);
+            out.drawString(LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
             out.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-            out.drawString(notice != null ? notice : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, getHeight() - 42);
+            out.drawString(notice != null ? notice : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
         } finally { out.dispose(); }
     }
 }
