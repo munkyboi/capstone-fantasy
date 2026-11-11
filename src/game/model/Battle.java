@@ -33,6 +33,15 @@ public final class Battle {
      * @param random randomness used in combat
      */
     public Battle(GameProgress progress, Random random) {
+        this(progress, random, false);
+    }
+
+    /** Creates a route encounter, possibly starting with an ambush.
+     * @param progress party and encounter progress
+     * @param random randomness used in combat
+     * @param ambushed whether enemies ambush the party
+     */
+    public Battle(GameProgress progress, Random random, boolean ambushed) {
         if (progress.getEncounter() > 1) { throw new IllegalArgumentException("This encounter is not available yet"); }
         this.progress = progress;
         this.random = random;
@@ -50,6 +59,7 @@ public final class Battle {
             enemies.add(new Enemy("Stone Sentinel", true));
             message = "A Stone Sentinel and a Library Wisp appear!";
         }
+        if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
     }
     /** Returns party in speed order.

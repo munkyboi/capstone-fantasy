@@ -10,6 +10,7 @@ import game.io.SaveStore;
 import game.model.GameProgress;
 import game.model.GameSettings;
 import java.awt.CardLayout;
+import java.util.Random;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -36,6 +37,7 @@ public final class Main {
             CampPanel[] campHolder = new CampPanel[1];
             WorldMapPanel[] mapHolder = new WorldMapPanel[1];
             boolean[] saving = {false};
+            Random random = new Random();
             SaveSlotPanel slots = new SaveSlotPanel(new SaveStore(SaveStore.defaultDirectory()), () -> {
                 if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
                 else { showMenu.run(); }
@@ -63,7 +65,8 @@ public final class Main {
             }, settings);
             battleHolder[0] = battle;
             WorldMapPanel map = new WorldMapPanel(progress -> {
-                battle.start(progress);
+                boolean ambushed = settings.rollAmbush(random);
+                battle.start(progress, ambushed);
                 layout.show(screens, "battle");
                 battle.requestFocusInWindow();
             }, progress -> {

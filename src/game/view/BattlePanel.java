@@ -160,18 +160,29 @@ public final class BattlePanel extends JPanel {
      * @param progress party and encounter progress
      */
     public void start(GameProgress progress) {
+        start(progress, false);
+    }
+
+    /** Begins an encounter with full AP, or empty AP when the party is ambushed.
+     * @param progress party and encounter progress
+     * @param ambushed whether students start with empty AP bars
+     */
+    public void start(GameProgress progress, boolean ambushed) {
         this.progress = progress;
-        battle = new Battle(progress, new Random()); commandIndex = 0;
+        battle = new Battle(progress, new Random(), ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
         apTimer.stop(); effectTimer.stop(); showEffects = false; attackingSprite = null;
-        resetActionPoints();
+        resetActionPoints(ambushed);
+        if (!ambushed) { selectReadyStudent(); }
         if (isShowing()) { lastTickNanos = System.nanoTime(); apTimer.start(); }
         refresh();
     }
 
-    private void resetActionPoints() {
+    private void resetActionPoints(boolean ambushed) {
         actionPoints.clear(); enemyPoints.clear();
-        for (Student student : battle.getParty()) { actionPoints.put(student, 0.0); }
+        for (Student student : battle.getParty()) {
+            actionPoints.put(student, ambushed || !student.isAlive() ? 0.0 : (double) student.getActionThreshold());
+        }
         for (Enemy enemy : battle.getEnemies()) { enemyPoints.put(enemy, 0.0); }
     }
 

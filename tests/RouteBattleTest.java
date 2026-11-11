@@ -33,6 +33,11 @@ public final class RouteBattleTest {
      * @throws Exception if a check fails
      */
     public static void main(String[] args) throws Exception {
+        GameSettings ambushSettings = new GameSettings();
+        check(ambushSettings.getAmbushChance() == 0.5, "ambush chance is 50 percent");
+        check(ambushSettings.rollAmbush(new Random() { @Override public double nextDouble() { return 0.499; } })
+                && !ambushSettings.rollAmbush(new Random() { @Override public double nextDouble() { return 0.5; } }),
+                "ambush roll uses the 50 percent boundary");
         GameProgress progress = new GameProgress(List.of(0, 1, 3));
         check(new Student(0).getActionThreshold() == 35 && new Student(1).getActionThreshold() == 30
                 && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 45, "student AP thresholds");
@@ -71,7 +76,7 @@ public final class RouteBattleTest {
                     route.advance(); route.advance(); map.open(route); key(map, "map-enter");
                     check(entered[0] == 1, "unfinished encounter remains unavailable");
                     BattlePanel panel = new BattlePanel(() -> { });
-                    panel.start(List.of(0, 1, 2));
+                    panel.start(new GameProgress(List.of(0, 1, 2)), true);
                     Field field = BattlePanel.class.getDeclaredField("battle"); field.setAccessible(true);
                     Battle active = (Battle) field.get(panel);
                     Field timerField = BattlePanel.class.getDeclaredField("apTimer"); timerField.setAccessible(true);
@@ -79,6 +84,26 @@ public final class RouteBattleTest {
                     Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
                     Field enemyField = BattlePanel.class.getDeclaredField("enemyPoints"); enemyField.setAccessible(true);
                     Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
+                    BattlePanel normal = new BattlePanel(() -> { });
+                    normal.start(List.of(0, 1, 2));
+                    Battle normalBattle = (Battle) field.get(normal);
+                    @SuppressWarnings("unchecked") Map<Student, Double> normalPoints = (Map<Student, Double>) pointsField.get(normal);
+                    check(normalBattle.getCurrent().getId() == Student.CHARICE
+                            && normalBattle.getParty().stream().allMatch(student -> normalPoints.get(student) == student.getActionThreshold()),
+                            "normal battle starts full with fastest student ready");
+                    Field logField = BattlePanel.class.getDeclaredField("log"); logField.setAccessible(true);
+                    check(((javax.swing.JTextArea) logField.get(panel)).getText().contains("You have been ambushed!"),
+                            "ambush alert appears in the battle log");
+                    Map<?, ?> initialPoints = (Map<?, ?>) pointsField.get(panel);
+                    check(active.getParty().stream().allMatch(student -> initialPoints.get(student).equals(0.0)),
+                            "ambush starts with empty student AP");
+                    GameProgress secondStage = new GameProgress(List.of(0, 1, 3));
+                    secondStage.advance();
+                    Battle ambush = new Battle(secondStage, new Random(1), true);
+                    check(ambush.getMessage().contains("You have been ambushed!")
+                            && ambush.getEnemies().stream().anyMatch(Enemy::isSentinel)
+                            && secondStage.getEncounter() == 1,
+                            "stage ambush retains stage enemies and progress");
                     int hpBefore = active.getParty().stream().mapToInt(Student::getHp).sum();
                     advance.invoke(panel, 0.5);
                     check(((Map<?, ?>) pointsField.get(panel)).values().stream().allMatch(v -> v.equals(1.5))
@@ -107,7 +132,7 @@ public final class RouteBattleTest {
                     advance.invoke(panel, 2.0 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 1, "Bogart selected immediately at 30 AP");
                     BattlePanel tied = new BattlePanel(() -> { });
-                    tied.start(List.of(0, 1, 3));
+                    tied.start(new GameProgress(List.of(0, 1, 3)), true);
                     Battle tiedBattle = (Battle) field.get(tied);
                     @SuppressWarnings("unchecked") Map<Student, Double> tiedPoints = (Map<Student, Double>) pointsField.get(tied);
                     for (Student student : tiedBattle.getParty()) {
@@ -121,12 +146,12 @@ public final class RouteBattleTest {
                     check(settings.getApPerSecond() == 3.0, "default AP setting");
                     settings.setApPerSecond(6.0);
                     BattlePanel configured = new BattlePanel(() -> { }, p -> { }, settings);
-                    configured.start(List.of(0, 1, 3));
+                    configured.start(new GameProgress(List.of(0, 1, 3)), true);
                     advance.invoke(configured, 0.5);
                     check(((Map<?, ?>) pointsField.get(configured)).values().stream().allMatch(v -> v.equals(3.0)),
                             "configured rate controls AP fill");
                     BattlePanel delayed = new BattlePanel(() -> { });
-                    delayed.start(List.of(0, 1, 2));
+                    delayed.start(new GameProgress(List.of(0, 1, 2)), true);
                     Battle delayedBattle = (Battle) field.get(delayed);
                     int fullHp = delayedBattle.getParty().stream().mapToInt(Student::getHp).sum();
                     advance.invoke(delayed, 10.0);

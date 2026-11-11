@@ -81,7 +81,7 @@ public final class AnimationTest {
                 startedField.setLong(player, System.nanoTime());
                 check(hasWhiteOutline(player, 0xff6464), "damage text has a white outline");
 
-                BattlePanel monster = new BattlePanel(() -> { }); monster.start(List.of(0, 1, 3));
+                BattlePanel monster = new BattlePanel(() -> { }); monster.start(new GameProgress(List.of(0, 1, 3)), true);
                 advance.invoke(monster, 8.0);
                 Object attackingEnemy = attackerField.get(monster);
                 check(attackingEnemy instanceof Enemy && showingField.getBoolean(monster), "monster attack animates");
@@ -93,7 +93,7 @@ public final class AnimationTest {
                 Student zack = progress.getParty().stream().filter(s -> s.getId() == 0).findFirst().orElseThrow();
                 Student angel = progress.getParty().stream().filter(s -> s.getId() == 3).findFirst().orElseThrow();
                 zack.takeDamage(20);
-                BattlePanel healer = new BattlePanel(() -> { }); healer.start(progress);
+                BattlePanel healer = new BattlePanel(() -> { }); healer.start(progress, true);
                 Battle healingBattle = (Battle) battleField.get(healer);
                 check(healingBattle.selectStudent(angel), "select healer");
                 @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(healer);
