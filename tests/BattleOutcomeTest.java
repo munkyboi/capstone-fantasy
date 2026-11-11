@@ -56,6 +56,14 @@ public final class BattleOutcomeTest {
                 enemies.get(1).takeDamage(999); enemies.get(0).takeDamage(999);
                 refresh.invoke(panel);
                 check(battle.isVictory() && ((Timer) timerField.get(panel)).isRunning(), "victory starts celebration");
+                Field progressField = BattlePanel.class.getDeclaredField("progress"); progressField.setAccessible(true);
+                GameProgress rewardProgress = (GameProgress) progressField.get(panel);
+                Field logField = BattlePanel.class.getDeclaredField("log"); logField.setAccessible(true);
+                javax.swing.JTextArea log = (javax.swing.JTextArea) logField.get(panel);
+                check(log.getText().contains("Victory reward: Focus Charm"), "victory rewards shown in battle");
+                int gearCount = rewardProgress.getInventory().getEquipmentIds().size();
+                refresh.invoke(panel);
+                check(rewardProgress.getInventory().getEquipmentIds().size() == gearCount, "refresh does not grant rewards twice");
                 check(paint(panel).getRGB(alert.x, alert.y) != before.getRGB(alert.x, alert.y), "victory overlay is drawn");
                 Object scene = sceneField.get(panel);
                 Method lift = scene.getClass().getDeclaredMethod("victoryLift", Student.class, int.class); lift.setAccessible(true);

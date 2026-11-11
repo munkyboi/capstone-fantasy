@@ -35,6 +35,11 @@ public final class CampPanel extends JPanel {
     private static JLabel studentLabel() {
         return new JLabel() {
             @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D backgroundGraphics = (Graphics2D) graphics.create();
+                try {
+                    backgroundGraphics.setColor(getBackground());
+                    backgroundGraphics.fillRect(0, 0, getWidth(), getHeight());
+                } finally { backgroundGraphics.dispose(); }
                 super.paintComponent(graphics);
                 if (!Boolean.TRUE.equals(getClientProperty("selected")) || getIcon() == null) { return; }
                 int size = Math.max(1, Math.round(32 * getFont().getSize2D() / 15));
@@ -89,7 +94,7 @@ public final class CampPanel extends JPanel {
         for (JLabel label : students) {
             label.setForeground(Color.WHITE);
             label.setIconTextGap(12);
-            label.setOpaque(true);
+            label.setOpaque(false);
             label.setBackground(new Color(15, 25, 48, 225));
             label.setFont(ClassicUi.numbers(15));
             label.setBorder(BorderFactory.createCompoundBorder(
@@ -186,6 +191,8 @@ public final class CampPanel extends JPanel {
                 + (progress.getInventory().getVestOwner() == -1 ? "in bag" : "equipped")
                 + "<br>" + message + "</div></html>");
         help.setText("↑ ↓ Select  •  Enter: Use kit  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu");
+        // Selection is a client property, so it must repaint even when the label text is unchanged.
+        repaint();
     }
 
     /** Draws the camp scene beneath the party controls.

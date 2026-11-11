@@ -17,11 +17,43 @@ final class PixelPointer {
     private static BufferedImage loadArt() {
         try {
             BufferedImage source = ImageIO.read(PixelPointer.class.getResource("/assets/ui/hand-pointer-reference.png"));
-            removeBackground(source);
-            return source.getSubimage(115, 98, 310, 232);
+            if ((source.getRGB(0, 0) >>> 24) >= 128) { removeBackground(source); }
+            return cropHand(source);
         } catch (Exception error) {
             return new BufferedImage(310, 232, BufferedImage.TYPE_INT_ARGB);
         }
+    }
+
+    /** Finds the largest visible shape, excluding a detached shadow or transparent margins. */
+    private static BufferedImage cropHand(BufferedImage image) {
+        int width = image.getWidth(), height = image.getHeight();
+        boolean[] visited = new boolean[width * height];
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        int largest = 0, bestLeft = 0, bestTop = 0, bestRight = width - 1, bestBottom = height - 1;
+        for (int start = 0; start < visited.length; start++) {
+            if (visited[start] || (image.getRGB(start % width, start / width) >>> 24) < 128) { continue; }
+            visited[start] = true; queue.add(start);
+            int count = 0, left = width, right = 0, top = height, bottom = 0;
+            while (!queue.isEmpty()) {
+                int pixel = queue.removeFirst(), x = pixel % width, y = pixel / width;
+                count++; left = Math.min(left, x); right = Math.max(right, x);
+                top = Math.min(top, y); bottom = Math.max(bottom, y);
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || nx >= width || ny < 0 || ny >= height) { continue; }
+                        int next = ny * width + nx;
+                        if (!visited[next] && (image.getRGB(nx, ny) >>> 24) >= 128) {
+                            visited[next] = true; queue.addLast(next);
+                        }
+                    }
+                }
+            }
+            if (count > largest) {
+                largest = count; bestLeft = left; bestRight = right; bestTop = top; bestBottom = bottom;
+            }
+        }
+        return image.getSubimage(bestLeft, bestTop, bestRight - bestLeft + 1, bestBottom - bestTop + 1);
     }
 
     private static ImageIcon createHand() {

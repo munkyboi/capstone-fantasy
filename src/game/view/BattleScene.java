@@ -168,9 +168,6 @@ final class BattleScene extends JPanel {
                     output.setColor(new Color(239, 157, 102));
                     output.fillRect(left + 7, y + 5,
                             enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 8);
-                    output.setColor(Color.WHITE);
-                    output.drawString(enemy.isAlive() ? (int) state.enemyPoints(enemy) + "/" + enemy.getActionThreshold() + " AP" : "KO",
-                            left + 135, y + 13);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
                 if (battle.isOver()) { drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!"); }

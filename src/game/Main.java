@@ -73,9 +73,8 @@ public final class Main {
             });
             inventoryHolder[0] = inventory;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
-                String reward = progress.claimStageReward();
                 boolean hasNext = progress.advance();
-                camp.open(progress, !hasNext, reward);
+                camp.open(progress, !hasNext);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();
             }, settings);

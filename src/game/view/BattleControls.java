@@ -63,7 +63,7 @@ final class BattleControls {
             ViewportFonts.scalePreferredSize(bar);
             bar.setUI(new BasicProgressBarUI());
             bar.setBackground(new Color(15, 26, 61));
-            bar.setStringPainted(true); bar.setFont(ClassicUi.numbers(11));
+            bar.setStringPainted(false);
             row.add(member, BorderLayout.CENTER); row.add(bar, BorderLayout.EAST);
             members.add(row);
         }
@@ -115,7 +115,6 @@ final class BattleControls {
             apBars[i].setValue((int) (value * AP_DISPLAY_SCALE));
             float progress = (float) Math.max(0, Math.min(1, value / student.getActionThreshold()));
             apBars[i].setForeground(Color.getHSBColor(progress / 3.0f, 0.75f, 0.9f));
-            apBars[i].setString(!student.isAlive() ? "KO" : (int) value + " / " + student.getActionThreshold() + " AP");
         }
     }
 
