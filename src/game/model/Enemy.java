@@ -10,6 +10,10 @@ public final class Enemy extends GameCharacter {
     private static final int WISP_A_AP = 24;
     private static final int WISP_AP_STEP = 2;
     private static final int SENTINEL_AP = 32;
+    private static final int[] STAGE_PETOT_BONUS = {0, 0, 3, 6, 4};
+    private static final int[] STAGE_XP_BONUS = {0, 0, 3, 6, 10};
+    private static final double[] STAGE_HP_MULTIPLIER = {1.0, 1.0, 1.08, 1.16, 1.25};
+    private static final int[] STAGE_ATTACK_BONUS = {0, 0, 1, 2, 3};
     private final String name;
     private final int maxHp;
     private final int attack;
@@ -20,6 +24,7 @@ public final class Enemy extends GameCharacter {
     private final boolean boss;
     private final int actionThreshold;
     private final int petotDrop;
+    private final int experienceDrop;
     private final double difficultyMultiplier;
     private int actionsTaken;
 
@@ -46,14 +51,20 @@ public final class Enemy extends GameCharacter {
     }
     /** Creates an enemy scaled for the selected difficulty. */
     public Enemy(String name, boolean sentinel, boolean boss, GameSettings.Difficulty difficulty) {
+        this(name, sentinel, boss, difficulty, 0);
+    }
+    /** Creates an enemy tuned for its route stage before applying difficulty. */
+    public Enemy(String name, boolean sentinel, boolean boss, GameSettings.Difficulty difficulty, int stage) {
+        if (stage < 0 || stage > 4) throw new IllegalArgumentException("Invalid stage");
         this.name = name;
         this.sentinel = sentinel;
         this.boss = boss;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
-        petotDrop = boss ? 150 : sentinel ? 35 : 12;
-        maxHp = Math.max(1, (int) Math.round((boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * difficultyMultiplier));
+        petotDrop = boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
+        experienceDrop = boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage];
+        maxHp = Math.max(1, (int) Math.round((boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier));
         hp = maxHp;
-        attack = boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK;
+        attack = (boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage];
         defense = boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE;
         speed = Math.max(1, (int) Math.round((sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
@@ -65,7 +76,7 @@ public final class Enemy extends GameCharacter {
     /** Records an action only after it is performed. */
     void recordAction() { actionsTaken++; }
     /** Returns the experience earned by each student on victory. */
-    public int getExperienceDrop() { return (int) Math.round((boss ? 120 : sentinel ? 35 : 20) * difficultyMultiplier); }
+    public int getExperienceDrop() { return (int) Math.round(experienceDrop * difficultyMultiplier); }
     /** Scales outgoing damage, including monster skills. */
     public int scaleDamage(int damage) { return Math.max(1, (int) Math.round(damage * difficultyMultiplier)); }
     /** Returns the Petot awarded for defeating this enemy. */

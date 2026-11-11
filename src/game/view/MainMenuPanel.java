@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.GridBagLayout;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.Window;
@@ -75,8 +76,13 @@ public final class MainMenuPanel extends JPanel {
 
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
-        bottom.setBorder(BorderFactory.createEmptyBorder(0, 260, 44, 260));
-        JPanel menu = new JPanel(new GridLayout(openSettings == null ? 3 : 4, 1, 0, 8));
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 16, 44, 16));
+        JPanel menu = new JPanel(new GridLayout(openSettings == null ? 3 : 4, 1, 0, 8)) {
+            @Override public Dimension getPreferredSize() {
+                Dimension size = super.getPreferredSize();
+                return new Dimension(440, size.height);
+            }
+        };
         menu.setOpaque(true);
         menu.setBackground(new Color(15, 25, 48, 230));
         menu.setBorder(BorderFactory.createCompoundBorder(
@@ -99,7 +105,8 @@ public final class MainMenuPanel extends JPanel {
             String[] labels = openSettings == null ? new String[]{"New Game", "Load Game", "Quit"} : new String[]{"New Game", "Load Game", "Settings", "Quit"};
             for (int i = 0; i < buttons.length; i++) {
                 buttons[i].setText(labels[i]);
-                ViewportFonts.setScaledIcon(buttons[i], i == cursor ? PixelPointer.HAND : PixelPointer.EMPTY);
+                buttons[i].putClientProperty("menu.selected", i == cursor);
+                buttons[i].repaint();
             }
         };
         Keys.bind(this, "UP", "menu-up", () -> { cursor = Math.floorMod(cursor - 1, buttons.length); refresh.run(); });
@@ -107,7 +114,10 @@ public final class MainMenuPanel extends JPanel {
         Keys.bind(this, "ENTER", "menu-confirm", () -> buttons[cursor].doClick());
         Keys.bind(this, "SPACE", "menu-confirm-space", () -> buttons[cursor].doClick());
         refresh.run();
-        bottom.add(menu, BorderLayout.CENTER);
+        JPanel menuHolder = new JPanel(new GridBagLayout());
+        menuHolder.setOpaque(false);
+        menuHolder.add(menu);
+        bottom.add(menuHolder, BorderLayout.CENTER);
         JLabel subtitle = new JLabel("↑ ↓ MOVE   •   ENTER CONFIRM", SwingConstants.CENTER);
         subtitle.setForeground(Color.WHITE);
         subtitle.setFont(ClassicUi.body(12));
@@ -117,15 +127,32 @@ public final class MainMenuPanel extends JPanel {
     }
 
     private JButton menuButton(String label) {
-        JButton button = new JButton(label);
+        JButton button = new JButton(label) {
+            @Override protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                if (!Boolean.TRUE.equals(getClientProperty("menu.selected"))) { return; }
+                Graphics2D g = (Graphics2D) graphics.create();
+                try {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                    double scale = getFont().getSize2D() / 17.0;
+                    int width = Math.max(1, (int) Math.round(PixelPointer.HAND.getIconWidth() * scale));
+                    int height = Math.max(1, (int) Math.round(PixelPointer.HAND.getIconHeight() * scale));
+                    int textWidth = g.getFontMetrics(getFont()).stringWidth(getText());
+                    int x = (getWidth() - textWidth) / 2 - width - Math.max(2, (int) Math.round(4 * scale));
+                    g.drawImage(PixelPointer.HAND.getImage(), x, (getHeight() - height) / 2, width, height, null);
+                } finally { g.dispose(); }
+            }
+        };
+        button.setUI(new javax.swing.plaf.basic.BasicButtonUI());
         button.setFocusable(false);
         button.setFont(ClassicUi.body(17));
         button.setForeground(Color.WHITE);
         button.setBackground(INK);
-        button.setFocusPainted(true);
+        button.setFocusPainted(false);
+        button.setBorderPainted(true);
         button.setOpaque(true);
         button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(107, 130, 172)),
+                BorderFactory.createLineBorder(new Color(107, 130, 172), 2),
                 BorderFactory.createEmptyBorder(9, 12, 9, 12)));
         return button;
     }
