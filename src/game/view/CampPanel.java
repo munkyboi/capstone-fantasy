@@ -21,6 +21,7 @@ public final class CampPanel extends JPanel {
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
     private final Consumer<GameProgress> nextBattle;
     private final Runnable menu;
+    private final Consumer<GameProgress> save;
     private GameProgress progress;
     private int cursor;
     private boolean complete;
@@ -30,8 +31,18 @@ public final class CampPanel extends JPanel {
      * @param menu returns to the main menu
      */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu) {
+        this(nextBattle, menu, ignored -> { });
+    }
+
+    /** Creates the camp screen with a save action.
+     * @param nextBattle starts the next encounter
+     * @param menu returns to the main menu
+     * @param save opens the save slots
+     */
+    public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save) {
         this.nextBattle = nextBattle;
         this.menu = menu;
+        this.save = save;
         setPreferredSize(new Dimension(960, 540));
         setFocusable(true);
         setLayout(new BorderLayout(20, 20));
@@ -62,6 +73,7 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "ENTER", "camp-use", this::confirm);
         Keys.bind(this, "SPACE", "camp-use-space", this::confirm);
         Keys.bind(this, "C", "camp-continue", this::continueGame);
+        Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !complete) { this.save.accept(progress); } });
         Keys.bind(this, "ESCAPE", "camp-menu", menu);
     }
 
@@ -71,7 +83,7 @@ public final class CampPanel extends JPanel {
      */
     public void open(GameProgress progress, boolean complete) {
         this.progress = progress; this.complete = complete; cursor = 0;
-        refresh(complete ? "The available encounters are complete." : "Victory! Prepare for the next encounter.");
+        refresh(complete ? "The available encounters are complete." : "Prepare for the next encounter.");
     }
 
     private void move(int direction) {
@@ -104,6 +116,6 @@ public final class CampPanel extends JPanel {
                     student.getName(), student.getHp(), student.getMaxHp(), student.isAlive() ? "" : "  KO"));
         }
         supplies.setText("First-Aid Kits: " + progress.getKits() + "   •   " + message);
-        help.setText(complete ? "Enter: Return to menu" : "↑ ↓ Select student   •   Enter: Use kit   •   C: Continue   •   Esc: Main menu");
+        help.setText(complete ? "Enter: Return to menu" : "↑ ↓ Select   •   Enter: Use kit   •   S: Save   •   C: Continue   •   Esc: Menu");
     }
 }

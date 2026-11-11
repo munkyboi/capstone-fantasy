@@ -1,13 +1,15 @@
 package game.model;
 
 /** A student taking part in the first battle. */
-public final class Student {
+public final class Student implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final int id;
     private final String name;
     private final int maxHp;
     private final int attack;
     private final int defense;
     private final int speed;
+    private final int level = 1;
     private int hp;
     private boolean defending;
 
@@ -32,9 +34,18 @@ public final class Student {
     /** @return attack value */ public int getAttack() { return attack; }
     /** @return defense value */ public int getDefense() { return defense; }
     /** @return speed value */ public int getSpeed() { return speed; }
+    /** @return current level */ public int getLevel() { return level; }
     /** @return whether the student can act */ public boolean isAlive() { return hp > 0; }
     /** Protects against the next incoming attack. */ public void defend() { defending = true; }
     /** Clears defense between encounters. */ public void clearDefense() { defending = false; }
+    /** Restores validated HP from a saved game.
+     * @param savedHp current HP to restore
+     */
+    void restoreHp(int savedHp) {
+        if (savedHp < 0 || savedHp > maxHp) { throw new IllegalArgumentException("Invalid HP"); }
+        hp = savedHp;
+        defending = false;
+    }
     /** Restores HP up to the maximum.
      * @param amount amount to restore
      * @return actual HP restored

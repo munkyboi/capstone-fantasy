@@ -5,7 +5,8 @@ import java.util.Comparator;
 import java.util.List;
 
 /** Party and shared supplies carried between encounters. */
-public final class GameProgress {
+public final class GameProgress implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private static final int STARTING_KITS = 3;
     private static final int KIT_HEAL = 30;
     private final List<Student> party = new ArrayList<>();
@@ -29,6 +30,29 @@ public final class GameProgress {
      * @return whether another encounter was available
      */
     public boolean advance() { if (encounter >= 1) { return false; } encounter++; return true; }
+    /** Reconstructs and validates a saved camp state.
+     * @param ids student indices
+     * @param hitPoints corresponding current HP values
+     * @param kits remaining first-aid kits
+     * @param encounter next encounter index
+     * @return reconstructed progress
+     */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, int kits, int encounter) {
+        if (ids == null || hitPoints == null || ids.size() != 3 || hitPoints.size() != 3
+                || kits < 0 || kits > STARTING_KITS || encounter != 1) {
+            throw new IllegalArgumentException("Invalid saved progress");
+        }
+        GameProgress result = new GameProgress(ids);
+        for (int i = 0; i < ids.size(); i++) {
+            final int id = ids.get(i);
+            Student student = result.party.stream().filter(s -> s.getId() == id).findFirst().orElseThrow();
+            student.restoreHp(hitPoints.get(i));
+        }
+        if (result.party.stream().noneMatch(Student::isAlive)) { throw new IllegalArgumentException("Party is defeated"); }
+        result.kits = kits;
+        result.encounter = encounter;
+        return result;
+    }
     /** Uses a kit on a living, injured member.
      * @param target the student to heal
      * @return true if a kit was consumed

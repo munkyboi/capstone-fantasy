@@ -4,6 +4,8 @@ import game.view.MainMenuPanel;
 import game.view.SelectionPanel;
 import game.view.BattlePanel;
 import game.view.CampPanel;
+import game.view.SaveSlotPanel;
+import game.io.SaveStore;
 import java.awt.CardLayout;
 import javax.swing.JPanel;
 import javax.swing.JFrame;
@@ -27,11 +29,27 @@ public final class Main {
                 screens.getComponent(0).requestFocusInWindow();
             };
             BattlePanel[] battleHolder = new BattlePanel[1];
+            CampPanel[] campHolder = new CampPanel[1];
+            boolean[] saving = {false};
+            SaveSlotPanel slots = new SaveSlotPanel(new SaveStore(SaveStore.defaultDirectory()), () -> {
+                if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
+                else { showMenu.run(); }
+            }, progress -> {
+                campHolder[0].open(progress, false);
+                layout.show(screens, "camp");
+                campHolder[0].requestFocusInWindow();
+            });
             CampPanel camp = new CampPanel(progress -> {
                 battleHolder[0].start(progress);
                 layout.show(screens, "battle");
                 battleHolder[0].requestFocusInWindow();
-            }, showMenu);
+            }, showMenu, progress -> {
+                saving[0] = true;
+                slots.openSave(progress);
+                layout.show(screens, "slots");
+                slots.requestFocusInWindow();
+            });
+            campHolder[0] = camp;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
                 boolean hasNext = progress.advance();
                 camp.open(progress, !hasNext);
@@ -48,11 +66,17 @@ public final class Main {
                 selection.reset();
                 layout.show(screens, "selection");
                 selection.requestFocusInWindow();
+            }, () -> {
+                saving[0] = false;
+                slots.openLoad();
+                layout.show(screens, "slots");
+                slots.requestFocusInWindow();
             });
             screens.add(menu, "menu");
             screens.add(selection, "selection");
             screens.add(battle, "battle");
             screens.add(camp, "camp");
+            screens.add(slots, "slots");
             window.setContentPane(screens);
             window.pack();
             window.setResizable(false);

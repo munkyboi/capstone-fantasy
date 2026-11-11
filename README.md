@@ -11,7 +11,19 @@ sh build.sh
 java -jar build/capstone-fantasy.jar
 ```
 
-The current build opens a fixed-size 960 × 540 (16:9) game window. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose three, then press **Down** and **Enter** to continue. **Escape** goes back. The first encounter has two Library Wisps; after victory, press Enter to visit camp. At camp, use **Up/Down** to choose a student, **Enter** to use a First-Aid Kit, and **C** to continue to the Wisp and Stone Sentinel encounter. In battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. A cursor shows the target on the battlefield: use the arrow keys to move among living allies or enemies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Zack's Arcane Burst targets all living enemies. Use **Page Up/Page Down** to scroll longer battle messages. Angel can attack normally or use Healing Kiss. After the second victory, Enter opens the completion screen; press Enter again to return to the menu. **Load Game** is not implemented. A graphical desktop is required.
+The current build opens a fixed-size 960 × 540 (16:9) game window. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose three, then press **Down** and **Enter** to continue. **Escape** goes back. The first encounter has two Library Wisps; after victory, press Enter to visit camp. At camp, use **Up/Down** to choose a student, **Enter** to use a First-Aid Kit, **S** to save, and **C** to continue to the Wisp and Stone Sentinel encounter. In battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. A cursor shows the target on the battlefield: use the arrow keys to move among living allies or enemies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Zack's Arcane Burst targets all living enemies. Use **Page Up/Page Down** to scroll longer battle messages. Angel can attack normally or use Healing Kiss. After the second victory, Enter opens the completion screen; press Enter again to return to the menu. A graphical desktop is required.
+
+## Saving and loading
+
+At camp, press **S** to open the save screen. Choose one of three slots with **Up/Down** and select text or binary with **Left/Right**. Press Enter to save; replacing an existing save requires a second Enter, and Esc cancels. Text and binary saves are independent files, so saving one does not update the other. The main menu's **Load Game** opens the same slot and format selector and returns a loaded game to camp. Saves are kept in `~/.capstone-fantasy/saves/` and contain the current party, levels, HP, first-aid kits, and next encounter. Missing or invalid files show a message. This version saves only at camp, after the first battle.
+
+To run the save regression check after building:
+
+```sh
+mkdir -p build/test-classes
+javac -cp build/capstone-fantasy.jar -d build/test-classes tests/SaveStoreTest.java
+java -cp build/capstone-fantasy.jar:build/test-classes SaveStoreTest
+```
 
 ## Direction
 
@@ -19,7 +31,7 @@ The game is intended to be suitable for a school audience, without profanity, in
 
 ## AI assistance
 
-OpenAI Codex helped plan the game and draft the Java Swing main menu, character-selection, battle and camp screens, progression and battle logic, and build script. OpenAI's built-in image generation tool created the student concept, idle artwork, Library Wisp and Stone Sentinel sprites, and adapted a Kenney sample into the selection background. This disclosure will be updated as work progresses. The student is responsible for understanding and explaining the submitted work.
+OpenAI Codex helped plan the game and draft the Java Swing main menu, character-selection, battle, camp and save-slot screens, progression, battle and save/load logic, save regression check, and build script. OpenAI's built-in image generation tool created the student concept, idle artwork, Library Wisp and Stone Sentinel sprites, and adapted a Kenney sample into the selection background. This disclosure will be updated as work progresses. The student is responsible for understanding and explaining the submitted work.
 
 ## Art references and assets
 
@@ -34,4 +46,4 @@ OpenAI Codex helped plan the game and draft the Java Swing main menu, character-
 
 ## Known limitations
 
-Two encounters and a basic camp are implemented. HP, knockouts, and remaining First-Aid Kits carry between them; kits cannot revive knocked-out students. Equipment, the remaining encounters, a full inventory, and saving are not implemented yet. Stats and balance are provisional, the artwork has no animation frames yet, and the title screen's campus and crystal remain simple shapes drawn by the application.
+Two encounters and a basic camp are implemented. HP, knockouts, and remaining First-Aid Kits carry between them; kits cannot revive knocked-out students. Saving currently captures only the available camp state. Equipment, the remaining encounters, and a full inventory are not implemented yet. Stats and balance are provisional, the artwork has no animation frames yet, and the title screen's campus and crystal remain simple shapes drawn by the application.

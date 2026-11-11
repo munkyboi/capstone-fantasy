@@ -12,7 +12,6 @@ import java.awt.Window;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
@@ -29,6 +28,15 @@ public final class MainMenuPanel extends JPanel {
      * @param startNewGame opens character selection
      */
     public MainMenuPanel(Window window, Runnable startNewGame) {
+        this(window, startNewGame, () -> { });
+    }
+
+    /** Creates the main menu with a load action.
+     * @param window window to close
+     * @param startNewGame opens character selection
+     * @param openLoad opens saved-game slots
+     */
+    public MainMenuPanel(Window window, Runnable startNewGame, Runnable openLoad) {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);
         setLayout(new BorderLayout());
@@ -51,9 +59,7 @@ public final class MainMenuPanel extends JPanel {
         JButton loadGame = menuButton("Load Game");
         JButton quit = menuButton("Quit");
         newGame.addActionListener(event -> startNewGame.run());
-        loadGame.addActionListener(event -> JOptionPane.showMessageDialog(this,
-                "Saving and loading will be added in a future update.", "Load Game",
-                JOptionPane.INFORMATION_MESSAGE));
+        loadGame.addActionListener(event -> openLoad.run());
         quit.addActionListener(event -> window.dispose());
         menu.add(newGame);
         menu.add(loadGame);
