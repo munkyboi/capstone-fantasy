@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.util.List;
 import javax.swing.SwingUtilities;
+import javax.swing.JPanel;
 import javax.swing.Timer;
 
 /** Checks that the ambush banner is visible briefly and resets between battles. */
@@ -25,7 +26,7 @@ public final class AmbushAlertTest {
         BattlePanel[] holder = new BattlePanel[1];
         SwingUtilities.invokeAndWait(() -> {
             try {
-                BattlePanel panel = new BattlePanel(() -> { }); holder[0] = panel;
+                BattlePanel panel = TestBattles.twoEnemies(() -> { }); holder[0] = panel;
                 panel.start(new GameProgress(List.of(0, 1, 2)), true);
                 check(flag.getBoolean(panel), "ambush banner shown immediately");
                 Timer timer = (Timer) timerField.get(panel);
@@ -36,7 +37,11 @@ public final class AmbushAlertTest {
                 flag.setBoolean(panel, false);
                 BufferedImage hidden = new BufferedImage(960, 540, BufferedImage.TYPE_INT_ARGB);
                 panel.paint(hidden.getGraphics());
-                check(visible.getRGB(480, 90) != hidden.getRGB(480, 90), "banner renders in upper center of battlefield");
+                Field sceneField = BattlePanel.class.getDeclaredField("scene"); sceneField.setAccessible(true);
+                JPanel scene = (JPanel) sceneField.get(panel);
+                java.awt.Point alert = SwingUtilities.convertPoint(scene, scene.getWidth() / 2,
+                        Math.max(18, scene.getHeight() / 5) + 1, panel);
+                check(visible.getRGB(alert.x, alert.y) != hidden.getRGB(alert.x, alert.y), "banner renders in upper center of battlefield");
                 flag.setBoolean(panel, true);
             } catch (ReflectiveOperationException ex) { throw new RuntimeException(ex); }
         });

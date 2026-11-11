@@ -44,16 +44,19 @@ public final class BattleOutcomeTest {
                 Field timerField = BattlePanel.class.getDeclaredField("victoryTimer"); timerField.setAccessible(true);
                 Method refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true);
                 int[] continued = {0}, returned = {0};
-                BattlePanel panel = new BattlePanel(() -> returned[0]++, progress -> continued[0]++);
+                BattlePanel panel = TestBattles.twoEnemies(() -> returned[0]++, progress -> continued[0]++, new game.model.GameSettings());
                 panel.start(List.of(Student.ZACK, Student.CHARICE, Student.ANGEL));
                 Battle battle = (Battle) battleField.get(panel);
                 BufferedImage before = paint(panel);
+                JPanel scenePanel = (JPanel) sceneField.get(panel);
+                java.awt.Point alert = SwingUtilities.convertPoint(scenePanel, scenePanel.getWidth() / 2,
+                        Math.max(18, scenePanel.getHeight() / 5) + 1, panel);
                 Student down = battle.getParty().get(2); down.takeDamage(999);
                 List<Enemy> enemies = battle.getEnemies();
                 enemies.get(1).takeDamage(999); enemies.get(0).takeDamage(999);
                 refresh.invoke(panel);
                 check(battle.isVictory() && ((Timer) timerField.get(panel)).isRunning(), "victory starts celebration");
-                check(paint(panel).getRGB(480, 85) != before.getRGB(480, 85), "victory overlay is drawn");
+                check(paint(panel).getRGB(alert.x, alert.y) != before.getRGB(alert.x, alert.y), "victory overlay is drawn");
                 Object scene = sceneField.get(panel);
                 Method lift = scene.getClass().getDeclaredMethod("victoryLift", Student.class, int.class); lift.setAccessible(true);
                 startField.setLong(panel, System.nanoTime() - 150_000_000L);
@@ -68,7 +71,7 @@ public final class BattleOutcomeTest {
                 for (Student student : battle.getParty()) { student.takeDamage(999); }
                 refresh.invoke(panel);
                 check(battle.isDefeat() && !((Timer) timerField.get(panel)).isRunning(), "defeat does not celebrate");
-                check(paint(panel).getRGB(480, 85) != active.getRGB(480, 85), "defeat overlay is drawn");
+                check(paint(panel).getRGB(alert.x, alert.y) != active.getRGB(alert.x, alert.y), "defeat overlay is drawn");
                 key(panel, "battle-confirm");
                 check(returned[0] == 1, "defeat returns to menu on Enter");
                 System.out.println("Battle outcome checks passed");

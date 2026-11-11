@@ -28,7 +28,10 @@ final class BattleControls {
         owner.setPreferredSize(new Dimension(960, 540));
         owner.setFocusable(true);
         owner.setLayout(new BorderLayout());
-        owner.add(scene, BorderLayout.CENTER);
+        JPanel battlefield = new JPanel(new BorderLayout());
+        battlefield.setBackground(Color.BLACK);
+        battlefield.add(new AspectRatioPanel(scene), BorderLayout.CENTER);
+        owner.add(battlefield, BorderLayout.CENTER);
         JPanel bottom = new JPanel(new BorderLayout(4, 4));
         bottom.setBackground(new Color(8, 14, 38));
         bottom.setBorder(BorderFactory.createEmptyBorder(4, 6, 6, 6));

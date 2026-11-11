@@ -30,6 +30,7 @@ public final class BattlePanel extends JPanel {
     private final Runnable returnToMenu;
     private final Consumer<GameProgress> onVictory;
     private final GameSettings settings;
+    private final Random battleRandom;
     private final JLabel status = new JLabel();
     private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel()};
     private final JProgressBar[] apBars = {new JProgressBar(), new JProgressBar(), new JProgressBar()};
@@ -83,9 +84,20 @@ public final class BattlePanel extends JPanel {
      * @param settings shared gameplay settings
      */
     public BattlePanel(Runnable returnToMenu, Consumer<GameProgress> onVictory, GameSettings settings) {
+        this(returnToMenu, onVictory, settings, new Random());
+    }
+
+    /** Creates a battle screen with a supplied random source.
+     * @param returnToMenu returns after defeat
+     * @param onVictory opens the next screen after victory
+     * @param settings shared gameplay settings
+     * @param random random source for encounters and combat
+     */
+    public BattlePanel(Runnable returnToMenu, Consumer<GameProgress> onVictory, GameSettings settings, Random random) {
         this.returnToMenu = returnToMenu;
         this.onVictory = onVictory;
         this.settings = settings;
+        this.battleRandom = random;
         scene = new BattleScene(new BattleScene.State() {
             @Override public Battle battle() { return battle; }
             @Override public boolean partyTarget(int index) {
@@ -193,7 +205,7 @@ public final class BattlePanel extends JPanel {
     public void start(GameProgress progress, boolean ambushed) {
         ambushed = ambushed && settings.allowsAmbush(progress.getEncounter());
         this.progress = progress;
-        battle = new Battle(progress, new Random(), ambushed); commandIndex = 0;
+        battle = new Battle(progress, battleRandom, ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
         victoryStartedNanos = 0;

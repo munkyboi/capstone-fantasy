@@ -2,6 +2,7 @@ package game;
 
 import game.view.MainMenuPanel;
 import game.view.AspectRatioPanel;
+import game.view.PixelShell;
 import game.view.SelectionPanel;
 import game.view.BattlePanel;
 import game.view.CampPanel;
@@ -29,9 +30,10 @@ public final class Main {
             window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             CardLayout layout = new CardLayout();
             JPanel screens = new JPanel(layout);
+            screens.setPreferredSize(new java.awt.Dimension(960, 720));
             Runnable showMenu = () -> {
                 layout.show(screens, "menu");
-                screens.getComponent(0).requestFocusInWindow();
+                ((AspectRatioPanel) screens.getComponent(0)).getComponent(0).requestFocusInWindow();
             };
             BattlePanel[] battleHolder = new BattlePanel[1];
             GameSettings settings = new GameSettings();
@@ -91,13 +93,13 @@ public final class Main {
                 layout.show(screens, "slots");
                 slots.requestFocusInWindow();
             });
-            screens.add(menu, "menu");
-            screens.add(selection, "selection");
+            screens.add(new AspectRatioPanel(menu), "menu");
+            screens.add(new AspectRatioPanel(selection), "selection");
             screens.add(battle, "battle");
-            screens.add(camp, "camp");
-            screens.add(map, "map");
-            screens.add(slots, "slots");
-            window.setContentPane(new AspectRatioPanel(screens));
+            screens.add(new AspectRatioPanel(camp), "camp");
+            screens.add(new AspectRatioPanel(map), "map");
+            screens.add(new AspectRatioPanel(slots), "slots");
+            window.setContentPane(PixelShell.wrap(screens));
             window.pack();
             window.setMinimumSize(window.getSize());
             window.setLocationRelativeTo(null);

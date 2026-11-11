@@ -37,7 +37,7 @@ public final class TargetHighlightTest {
                 Field sceneField = BattlePanel.class.getDeclaredField("scene"); sceneField.setAccessible(true);
                 Field battleField = BattlePanel.class.getDeclaredField("battle"); battleField.setAccessible(true);
                 Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
-                BattlePanel panel = new BattlePanel(() -> { });
+                BattlePanel panel = TestBattles.twoEnemies(() -> { });
                 panel.start(List.of(Student.ZACK, Student.CHARICE, Student.ANGEL));
                 JPanel scene = (JPanel) sceneField.get(panel);
                 check(!highlighted(draw(scene), 0), "no target highlighted initially");

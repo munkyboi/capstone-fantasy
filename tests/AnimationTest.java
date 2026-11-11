@@ -63,7 +63,7 @@ public final class AnimationTest {
                 Field timerField = BattlePanel.class.getDeclaredField("effectTimer"); timerField.setAccessible(true);
                 Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
 
-                BattlePanel player = new BattlePanel(() -> { }); player.start(List.of(0, 1, 2));
+                BattlePanel player = TestBattles.twoEnemies(() -> { }); player.start(List.of(0, 1, 2));
                 advance.invoke(player, 10.0);
                 Battle fight = (Battle) battleField.get(player);
                 Student actor = fight.getCurrent();
@@ -81,7 +81,7 @@ public final class AnimationTest {
                 startedField.setLong(player, System.nanoTime());
                 check(hasWhiteOutline(player, 0xff6464), "damage text has a white outline");
 
-                BattlePanel monster = new BattlePanel(() -> { }); monster.start(new GameProgress(List.of(0, 1, 3)), true);
+                BattlePanel monster = TestBattles.twoEnemies(() -> { }); monster.start(new GameProgress(List.of(0, 1, 3)), true);
                 advance.invoke(monster, 1.6);
                 Object attackingEnemy = attackerField.get(monster);
                 check(attackingEnemy instanceof Enemy && showingField.getBoolean(monster), "monster attack animates");
@@ -93,7 +93,7 @@ public final class AnimationTest {
                 Student zack = progress.getParty().stream().filter(s -> s.getId() == 0).findFirst().orElseThrow();
                 Student angel = progress.getParty().stream().filter(s -> s.getId() == 3).findFirst().orElseThrow();
                 zack.takeDamage(20);
-                BattlePanel healer = new BattlePanel(() -> { }); healer.start(progress, true);
+                BattlePanel healer = TestBattles.twoEnemies(() -> { }); healer.start(progress, true);
                 Battle healingBattle = (Battle) battleField.get(healer);
                 check(healingBattle.selectStudent(angel), "select healer");
                 @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(healer);

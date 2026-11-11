@@ -51,14 +51,15 @@ public final class Battle {
         if (party.stream().noneMatch(Student::isAlive)) {
             throw new IllegalArgumentException("At least one student must be able to battle");
         }
-        enemies.add(new Enemy("Library Wisp A"));
-        if (progress.getEncounter() == 0) {
-            enemies.add(new Enemy("Library Wisp B"));
-            message = "Two Library Wisps appear! Choose an action.";
-        } else {
-            enemies.add(new Enemy("Stone Sentinel", true));
-            message = "A Stone Sentinel and a Library Wisp appear!";
+        int count = EncounterRules.rollMonsterCount(progress.getEncounter(), random);
+        boolean sentinelEncounter = progress.getEncounter() == 1;
+        int wisps = sentinelEncounter ? count - 1 : count;
+        for (int index = 0; index < wisps; index++) {
+            enemies.add(new Enemy("Library Wisp " + (char) ('A' + index)));
         }
+        if (sentinelEncounter) { enemies.add(new Enemy("Stone Sentinel", true)); }
+        message = sentinelEncounter ? "A Stone Sentinel" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appears!")
+                : count + " Library Wisp(s) appear! Choose an action.";
         if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
     }

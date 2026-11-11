@@ -85,7 +85,7 @@ public final class RouteBattleTest {
                     key(map, "map-enter"); check(entered[0] == 1, "available route");
                     route.advance(); route.advance(); map.open(route); key(map, "map-enter");
                     check(entered[0] == 1, "unfinished encounter remains unavailable");
-                    BattlePanel panel = new BattlePanel(() -> { });
+                    BattlePanel panel = TestBattles.twoEnemies(() -> { });
                     panel.start(new GameProgress(List.of(0, 1, 2)), true);
                     Field field = BattlePanel.class.getDeclaredField("battle"); field.setAccessible(true);
                     Battle active = (Battle) field.get(panel);
@@ -94,7 +94,7 @@ public final class RouteBattleTest {
                     Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
                     Field enemyField = BattlePanel.class.getDeclaredField("enemyPoints"); enemyField.setAccessible(true);
                     Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
-                    BattlePanel normal = new BattlePanel(() -> { });
+                    BattlePanel normal = TestBattles.twoEnemies(() -> { });
                     normal.start(List.of(0, 1, 2));
                     Battle normalBattle = (Battle) field.get(normal);
                     @SuppressWarnings("unchecked") Map<Student, Double> normalPoints = (Map<Student, Double>) pointsField.get(normal);
@@ -121,7 +121,7 @@ public final class RouteBattleTest {
                             && ambush.getEnemies().stream().anyMatch(Enemy::isSentinel)
                             && secondStage.getEncounter() == 1,
                             "stage ambush retains stage enemies and progress");
-                    BattlePanel secondPanel = new BattlePanel(() -> { });
+                    BattlePanel secondPanel = TestBattles.twoEnemies(() -> { });
                     secondPanel.start(secondStage, true);
                     Battle secondBattle = (Battle) field.get(secondPanel);
                     Map<?, ?> secondEnemyPoints = (Map<?, ?>) enemyField.get(secondPanel);
@@ -156,7 +156,7 @@ public final class RouteBattleTest {
                     check(points.get(active.getParty().get(0)) == 0.0, "only acting student's AP resets");
                     advance.invoke(panel, 2.0 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 1, "Bogart selected immediately at 30 AP");
-                    BattlePanel tied = new BattlePanel(() -> { });
+                    BattlePanel tied = TestBattles.twoEnemies(() -> { });
                     tied.start(new GameProgress(List.of(0, 1, 3)), true);
                     Battle tiedBattle = (Battle) field.get(tied);
                     @SuppressWarnings("unchecked") Map<Student, Double> tiedPoints = (Map<Student, Double>) pointsField.get(tied);
@@ -170,12 +170,12 @@ public final class RouteBattleTest {
                     GameSettings settings = new GameSettings();
                     check(settings.getApPerSecond() == 3.0, "default AP setting");
                     settings.setApPerSecond(6.0);
-                    BattlePanel configured = new BattlePanel(() -> { }, p -> { }, settings);
+                    BattlePanel configured = TestBattles.twoEnemies(() -> { }, p -> { }, settings);
                     configured.start(new GameProgress(List.of(0, 1, 3)), true);
                     advance.invoke(configured, 0.5);
                     check(((Map<?, ?>) pointsField.get(configured)).values().stream().allMatch(v -> v.equals(3.0)),
                             "configured rate controls AP fill");
-                    BattlePanel delayed = new BattlePanel(() -> { });
+                    BattlePanel delayed = TestBattles.twoEnemies(() -> { });
                     delayed.start(new GameProgress(List.of(0, 1, 2)), true);
                     Battle delayedBattle = (Battle) field.get(delayed);
                     int fullHp = delayedBattle.getParty().stream().mapToInt(Student::getHp).sum();
