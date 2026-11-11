@@ -19,6 +19,8 @@ public final class Enemy extends GameCharacter {
     private final boolean sentinel;
     private final boolean boss;
     private final int actionThreshold;
+    private final int petotDrop;
+    private int actionsTaken;
 
     /** Creates one Wisp with its own name and battle stats.
      * @param name display name
@@ -42,15 +44,24 @@ public final class Enemy extends GameCharacter {
         this.name = name;
         this.sentinel = sentinel;
         this.boss = boss;
-        maxHp = sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP;
+        petotDrop = boss ? 150 : sentinel ? 35 : 12;
+        maxHp = boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP;
         hp = maxHp;
-        attack = sentinel ? SENTINEL_ATTACK : WISP_ATTACK;
-        defense = sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE;
+        attack = boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK;
+        defense = boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE;
         speed = sentinel ? SENTINEL_SPEED : WISP_SPEED;
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
         int wispIndex = suffix >= 'A' && suffix <= 'F' ? suffix - 'A' : 0;
-        actionThreshold = sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex;
+        actionThreshold = boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex;
     }
+    /** Returns whether the next action uses this monster's skill. */
+    boolean usesSkillNext() { return (actionsTaken + 1) % 3 == 0; }
+    /** Records an action only after it is performed. */
+    void recordAction() { actionsTaken++; }
+    /** Returns the experience earned by each student on victory. */
+    public int getExperienceDrop() { return boss ? 120 : sentinel ? 35 : 20; }
+    /** Returns the Petot awarded for defeating this enemy. */
+    public int getPetotDrop() { return petotDrop; }
     /** Returns whether this enemy is the final boss.
      * @return true for the final boss
      */

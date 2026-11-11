@@ -15,6 +15,9 @@ public final class GameProgress implements java.io.Serializable {
     private int kits = STARTING_KITS;
     private Inventory inventory = new Inventory(STARTING_KITS);
     private int encounter;
+    private int petot;
+    /** Maximum supported balance. */
+    public static final int MAX_PETOT = 999999;
 
     /** Creates a new party of three distinct students.
      * @param ids selected character indices
@@ -36,6 +39,25 @@ public final class GameProgress implements java.io.Serializable {
     /** Returns first-aid kits remaining.
      * @return first-aid kits remaining
      */ public int getKits() { return getInventory().getKits(); }
+    /** Returns the shared Petot balance. */
+    public int getPetot() { return petot; }
+    /** Adds earned Petot up to the balance limit and returns the amount credited. */
+    public int addPetot(int amount) {
+        if (amount < 0) { throw new IllegalArgumentException("Invalid Petot amount"); }
+        int credited = (int) Math.min((long) amount, (long) MAX_PETOT - petot);
+        petot += credited; return credited;
+    }
+    /** Restores a validated Petot balance. */
+    public void restorePetot(int amount) {
+        if (amount < 0 || amount > MAX_PETOT) { throw new IllegalArgumentException("Invalid Petot balance"); }
+        petot = amount;
+    }
+    /** Spends Petot if sufficient funds are available. */
+    public boolean spendPetot(int amount) {
+        if (amount < 0) { throw new IllegalArgumentException("Invalid Petot amount"); }
+        if (amount > petot) { return false; }
+        petot -= amount; return true;
+    }
     /** Checks whether a deserialized save predates equipment slots.
      * @return true for an older save
      */
@@ -177,7 +199,7 @@ public final class GameProgress implements java.io.Serializable {
     /** Unlocks the next route location after an encounter.
      * @return whether the route position advanced
      */
-    public boolean advance() { if (encounter >= 2) { return false; } encounter++; return true; }
+    public boolean advance() { if (encounter >= 5) { return false; } encounter++; return true; }
     /** Reconstructs and validates a saved camp state.
      * @param ids student indices
      * @param hitPoints corresponding current HP values
@@ -186,14 +208,19 @@ public final class GameProgress implements java.io.Serializable {
      * @return reconstructed progress
      */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, int kits, int encounter) {
-        if (ids == null || hitPoints == null || ids.size() != 3 || hitPoints.size() != 3
-                || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 2) {
+        return restore(ids, hitPoints, java.util.List.of(0, 0, 0), kits, encounter);
+    }
+    /** Reconstructs a saved party including experience. */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience, int kits, int encounter) {
+        if (ids == null || hitPoints == null || experience == null || ids.size() != 3 || hitPoints.size() != 3 || experience.size() != 3
+                || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 5) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
         GameProgress result = new GameProgress(ids);
         for (int i = 0; i < ids.size(); i++) {
             final int id = ids.get(i);
             Student student = result.party.stream().filter(s -> s.getId() == id).findFirst().orElseThrow();
+            student.restoreExperience(experience.get(i));
             student.restoreHp(hitPoints.get(i));
         }
         if (result.party.stream().noneMatch(Student::isAlive)) { throw new IllegalArgumentException("Party is defeated"); }

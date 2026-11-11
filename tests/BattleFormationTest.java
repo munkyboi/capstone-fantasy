@@ -21,9 +21,9 @@ public final class BattleFormationTest {
         int topY = (int) y.invoke(scene, 180, 0), middleY = (int) y.invoke(scene, 180, 1), bottomY = (int) y.invoke(scene, 180, 2);
         check(frontX > topX && topX > bottomX, "one student stands in front of two");
         check(topY < middleY && middleY < bottomY, "party rows form a triangle");
-        check(bottomY < 160 && topY >= 100, "formation stays above the ledge");
-        int[] expectedX = {280, 260, 295, 226, 234, 198};
-        int[] expectedY = {101, 120, 139, 101, 139, 120};
+        check(bottomY <= 145 && topY >= 115, "formation stays above the ledge");
+        int[] expectedX = {299, 250, 300, 200, 210, 185};
+        int[] expectedY = {119, 130, 141, 119, 141, 130};
         for (int i = 0; i < 6; i++) {
             int center = (int) enemyX.invoke(scene, i, 45) + 22;
             int feet = (int) enemyY.invoke(scene, 180, i);
@@ -35,6 +35,10 @@ public final class BattleFormationTest {
         check((int) slot.invoke(scene, 2, enemies) == 1, "boss uses marked slot 2 regardless of list order");
         check((int) slot.invoke(scene, 0, enemies) == 0 && (int) slot.invoke(scene, 1, enemies) == 2
                 && (int) slot.invoke(scene, 3, enemies) == 3, "other monsters do not overlap the boss slot");
+        var sentinelGroup = java.util.List.of(new game.model.Enemy("Wisp A"), new game.model.Enemy("Wisp B"),
+                new game.model.Enemy("Stone Sentinel", true));
+        check((int) slot.invoke(scene, 2, sentinelGroup) == 1 && (int) slot.invoke(scene, 0, sentinelGroup) == 0
+                && (int) slot.invoke(scene, 1, sentinelGroup) == 2, "large guardian has its own slot");
         System.out.println("Battle formation checks passed");
     }
 }

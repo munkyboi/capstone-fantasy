@@ -83,8 +83,8 @@ public final class RouteBattleTest {
                     Field cursor = WorldMapPanel.class.getDeclaredField("cursor"); cursor.setAccessible(true);
                     check(cursor.getInt(map) == 0, "locked route");
                     key(map, "map-enter"); check(entered[0] == 1, "available route");
-                    route.advance(); route.advance(); map.open(route); key(map, "map-enter");
-                    check(entered[0] == 1, "unfinished encounter remains unavailable");
+                    route.advance(); route.advance(); route.advance(); map.open(route); key(map, "map-enter");
+                    check(entered[0] == 2, "stage four is available after stage three");
                     BattlePanel panel = TestBattles.twoEnemies(() -> { });
                     panel.start(new GameProgress(List.of(0, 1, 2)), true);
                     Field field = BattlePanel.class.getDeclaredField("battle"); field.setAccessible(true);

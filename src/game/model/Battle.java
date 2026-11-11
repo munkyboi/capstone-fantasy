@@ -47,7 +47,7 @@ public final class Battle {
 
     /** Starts a specific unlocked route encounter, including a replay. */
     public Battle(GameProgress progress, Random random, boolean ambushed, int encounter) {
-        if (encounter < 0 || encounter > 1 || encounter > progress.getEncounter()) {
+        if (encounter < 0 || encounter > 4 || encounter > progress.getEncounter()) {
             throw new IllegalArgumentException("This encounter is not available yet");
         }
         this.progress = progress;
@@ -59,13 +59,16 @@ public final class Battle {
             throw new IllegalArgumentException("At least one student must be able to battle");
         }
         int count = EncounterRules.rollMonsterCount(encounter, random);
-        boolean sentinelEncounter = encounter == 1;
-        int wisps = sentinelEncounter ? count - 1 : count;
+        boolean finalEncounter = encounter == GameProgress.FINAL_BOSS_ENCOUNTER;
+        ambushed = ambushed && !finalEncounter;
+        boolean sentinelEncounter = encounter >= 1 && !finalEncounter;
+        int wisps = (sentinelEncounter || finalEncounter) ? count - 1 : count;
         for (int index = 0; index < wisps; index++) {
             enemies.add(new Enemy("Library Wisp " + (char) ('A' + index)));
         }
         if (sentinelEncounter) { enemies.add(new Enemy("Stone Sentinel", true)); }
-        message = sentinelEncounter ? "A Stone Sentinel" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appears!")
+        if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true)); }
+        message = finalEncounter ? "The Crystal Guardian and its five Wisps appear!" : sentinelEncounter ? "A Stone Sentinel" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appears!")
                 : count + " Library Wisp(s) appear! Choose an action.";
         if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
@@ -119,6 +122,23 @@ public final class Battle {
         if (isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
         effects.clear();
         Student actor = getCurrent();
+        if (actor.getId() == Student.ANGEL) {
+            int hits = enemies.stream().filter(Enemy::isAlive).count() == 1 ? 2 : 3;
+            StringBuilder text = new StringBuilder(actor.getName() + " attacks!");
+            Enemy currentTarget = target;
+            for (int hit = 0; hit < hits; hit++) {
+                if (hit > 0) {
+                    List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
+                    if (living.isEmpty()) { break; }
+                    currentTarget = living.get(random.nextInt(living.size()));
+                }
+                int damage = hurt(currentTarget, actor.getAttack());
+                text.append("\n").append(currentTarget.getName()).append(" takes ")
+                        .append(damage).append(" damage.").append(defeated(currentTarget));
+            }
+            finish(text.toString());
+            return true;
+        }
         int damage = hurt(target, actor.getAttack());
         finish(actor.getName() + " attacks " + target.getName() + " for " + damage + " damage." + defeated(target));
         return true;
@@ -180,7 +200,7 @@ public final class Battle {
     /** Defends the current student. */
     public void defend() { if (isOver() || getCurrent() == null) { return; } effects.clear(); Student actor = getCurrent(); actor.defend(); finish(actor.getName() + " defends."); }
 
-    /** Lets a ready living enemy attack a random living student.
+    /** Lets a ready enemy act. Every third action uses its species-specific skill.
      * @param enemy ready enemy
      * @return whether the enemy acted
      */
@@ -188,13 +208,32 @@ public final class Battle {
         if (isOver() || getCurrent() != null || !validEnemy(enemy)) { return false; }
         effects.clear();
         List<Student> living = party.stream().filter(Student::isAlive).toList();
-        Student target = living.get(random.nextInt(living.size()));
-        int damage = target.takeDamage(Math.max(MINIMUM_DAMAGE, enemy.getAttack() - target.getDefense() + random.nextInt(DAMAGE_VARIATION)));
-        effects.add(new BattleEffect(target, -damage));
-        message = enemy.getName() + " attacks " + target.getName() + " for " + damage + " damage.";
-        if (!target.isAlive()) { message += " " + target.getName() + " is knocked out."; }
+        boolean skill = enemy.usesSkillNext();
+        enemy.recordAction();
+        if (skill && enemy.isSentinel()) {
+            StringBuilder text = new StringBuilder(enemy.getName() + (enemy.isBoss() ? " uses Crystal Pulse!" : " uses Stone Sweep!"));
+            for (Student target : living) {
+                int damage = enemyDamage(enemy, target, -5);
+                text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.");
+                if (!target.isAlive()) { text.append(" ").append(target.getName()).append(" is knocked out."); }
+            }
+            message = text.toString();
+        } else {
+            Student target = living.get(random.nextInt(living.size()));
+            int damage = enemyDamage(enemy, target, skill ? 4 : 0);
+            message = skill ? enemy.getName() + " uses Arcane Spark on " + target.getName() + " for " + damage + " damage."
+                    : enemy.getName() + " attacks " + target.getName() + " for " + damage + " damage.";
+            if (!target.isAlive()) { message += " " + target.getName() + " is knocked out."; }
+        }
         if (isDefeat()) { message += "\nThe party is defeated."; }
         return true;
+    }
+
+    private int enemyDamage(Enemy enemy, Student target, int bonus) {
+        int damage = target.takeDamage(Math.max(MINIMUM_DAMAGE,
+                enemy.getAttack() + bonus - target.getDefense() + random.nextInt(DAMAGE_VARIATION)));
+        effects.add(new BattleEffect(target, -damage));
+        return damage;
     }
 
     private boolean validAlly(Student target) { return target != null && party.contains(target) && target.isAlive(); }

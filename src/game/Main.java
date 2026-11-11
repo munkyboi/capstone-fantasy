@@ -9,6 +9,7 @@ import game.view.CampPanel;
 import game.view.InventoryPanel;
 import game.view.SaveSlotPanel;
 import game.view.WorldMapPanel;
+import game.view.ShopPanel;
 import game.io.SaveStore;
 import game.model.GameProgress;
 import game.model.GameSettings;
@@ -75,7 +76,8 @@ public final class Main {
             inventoryHolder[0] = inventory;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
                 boolean replay = activeStage[0] < progress.getEncounter();
-                boolean hasNext = replay ? progress.getEncounter() < 2 : progress.advance();
+                if (!replay) { progress.advance(); }
+                boolean hasNext = progress.getEncounter() < 5;
                 for (game.model.Student student : progress.getParty()) { student.restoreAllSp(); }
                 camp.open(progress, !hasNext);
                 layout.show(screens, "camp");
@@ -94,6 +96,13 @@ public final class Main {
                 camp.requestFocusInWindow();
             }, showMenu);
             mapHolder[0] = map;
+            ShopPanel shop = new ShopPanel(() -> {
+                map.open(campHolder[0].getProgress());
+                layout.show(screens, "map"); map.requestFocusInWindow();
+            });
+            map.setShopAction(progress -> {
+                shop.open(progress); layout.show(screens, "shop"); shop.requestFocusInWindow();
+            });
             SelectionPanel selection = new SelectionPanel(showMenu, party -> {
                 map.open(new GameProgress(party));
                 layout.show(screens, "map");
@@ -115,6 +124,7 @@ public final class Main {
             screens.add(new AspectRatioPanel(camp), "camp");
             screens.add(new AspectRatioPanel(inventory), "inventory");
             screens.add(new AspectRatioPanel(map), "map");
+            screens.add(new AspectRatioPanel(shop), "shop");
             screens.add(new AspectRatioPanel(slots), "slots");
             window.setContentPane(PixelShell.wrap(screens));
             window.pack();

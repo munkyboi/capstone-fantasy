@@ -52,6 +52,9 @@ public final class BattlePanel extends JPanel {
     private String notice;
     private List<String> victoryRewardItems = List.of();
     private boolean rewardRecorded;
+    private int victoryPetot;
+    private int victoryExperience;
+    private List<String> leveledStudents = List.of();
     private int encounterStage;
     private final Map<Student, Double> actionPoints = new HashMap<>();
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
@@ -103,6 +106,7 @@ public final class BattlePanel extends JPanel {
         this.battleRandom = random;
         scene = new BattleScene(new BattleScene.State() {
             @Override public Battle battle() { return battle; }
+            @Override public int encounterStage() { return encounterStage; }
             @Override public boolean partyTarget(int index) {
                 return targeting != TargetAction.NONE && targetsParty() && index == targetIndex;
             }
@@ -111,6 +115,9 @@ public final class BattlePanel extends JPanel {
                         && (targetsAllEnemies() || index == targetIndex);
             }
             @Override public List<String> rewardItems() { return victoryRewardItems; }
+            @Override public int rewardPetot() { return victoryPetot; }
+            @Override public int rewardExperience() { return victoryExperience; }
+            @Override public List<String> leveledStudents() { return leveledStudents; }
             @Override public boolean showEffects() { return showEffects; }
             @Override public boolean showAmbush() { return showAmbush; }
             @Override public double victoryProgress() {
@@ -223,7 +230,7 @@ public final class BattlePanel extends JPanel {
         this.progress = progress; encounterStage = stage;
         battle = new Battle(progress, battleRandom, ambushed, stage); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
-        victoryRewardItems = List.of(); rewardRecorded = false;
+        victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of();
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
@@ -396,6 +403,14 @@ public final class BattlePanel extends JPanel {
                 java.util.List<String> rewards = new java.util.ArrayList<>(progress.claimStageRewardItems(encounterStage));
                 rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom));
                 victoryRewardItems = List.copyOf(rewards);
+                int earned = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getPetotDrop).sum();
+                victoryPetot = progress.addPetot(earned);
+                victoryExperience = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getExperienceDrop).sum();
+                java.util.List<String> leveled = new java.util.ArrayList<>();
+                for (Student student : progress.getParty()) {
+                    if (student.gainExperience(victoryExperience) > 0) { leveled.add(student.getName()); }
+                }
+                leveledStudents = List.copyOf(leveled);
                 rewardRecorded = true;
             }
             if (battle.isVictory() && victoryStartedNanos == 0) {

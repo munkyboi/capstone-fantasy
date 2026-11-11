@@ -68,8 +68,9 @@ public final class SaveStore {
             temp = Files.createTempFile(directory, "save-", ".tmp");
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
-                properties.setProperty("version", "3");
+                properties.setProperty("version", "5");
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
+                properties.setProperty("inventory.petot", Integer.toString(checked.getPetot()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
                 properties.setProperty("inventory.campusPass", "true");
                 properties.setProperty("inventory.equipment", String.join(",", checked.getInventory().getEquipmentIds()));
@@ -85,6 +86,7 @@ public final class SaveStore {
                     properties.setProperty(prefix + "sp", Integer.toString(student.getSp()));
                     properties.setProperty(prefix + "maxHp", Integer.toString(student.getMaxHp()));
                     properties.setProperty(prefix + "level", Integer.toString(student.getLevel()));
+                    properties.setProperty(prefix + "experience", Integer.toString(student.getExperience()));
                     for (Equipment.Slot gearSlot : Equipment.Slot.values()) {
                         String id = student.getEquipmentId(gearSlot);
                         properties.setProperty(prefix + gearSlot.name().toLowerCase(java.util.Locale.ROOT), id == null ? "" : id);
@@ -138,32 +140,38 @@ public final class SaveStore {
             Properties properties = new Properties();
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { properties.load(reader); }
             String version = properties.getProperty("version");
-            if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version)) { throw new IOException("Unsupported save version"); }
+            if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version) && !"4".equals(version) && !"5".equals(version)) { throw new IOException("Unsupported save version"); }
             List<Integer> ids = new ArrayList<>();
             List<Integer> hp = new ArrayList<>();
+            List<Integer> xp = new ArrayList<>();
             for (int i = 1; i <= 3; i++) {
                 String prefix = "student." + i + ".";
                 int id = Integer.parseInt(properties.getProperty(prefix + "id"));
                 Student expected = new Student(id);
+                int experience = "5".equals(version) ? Integer.parseInt(properties.getProperty(prefix + "experience")) : 0;
+                expected.restoreExperience(experience);
                 if (!expected.getName().equals(properties.getProperty(prefix + "name"))
                         || expected.getMaxHp() != Integer.parseInt(properties.getProperty(prefix + "maxHp"))
                         || expected.getLevel() != Integer.parseInt(properties.getProperty(prefix + "level"))) {
                     throw new IOException("Invalid student information");
                 }
-                ids.add(id); hp.add(Integer.parseInt(properties.getProperty(prefix + "hp")));
+                ids.add(id); hp.add(Integer.parseInt(properties.getProperty(prefix + "hp"))); xp.add(experience);
             }
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
             }
-            GameProgress restored = GameProgress.restore(ids, hp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
+            GameProgress restored = GameProgress.restore(ids, hp, xp, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
-            if ("3".equals(version)) {
+            if ("3".equals(version) || "4".equals(version) || "5".equals(version)) {
                 for (int i = 1; i <= 3; i++) {
                     int id = Integer.parseInt(properties.getProperty("student." + i + ".id"));
                     int sp = Integer.parseInt(properties.getProperty("student." + i + ".sp"));
                     restored.getParty().stream().filter(student -> student.getId() == id)
                             .findFirst().orElseThrow().restoreSp(sp);
                 }
+            }
+            if ("4".equals(version) || "5".equals(version)) {
+                restored.restorePetot(Integer.parseInt(properties.getProperty("inventory.petot")));
             }
             if ("1".equals(version)) {
                 restored.setVestOwner(Integer.parseInt(properties.getProperty("inventory.campusVestOwner", "-1")));
@@ -200,9 +208,11 @@ public final class SaveStore {
         Inventory inventory = progress.getInventory();
         List<Integer> ids = new ArrayList<>();
         List<Integer> hp = new ArrayList<>();
+        List<Integer> xp = new ArrayList<>();
         java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
         for (Student student : progress.getParty()) {
             Student expected = new Student(student.getId());
+            expected.restoreExperience(student.getExperience());
             boolean oldAttack = (student.getId() == Student.ZACK && student.getBaseAttack() == 18)
                     || (student.getId() == Student.ANGEL && (student.getBaseAttack() == 10 || student.getBaseAttack() == 39));
             boolean oldDefense = student.getId() == Student.BOGART && student.getBaseDefense() == 14;
@@ -217,12 +227,13 @@ public final class SaveStore {
                     || student.getSp() < 0 || student.getSp() > student.getMaxSp()) {
                 throw new IllegalArgumentException("Invalid student information");
             }
-            ids.add(student.getId()); hp.add(student.getHp());
+            ids.add(student.getId()); hp.add(student.getHp()); xp.add(student.getExperience());
             List<String> items = new ArrayList<>();
             for (Equipment.Slot slot : Equipment.Slot.values()) { items.add(student.getEquipmentId(slot)); }
             slotsByStudent.put(student.getId(), items);
         }
-        GameProgress restored = GameProgress.restore(ids, hp, progress.getKits(), progress.getEncounter());
+        GameProgress restored = GameProgress.restore(ids, hp, xp, progress.getKits(), progress.getEncounter());
+        restored.restorePetot(progress.getPetot());
         List<List<String>> slots = new ArrayList<>();
         for (Student student : restored.getParty()) {
             slots.add(slotsByStudent.get(student.getId()));

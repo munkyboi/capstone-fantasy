@@ -25,7 +25,7 @@ public final class TargetHighlightTest {
         return result;
     }
     private static boolean highlighted(BufferedImage image, int row) {
-        return (image.getRGB(960 - 243, 14 + row * 36) & 0xffffff) == GOLD;
+        return (image.getRGB(960 - 423 + row * 200, 14) & 0xffffff) == GOLD;
     }
     /** Runs target list checks.
      * @param args unused

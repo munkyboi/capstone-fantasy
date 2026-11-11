@@ -11,8 +11,12 @@ public class Student extends GameCharacter {
     /** Character selection index for Angel. */
     public static final int ANGEL = 3;
     /** The available student abilities. */
-    public enum AbilityType { /** Mage ability. */ ARCANE_BURST, /** Warrior ability. */ CADET_STRIKE,
-        /** Hunter ability. */ TWIN_SHOT, /** Monk ability. */ HEALING_KISS }
+    public enum AbilityType {
+        /** Mage ability. */ ARCANE_BURST,
+        /** Warrior ability. */ CADET_STRIKE,
+        /** Hunter ability. */ TWIN_SHOT,
+        /** Monk ability. */ HEALING_KISS
+    }
     /** Creates the appropriate playable class for a selection index.
      * @param id character index
      * @return corresponding hero
@@ -49,6 +53,9 @@ public class Student extends GameCharacter {
     private final int speed;
     private final int level = STARTING_LEVEL;
     private int hp;
+    private int experience;
+    /** Maximum experience: level 30. */
+    public static final int MAX_EXPERIENCE = 2900;
     // False identifies a serialized save from before SP existed.
     private int skillPoints;
     private boolean skillPointsInitialized;
@@ -80,21 +87,21 @@ public class Student extends GameCharacter {
      */ public int getHp() { return hp; }
     /** Returns maximum HP.
      * @return maximum HP
-     */ public int getMaxHp() { return maxHp; }
+     */ public int getMaxHp() { return maxHp + (getLevel() - 1) * 5; }
     /** Returns attack value.
      * @return attack value
-     */ public int getAttack() { return attack + equipmentAttack(); }
+     */ public int getAttack() { return getBaseAttack() + equipmentAttack(); }
     /** Returns attack before equipment bonuses.
      * @return base attack
      */
-    public int getBaseAttack() { return attack; }
+    public int getBaseAttack() { return attack + (getLevel() - 1) * 2; }
     /** Returns defense value.
      * @return defense value
-     */ public int getDefense() { return defense + equipmentDefense(); }
+     */ public int getDefense() { return getBaseDefense() + equipmentDefense(); }
     /** Returns defense before equipment bonuses.
      * @return base defense
      */
-    public int getBaseDefense() { return defense; }
+    public int getBaseDefense() { return defense + (getLevel() - 1); }
     /** Checks whether the campus vest is equipped.
      * @return true if equipped
      */
@@ -130,11 +137,28 @@ public class Student extends GameCharacter {
      */ public int getSpeed() { return speed; }
     /** Returns current level.
      * @return current level
-     */ public int getLevel() { return level; }
+     */ public int getLevel() { return STARTING_LEVEL + experience / 100; }
+    /** Returns total earned experience. */
+    public int getExperience() { return experience; }
+    /** Restores validated experience without applying healing. */
+    public void restoreExperience(int value) {
+        if (value < 0 || value > MAX_EXPERIENCE) { throw new IllegalArgumentException("Invalid experience"); }
+        experience = value;
+    }
+    /** Grants XP and returns the number of levels gained; knocked-out students stay knocked out. */
+    public int gainExperience(int amount) {
+        if (amount < 0) { throw new IllegalArgumentException("Invalid experience"); }
+        int oldLevel = getLevel(), oldSp = getSp();
+        experience = (int) Math.min(MAX_EXPERIENCE, (long) experience + amount);
+        int gained = getLevel() - oldLevel;
+        if (hp > 0) { hp = Math.min(getMaxHp(), hp + gained * 5); }
+        skillPoints = Math.min(getMaxSp(), oldSp + gained * 3); skillPointsInitialized = true;
+        return gained;
+    }
     /** Returns current and maximum skill points and the ability cost. */
     public int getSp() { return skillPointsInitialized ? skillPoints : getMaxSp(); }
     /** Returns the student's maximum skill points. */
-    public int getMaxSp() { return MAX_SP[id]; }
+    public int getMaxSp() { return MAX_SP[id] + (getLevel() - 1) * 3; }
     /** Returns the skill-point cost of the student's ability. */
     public int getAbilitySpCost() { return ABILITY_SP_COST[id]; }
     /** Uses skill points if enough are available. */
@@ -162,7 +186,7 @@ public class Student extends GameCharacter {
      * @param savedHp current HP to restore
      */
     void restoreHp(int savedHp) {
-        if (savedHp < 0 || savedHp > maxHp) { throw new IllegalArgumentException("Invalid HP"); }
+        if (savedHp < 0 || savedHp > getMaxHp()) { throw new IllegalArgumentException("Invalid HP"); }
         hp = savedHp;
         defending = false;
     }
@@ -170,7 +194,7 @@ public class Student extends GameCharacter {
      * @param amount amount to restore
      * @return actual HP restored
      */
-    public int heal(int amount) { int old = hp; hp = Math.min(maxHp, hp + Math.max(0, amount)); return hp - old; }
+    public int heal(int amount) { int old = hp; hp = Math.min(getMaxHp(), hp + Math.max(0, amount)); return hp - old; }
     /** Applies damage, using and clearing a defend action if present.
      * @param amount incoming damage
      * @return actual HP lost

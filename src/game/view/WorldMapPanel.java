@@ -19,9 +19,12 @@ public final class WorldMapPanel extends JPanel {
     private static final int[] X = {35, 94, 156, 218, 282};
     private static final int[] Y = {105, 82, 105, 82, 105};
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/campus-route-v1.png");
+    private final BufferedImage shopIcon = ScreenArt.load("/assets/ui/carbon-market-icon-v1.png");
     private final java.util.function.BiConsumer<GameProgress, Integer> battle;
     private final Consumer<GameProgress> camp;
     private final Runnable menu;
+    private Consumer<GameProgress> shop = ignored -> { };
+    private boolean shopSelected;
     private GameProgress progress;
     private int cursor;
     private String notice;
@@ -44,34 +47,45 @@ public final class WorldMapPanel extends JPanel {
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);
         Keys.bind(this, "LEFT", "map-left", () -> move(-1));
         Keys.bind(this, "RIGHT", "map-right", () -> move(1));
-        Keys.bind(this, "UP", "map-up", () -> move(-1));
-        Keys.bind(this, "DOWN", "map-down", () -> move(1));
+        Keys.bind(this, "UP", "map-up", () -> {
+            if (!replayPrompt && progress != null && progress.getEncounter() >= 3 && cursor == 2) {
+                shopSelected = true; notice = null; repaint();
+            } else { move(-1); }
+        });
+        Keys.bind(this, "DOWN", "map-down", () -> {
+            if (shopSelected && !replayPrompt) { shopSelected = false; repaint(); }
+            else { move(1); }
+        });
         Keys.bind(this, "ENTER", "map-enter", this::confirm);
         Keys.bind(this, "SPACE", "map-space", this::confirm);
         Keys.bind(this, "C", "map-camp", () -> { if (!replayPrompt && progress != null && progress.getEncounter() > 0) { camp.accept(progress); } });
         Keys.bind(this, "ESCAPE", "map-menu", () -> { if (replayPrompt) { replayPrompt = false; repaint(); } else { menu.run(); } });
     }
 
+    /** Supplies the action used to enter Carbon Market. */
+    public void setShopAction(Consumer<GameProgress> action) { shop = java.util.Objects.requireNonNull(action); }
+
     /** Displays the party's unlocked position on the route.
      * @param progress current party progress
      */
     public void open(GameProgress progress) {
-        this.progress = progress; cursor = progress.getEncounter(); notice = null; replayPrompt = false; repaint();
+        this.progress = progress; cursor = Math.min(progress.getEncounter(), LOCATIONS.length - 1); notice = null; replayPrompt = false; shopSelected = false; repaint();
     }
     private void move(int direction) {
         if (progress == null) { return; }
         if (replayPrompt) { replayYes = !replayYes; repaint(); return; }
-        cursor = Math.max(0, Math.min(progress.getEncounter(), cursor + direction));
+        shopSelected = false;
+        cursor = Math.max(0, Math.min(Math.min(progress.getEncounter(), LOCATIONS.length - 1), cursor + direction));
         notice = null; repaint();
     }
     private void confirm() {
         if (progress == null) { return; }
+        if (shopSelected && !replayPrompt) { shop.accept(progress); return; }
         if (replayPrompt) {
             replayPrompt = false;
             if (replayYes) { battle.accept(progress, cursor); return; }
         } else if (cursor < progress.getEncounter()) { replayPrompt = true; replayYes = false; }
         else if (cursor > progress.getEncounter()) { notice = "Complete the previous encounter to unlock this location."; }
-        else if (cursor > 1) { notice = "This encounter is not available yet."; }
         else { battle.accept(progress, cursor); return; }
         repaint();
     }
@@ -106,13 +120,21 @@ public final class WorldMapPanel extends JPanel {
                 g.setColor(i <= progress.getEncounter() ? new Color(250, 226, 166) : new Color(159, 176, 178));
                 String number = Integer.toString(i + 1);
                 g.drawString(number, X[i] - g.getFontMetrics().stringWidth(number) / 2, Y[i] + 3);
-                if (i == cursor) {
+                if (i == cursor && !shopSelected) {
                     g.setColor(new Color(15, 27, 46));
                     g.fillPolygon(new int[] {X[i] - 6, X[i] + 6, X[i]},
                             new int[] {Y[i] - 22, Y[i] - 22, Y[i] - 12}, 3);
                     g.setColor(new Color(255, 239, 190));
                     g.fillPolygon(new int[] {X[i] - 4, X[i] + 4, X[i]},
                             new int[] {Y[i] - 21, Y[i] - 21, Y[i] - 14}, 3);
+                }
+            }
+            if (progress.getEncounter() >= 3) {
+                int sx = X[2], sy = Y[2] - 38;
+                if (shopIcon != null) { g.drawImage(shopIcon, sx - 14, sy - 14, 28, 28, null); }
+                if (shopSelected) {
+                    g.setColor(Color.BLACK); g.fillPolygon(new int[] {sx - 5, sx + 5, sx}, new int[] {sy - 18, sy - 18, sy - 10}, 3);
+                    g.setColor(new Color(255, 239, 190)); g.fillPolygon(new int[] {sx - 4, sx + 4, sx}, new int[] {sy - 17, sy - 17, sy - 11}, 3);
                 }
             }
         } finally { g.dispose(); }
@@ -127,10 +149,14 @@ public final class WorldMapPanel extends JPanel {
             out.setColor(new Color(250, 218, 143)); out.setFont(ClassicUi.title(27));
             out.drawString("CAMPUS ROUTE", 30, 40);
             out.setColor(Color.WHITE); out.setFont(ClassicUi.numbers(17));
-            String state = cursor < progress.getEncounter() ? "COMPLETED" : cursor > progress.getEncounter() ? "LOCKED" : cursor > 1 ? "COMING SOON" : "AVAILABLE";
-            out.drawString(LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
+            String state = cursor < progress.getEncounter() ? "COMPLETED" : cursor > progress.getEncounter() ? "LOCKED" : "AVAILABLE";
+            out.drawString(shopSelected ? "Carbon Market   [SHOP]" : LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
+            String balance = progress.getPetot() + " Petot";
+            out.drawString(balance, uiWidth - 30 - out.getFontMetrics().stringWidth(balance), uiHeight - 75);
             out.setFont(ClassicUi.body(14));
-            out.drawString(notice != null ? notice : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
+            out.drawString(notice != null ? notice : shopSelected ? "Enter: Visit shop   •   Down: Route   •   Esc: Menu"
+                    : cursor == 2 && progress.getEncounter() >= 3 ? "↑ Carbon Market   •   ← → Move   •   Enter: Select   •   C: Camp"
+                    : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
             if (replayPrompt) {
                 int x = 280, y = 200, w = 400, h = 125;
                 out.setColor(new Color(12, 25, 48, 240)); out.fillRect(x, y, w, h);

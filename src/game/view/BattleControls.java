@@ -61,7 +61,7 @@ final class BattleControls {
             JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
             JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 15));
             ViewportFonts.scalePreferredSize(bar);
-            bar.setUI(new BasicProgressBarUI());
+            bar.setUI(new ActionBarUI());
             bar.setBackground(new Color(15, 26, 61));
             bar.setStringPainted(false);
             row.add(member, BorderLayout.CENTER); row.add(bar, BorderLayout.EAST);
@@ -102,8 +102,8 @@ final class BattleControls {
             Student student = battle.getParty().get(i);
             partyStatus[i].setForeground(!over && student == battle.getCurrent()
                     ? new Color(250, 218, 143) : Color.WHITE);
-            partyStatus[i].setText(String.format("%-9s  HP %3d / %3d  SP %3d / %3d%s",
-                    student.getName(), student.getHp(), student.getMaxHp(), student.getSp(), student.getMaxSp(),
+            partyStatus[i].setText(String.format("%-8s L%-2d HP %3d / %3d SP %3d / %3d%s",
+                    student.getName(), student.getLevel(), student.getHp(), student.getMaxHp(), student.getSp(), student.getMaxSp(),
                     student.isAlive() ? "" : "  KO"));
         }
     }
@@ -116,6 +116,33 @@ final class BattleControls {
             apBars[i].setValue((int) (value * AP_DISPLAY_SCALE));
             float progress = (float) Math.max(0, Math.min(1, value / student.getActionThreshold()));
             apBars[i].setForeground(Color.getHSBColor(progress / 3.0f, 0.75f, 0.9f));
+        }
+    }
+
+    /** Draws a compact, beveled pixel bar while retaining normal progress semantics. */
+    private static final class ActionBarUI extends BasicProgressBarUI {
+        @Override public void paint(java.awt.Graphics graphics, javax.swing.JComponent component) {
+            JProgressBar bar = (JProgressBar) component;
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            try {
+                int width = bar.getWidth(), height = bar.getHeight();
+                if (width <= 4 || height <= 4) { return; }
+                int edge = Math.max(1, Math.round(height / 8f));
+                int inset = edge * 2;
+                g.setColor(new Color(22, 21, 43));
+                g.fillRect(edge, 0, width - 2 * edge, height);
+                g.fillRect(0, edge * 2, width, Math.max(1, height - edge * 4));
+                int innerWidth = Math.max(0, width - inset * 2);
+                int innerHeight = Math.max(1, height - inset * 2);
+                double fraction = bar.getMaximum() == bar.getMinimum() ? 0.0
+                        : (double) (bar.getValue() - bar.getMinimum()) / (bar.getMaximum() - bar.getMinimum());
+                int filled = (int) Math.round(innerWidth * Math.max(0, Math.min(1, fraction)));
+                if (filled > 0) {
+                    g.setColor(bar.getForeground()); g.fillRect(inset, inset, filled, innerHeight);
+                    g.setColor(bar.getForeground().darker());
+                    g.fillRect(inset, inset + innerHeight * 2 / 3, filled, Math.max(1, innerHeight - innerHeight * 2 / 3));
+                }
+            } finally { g.dispose(); }
         }
     }
 

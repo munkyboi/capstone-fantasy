@@ -68,7 +68,7 @@ public final class EncounterSizeTest {
                 var image = new java.awt.image.BufferedImage(960, 540, java.awt.image.BufferedImage.TYPE_INT_ARGB);
                 var graphics = image.createGraphics();
                 try { scene.paint(graphics); } finally { graphics.dispose(); }
-                check((image.getRGB(737, 86) & 0xffffff) == 0xfada8f, "sixth target highlighted in second column");
+                check((image.getRGB(737, 45) & 0xffffff) == 0xfada8f, "sixth target highlighted in the third column");
                 int before = enemies.get(5).getHp();
                 key(panel, "battle-confirm");
                 check(enemies.get(5).getHp() < before, "sixth monster can be attacked");

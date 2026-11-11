@@ -23,15 +23,19 @@ final class BattleScene extends JPanel {
     private static final int VIRTUAL_WIDTH = 320;
     private static final int VIRTUAL_HEIGHT = 180;
     private static final int[] PARTY_CENTERS_X = {44, 69, 27};
-    private static final int[] PARTY_FEET_Y = {101, 120, 139};
-    private static final int[] ENEMY_CENTERS_X = {280, 260, 295, 226, 234, 198};
-    private static final int[] ENEMY_FEET_Y = {101, 120, 139, 101, 139, 120};
+    private static final int[] PARTY_FEET_Y = {119, 130, 141};
+    private static final int[] ENEMY_CENTERS_X = {299, 250, 300, 200, 210, 185};
+    private static final int[] ENEMY_FEET_Y = {119, 130, 141, 119, 141, 130};
     /** Supplies battle state and animation details to the scene. */
     interface State {
         Battle battle();
+        default int encounterStage() { return 0; }
         boolean partyTarget(int index);
         boolean enemyTarget(int index);
         default java.util.List<String> rewardItems() { return java.util.List.of(); }
+        default int rewardPetot() { return 0; }
+        default int rewardExperience() { return 0; }
+        default java.util.List<String> leveledStudents() { return java.util.List.of(); }
         boolean showEffects();
         boolean showAmbush();
         double victoryProgress();
@@ -71,10 +75,18 @@ final class BattleScene extends JPanel {
     }
 
 
-        private final BufferedImage background = image("/assets/backgrounds/campus-courtyard-v1.png");
+        private final BufferedImage fallbackBackground = image("/assets/backgrounds/campus-courtyard-v1.png");
+        private final BufferedImage[] stageBackgrounds = {
+            image("/assets/backgrounds/stage-1-campus-entrance-v2.png"),
+            image("/assets/backgrounds/stage-2-library-hall-v2.png"),
+            image("/assets/backgrounds/stage-3-training-ground-v3.png"),
+            image("/assets/backgrounds/stage-4-old-campus-v2.png"),
+            image("/assets/backgrounds/stage-5-crystal-chamber-v3.png")
+        };
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v2.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
+        private final BufferedImage boss = image("/assets/sprites/crystal-guardian-v1.png");
         private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
         private final BufferedImage uniformIcon = trimIcon(image("/assets/ui/reward-uniform-v1.png"));
         private final BufferedImage[] rewardArt = rewardArt();
@@ -115,6 +127,9 @@ final class BattleScene extends JPanel {
                 g.scale(2.0, 2.0);
                 g.setColor(new Color(30, 43, 71)); g.fillRect(0, 0, w, h);
                 g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                int stage = state.encounterStage();
+                BufferedImage background = stage >= 0 && stage < stageBackgrounds.length ? stageBackgrounds[stage] : null;
+                if (background == null) { background = fallbackBackground; }
                 if (background != null) { drawCover(g, background, w, h); }
                 if (battle == null) { return; }
                 int slotWidth = Math.max(27, w / 7);
@@ -145,10 +160,10 @@ final class BattleScene extends JPanel {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int slot = enemySlot(enemyIndex, battle.getEnemies());
                     int x = enemyX(slot, slotWidth);
-                    BufferedImage enemyImage = enemy.isSentinel() ? sentinel : wisp;
+                    BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
                     if (enemyImage != null && enemy.isAlive()) {
-                        int enemyWidth = enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                        int enemyHeight = enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
+                        int enemyWidth = enemy.isBoss() ? slotWidth + 25 : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                        int enemyHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                         int enemyX = x + (slotWidth - enemyWidth) / 2 + attackOffset(enemy, -1);
                         int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
                         drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY,
@@ -166,37 +181,36 @@ final class BattleScene extends JPanel {
                         RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 output.drawImage(pixels, 0, 0, getWidth(), getHeight(), null);
                 output.scale(hudScale(), hudScale());
-                boolean twoColumns = battle.getEnemies().size() > 3;
-                int listWidth = twoColumns ? 400 : 220;
+                int columns = Math.min(3, battle.getEnemies().size());
+                int columnWidth = 200;
+                int listWidth = columns * columnWidth;
                 int listLeft = 960 - listWidth - 24;
-                int listRows = twoColumns ? 3 : battle.getEnemies().size();
-                int listHeight = Math.max(82, listRows * 36 + 10);
-                int columnWidth = listWidth / (twoColumns ? 2 : 1);
+                int listRows = (battle.getEnemies().size() + columns - 1) / columns;
+                int listHeight = listRows * 31 + 8;
                 output.setColor(new Color(15, 25, 47, 204));
                 output.fillRect(listLeft, 12, listWidth, listHeight);
-                output.setColor(Color.WHITE);
                 output.setFont(ClassicUi.numbers(12));
                 for (int i = 0; i < battle.getEnemies().size(); i++) {
                     Enemy enemy = battle.getEnemies().get(i);
-                    int column = twoColumns ? i / 3 : 0;
-                    int row = twoColumns ? i % 3 : i;
+                    int column = i % columns;
+                    int row = i / columns;
                     int left = listLeft + column * columnWidth;
-                    int y = 27 + row * 36;
+                    int y = 27 + row * 31;
                     boolean targeted = enemy.isAlive() && state.enemyTarget(i);
                     if (targeted) {
                         output.setColor(new Color(100, 83, 40, 180));
-                        output.fillRect(left + 1, y - 13, columnWidth - 2, 34);
+                        output.fillRect(left + 1, y - 13, columnWidth - 2, 29);
                         output.setColor(new Color(250, 218, 143));
-                        output.drawRect(left + 1, y - 13, columnWidth - 3, 33);
+                        output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    output.drawString((enemy.isSentinel() ? "Sentinel" : enemy.getName().replace("Library ", "")) + "  " + enemy.getHp() + " / "
+                    output.drawString((enemy.isBoss() ? "Guardian" : enemy.isSentinel() ? "Sentinel" : enemy.getName().replace("Library ", "")) + "  " + enemy.getHp() + " / "
                             + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), left + 7, y);
                     output.setColor(new Color(52, 68, 101));
-                    output.fillRect(left + 7, y + 5, 122, 8);
+                    output.fillRect(left + 7, y + 5, 122, 4);
                     output.setColor(new Color(239, 157, 102));
                     output.fillRect(left + 7, y + 5,
-                            enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 8);
+                            enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
                 if (battle.isOver()) {
@@ -214,10 +228,11 @@ final class BattleScene extends JPanel {
             java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
             for (String id : state.rewardItems()) { counts.merge(id, 1, Integer::sum); }
             java.util.List<String> items = new java.util.ArrayList<>(counts.keySet());
-            if (items.isEmpty()) { return; }
+            if (items.isEmpty() && state.rewardPetot() == 0 && state.rewardExperience() == 0) { return; }
             int width = 360, x = (960 - width) / 2;
             int y = Math.max(18, hudHeight() / 5) + 52;
-            int height = 43 + items.size() * 28;
+            int height = 43 + (items.size() + (state.rewardPetot() > 0 ? 1 : 0)
+                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)) * 24;
             g.setColor(new Color(12, 25, 48, 224));
             g.fillRect(x, y, width, height);
             g.setColor(new Color(247, 204, 114));
@@ -226,13 +241,32 @@ final class BattleScene extends JPanel {
             g.setFont(ClassicUi.body(17));
             g.drawString("You gain:", x + 16, y + 27);
             g.setFont(ClassicUi.numbers(14));
+            int offset = 0;
+            if (state.rewardExperience() > 0) {
+                int cy = y + 48;
+                g.setColor(new Color(175, 133, 245)); g.fillPolygon(new int[] {x + 27, x + 35, x + 27, x + 19}, new int[] {cy - 10, cy - 2, cy + 6, cy - 2}, 4);
+                g.setColor(Color.WHITE); g.drawString(state.rewardExperience() + " XP each", x + 50, cy + 4);
+                offset++;
+            }
+            if (state.rewardPetot() > 0) {
+                int cy = y + 48 + offset * 24;
+                g.setColor(new Color(240, 189, 73)); g.fillOval(x + 18, cy - 10, 18, 18);
+                g.setColor(new Color(255, 232, 154)); g.drawOval(x + 20, cy - 8, 14, 14);
+                g.setColor(Color.WHITE); g.drawString(state.rewardPetot() + " Petot", x + 50, cy + 6);
+                offset++;
+            }
             for (int i = 0; i < items.size(); i++) {
                 String id = items.get(i);
-                int rowY = y + 36 + i * 28;
+                int rowY = y + 36 + (i + offset) * 24;
                 drawRewardIcon(g, id, x + 16, rowY, 24);
                 g.setColor(Color.WHITE);
                 String name = "first_aid_kit".equals(id) ? "First-Aid Kit" : Equipment.fromId(id).getName();
                 g.drawString(counts.get(id) + "x " + name, x + 50, rowY + 18);
+            }
+            if (!state.leveledStudents().isEmpty()) {
+                g.setColor(new Color(250, 218, 143));
+                g.drawString("Level up: " + String.join(", ", state.leveledStudents()), x + 16,
+                        y + 36 + (offset + items.size()) * 24 + 17);
             }
         }
 
@@ -299,9 +333,9 @@ final class BattleScene extends JPanel {
                     x = enemyX(slot, slotWidth) + slotWidth / 2;
                     ground = enemyFootY(h, slot);
                     Enemy enemy = (Enemy) entry.getKey();
-                    BufferedImage enemyImage = enemy.isSentinel() ? sentinel : wisp;
-                    int boxWidth = enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                    int boxHeight = enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
+                    BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    int boxWidth = enemy.isBoss() ? slotWidth + 25 : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                    int boxHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
                 }
                 double progress = state.effectProgress();
@@ -337,6 +371,11 @@ final class BattleScene extends JPanel {
             int bossIndex = -1;
             for (int i = 0; i < enemies.size(); i++) {
                 if (enemies.get(i).isBoss()) { bossIndex = i; break; }
+            }
+            if (bossIndex < 0) {
+                for (int i = 0; i < enemies.size(); i++) {
+                    if (enemies.get(i).isSentinel()) { bossIndex = i; break; }
+                }
             }
             if (bossIndex < 0) { return index; }
             if (index == bossIndex) { return 1; }
