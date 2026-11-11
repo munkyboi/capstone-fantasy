@@ -286,7 +286,7 @@ public final class CampPanel extends JPanel {
                 + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
         drawResourceBar(g, x, y + 39, w, "HP", student.getHp(), student.getMaxHp(), HP_COLOR);
         drawResourceBar(g, x, y + 63, w, "SP", student.getSp(), student.getMaxSp(), SP_COLOR);
-        int requiredXp = student.getXpRequired();
+        long requiredXp = student.getXpRequired();
         drawResourceBar(g, x, y + 87, w, "XP", requiredXp == 0 ? 1 : student.getXpProgress(),
                 requiredXp == 0 ? 1 : requiredXp, XP_COLOR);
         g.setColor(new Color(120, 149, 182)); g.drawLine(x + 12, y + 109, x + w - 12, y + 109);
@@ -296,14 +296,23 @@ public final class CampPanel extends JPanel {
         g.drawString("SPD " + student.getSpeed(), x + 162, y + 131);
     }
     private static void drawResourceBar(Graphics2D g, int x, int row, int width, String label,
-            int value, int maximum, Color color) {
+            long value, long maximum, Color color) {
         g.setFont(ClassicUi.numbers(12)); g.setColor(Color.WHITE); g.drawString(label, x + 12, row + 9);
         g.setColor(new Color(38, 49, 76)); g.fillRect(x + 48, row, 113, 9);
         g.setColor(color); g.fillRect(x + 48, row, (int) (113L * value / Math.max(1, maximum)), 9);
         String text = label.equals("XP") && maximum == 1 ? "MAX" : value + "/" + maximum;
+        if (label.equals("XP") && g.getFontMetrics().stringWidth(text) > width - 173) {
+            text = compactXp(value) + "/" + compactXp(maximum);
+        }
         g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
         if (g.getFontMetrics().stringWidth(text) > width - 173) { g.setFont(ClassicUi.numbers(8)); }
         g.drawString(text, x + width - 10 - g.getFontMetrics().stringWidth(text), row + 9);
+    }
+    private static String compactXp(long value) {
+        if (value >= 1_000_000_000) return String.format(java.util.Locale.ROOT, "%.1fB", value / 1_000_000_000.0);
+        if (value >= 1_000_000) return String.format(java.util.Locale.ROOT, "%.1fM", value / 1_000_000.0);
+        if (value >= 10_000) return String.format(java.util.Locale.ROOT, "%.1fK", value / 1_000.0);
+        return Long.toString(value);
     }
     private static void drawCentered(Graphics2D g, String text, int center, int y) {
         g.drawString(text, center - g.getFontMetrics().stringWidth(text) / 2, y);

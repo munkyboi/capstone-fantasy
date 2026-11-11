@@ -257,6 +257,7 @@ public final class BattlePanel extends JPanel {
         double seconds = Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0);
         lastTickNanos = now;
         advanceActionPoints(seconds);
+        if (battle != null && !battle.isOver() && battle.getCurrent() != null) { scene.repaint(); }
     }
 
     private void advanceActionPoints(double seconds) {

@@ -232,16 +232,16 @@ public final class GameProgress implements java.io.Serializable {
         return restore(ids, hitPoints, java.util.Collections.nCopies(ids.size(), 0), kits, encounter);
     }
     /** Reconstructs a saved party including experience. */
-    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience, int kits, int encounter) {
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience, int kits, int encounter) {
         return restore(ids, hitPoints, experience, null, kits, encounter);
     }
     /** Reconstructs a saved party with its level-up allocations. */
-    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience,
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, int kits, int encounter) {
         return restore(ids, hitPoints, experience, allocations, null, kits, encounter);
     }
     /** Reconstructs a saved party with progression settings per student. */
-    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<Integer> experience,
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, int kits, int encounter) {
         if (ids == null || hitPoints == null || experience == null || ids.isEmpty() || ids.size() > 4 || hitPoints.size() != ids.size() || experience.size() != ids.size()
                 || (allocations != null && allocations.size() != ids.size())
@@ -258,7 +258,7 @@ public final class GameProgress implements java.io.Serializable {
                 if (rules == null || rules.length != 2) throw new IllegalArgumentException("Invalid progression");
                 student.restoreProgression(rules[0], rules[1]);
             }
-            student.restoreExperience(experience.get(i));
+            student.restoreExperience(experience.get(i).longValue());
             if (allocations != null) {
                 int[] points = allocations.get(i);
                 if (points == null || points.length != 5) { throw new IllegalArgumentException("Invalid allocations"); }

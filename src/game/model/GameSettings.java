@@ -39,7 +39,7 @@ public final class GameSettings {
         apPerSecond = switch (speed) { case SLOW -> 5.0; case NORMAL -> 10.0; case FAST -> 15.0; case ULTRA -> 20.0; };
     }
     public void setGrowthFactor(int value) { if (value < 1 || value > 20) throw new IllegalArgumentException("Invalid growth factor"); growthFactor = value; }
-    public void setLevelCap(int value) { if (value != 20 && value != 30 && value != 40 && value != 50) throw new IllegalArgumentException("Invalid level cap"); levelCap = value; }
+    public void setLevelCap(int value) { if (value < 20 || value > 100 || value % 10 != 0) throw new IllegalArgumentException("Invalid level cap"); levelCap = value; }
     public void setPartySize(int value) { if (value < 1 || value > 4) throw new IllegalArgumentException("Invalid party size"); partySize = value; }
     /** Load saved preferences; invalid or missing settings fall back to defaults. */
     public static GameSettings load(java.nio.file.Path file) {
@@ -49,7 +49,8 @@ public final class GameSettings {
             var props = new java.util.Properties(); props.load(reader);
             settings.setBattleSpeed(BattleSpeed.valueOf(props.getProperty("battleSpeed", "NORMAL")));
             settings.setGrowthFactor(Integer.parseInt(props.getProperty("growthFactor", "7")));
-            settings.setLevelCap(Integer.parseInt(props.getProperty("levelCap", "30")));
+            int savedCap = Integer.parseInt(props.getProperty("levelCap", "30"));
+            settings.setLevelCap(savedCap);
             settings.setPartySize(Integer.parseInt(props.getProperty("partySize", "3")));
             settings.setXpBoost(XpBoost.valueOf(props.getProperty("xpBoost", "NORMAL")));
             settings.setDifficulty(Difficulty.valueOf(props.getProperty("difficulty", "NORMAL")));

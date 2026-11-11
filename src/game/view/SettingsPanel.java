@@ -10,7 +10,7 @@ import javax.swing.JPanel;
 
 /** Keyboard-operated gameplay settings. */
 public final class SettingsPanel extends JPanel {
-    private static final int[] CAPS = {20, 30, 40, 50};
+    private static final int[] CAPS = {20, 30, 40, 50, 60, 70, 80, 90, 100};
     private final GameSettings settings;
     private final Path file;
     private final Runnable back;
@@ -32,7 +32,7 @@ public final class SettingsPanel extends JPanel {
         switch (cursor) {
             case 0 -> settings.setBattleSpeed(GameSettings.BattleSpeed.values()[Math.max(0, Math.min(GameSettings.BattleSpeed.values().length - 1, settings.getBattleSpeed().ordinal() + direction))]);
             case 1 -> settings.setGrowthFactor(Math.max(1, Math.min(20, settings.getGrowthFactor() + direction)));
-            case 2 -> { int index = 0; while (CAPS[index] != settings.getLevelCap()) index++; settings.setLevelCap(CAPS[Math.max(0, Math.min(3, index + direction))]); }
+            case 2 -> { int index = 0; while (CAPS[index] != settings.getLevelCap()) index++; settings.setLevelCap(CAPS[Math.max(0, Math.min(CAPS.length - 1, index + direction))]); }
             case 3 -> settings.setPartySize(Math.max(1, Math.min(4, settings.getPartySize() + direction)));
             case 4 -> settings.setXpBoost(GameSettings.XpBoost.values()[Math.max(0, Math.min(GameSettings.XpBoost.values().length - 1, settings.getXpBoost().ordinal() + direction))]);
             case 5 -> settings.setDifficulty(GameSettings.Difficulty.values()[Math.max(0, Math.min(GameSettings.Difficulty.values().length - 1, settings.getDifficulty().ordinal() + direction))]);
@@ -64,7 +64,7 @@ public final class SettingsPanel extends JPanel {
             int[] steps = {settings.getBattleSpeed().ordinal(), settings.getGrowthFactor() - 1,
                     java.util.Arrays.binarySearch(CAPS, settings.getLevelCap()), settings.getPartySize() - 1,
                     settings.getXpBoost().ordinal(), settings.getDifficulty().ordinal()};
-            int[] maxima = {GameSettings.BattleSpeed.values().length - 1, 19, 3, 3, 2, 3};
+            int[] maxima = {GameSettings.BattleSpeed.values().length - 1, 19, CAPS.length - 1, 3, 2, 3};
             g.setFont(ClassicUi.numbers(17));
             for (int i = 0; i < labels.length; i++) {
                 int y = 137 + i * 43; g.setColor(i == cursor ? new Color(250, 218, 143) : Color.WHITE);

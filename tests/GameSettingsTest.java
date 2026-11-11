@@ -16,13 +16,23 @@ public final class GameSettingsTest {
         settings.setBattleSpeed(GameSettings.BattleSpeed.SLOW); check(settings.getApPerSecond() == 5, "slow AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.FAST); check(settings.getApPerSecond() == 15, "fast AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.ULTRA); check(settings.getApPerSecond() == 20, "ultra AP");
+        for (int cap = 20; cap <= 100; cap += 10) {
+            GameSettings choices = new GameSettings(); choices.setLevelCap(cap);
+            Student eligible = Student.create(0); eligible.configureProgression(7, cap);
+            check(choices.getLevelCap() == cap && eligible.getLevelCap() == cap, "level cap choice " + cap);
+        }
         Student student = Student.create(0); student.configureProgression(7, 30);
         check(student.getXpRequired() == 100 && student.gainExperience(100) == 1 && student.getXpRequired() == 107, "growing XP curve");
         student.gainExperience(300); int level = student.getLevel(); int hp = student.getHp();
         student.configureProgression(20, 20); check(student.getLevel() == level && student.getHp() == hp, "change curve preserves progress");
         Student overCap = Student.create(1); overCap.restoreExperience(2900); overCap.configureProgression(7, 20);
-        int xp = overCap.getExperience(); check(overCap.getLevel() == 30 && overCap.gainExperience(500) == 0 && overCap.getExperience() == xp, "lower cap preserves level");
+        long xp = overCap.getExperience(); check(overCap.getLevel() == 30 && overCap.gainExperience(500) == 0 && overCap.getExperience() == xp, "lower cap preserves level");
         overCap.configureProgression(7, 40); check(overCap.gainExperience(500000) > 0 && overCap.getLevel() == 40, "raised cap permits levels");
+        Student maxGrowth = Student.create(0); maxGrowth.configureProgression(20, 100);
+        check(maxGrowth.gainExperience(Long.MAX_VALUE) == 99 && maxGrowth.getLevel() == 100
+                && maxGrowth.getExperience() > Integer.MAX_VALUE && maxGrowth.getXpRequired() == 0, "level 100 supports full growth curve");
+        maxGrowth.configureProgression(7, 20);
+        check(maxGrowth.getLevel() == 100 && maxGrowth.gainExperience(1) == 0, "lower cap preserves level 100");
         Path dir = Files.createTempDirectory("game-settings-");
         try {
             settings.setGrowthFactor(15); settings.setPartySize(4); settings.setLevelCap(50); Path file = dir.resolve("settings.properties"); settings.save(file);
@@ -52,6 +62,16 @@ public final class GameSettingsTest {
             check(uiSaved.getApPerSecond() == 20 && uiSaved.getGrowthFactor() == 8 && uiSaved.getLevelCap() == 40
                     && uiSaved.getPartySize() == 4, "keyboard settings persist");
             SwingUtilities.invokeAndWait(() -> {
+                SettingsPanel ui = new SettingsPanel(edited, uiFile, () -> {});
+                key(ui, "settings-down"); key(ui, "settings-down");
+                for (int i = 0; i < 6; i++) key(ui, "settings-right");
+                check(edited.getLevelCap() == 100, "settings allow level 100");
+            });
+            Path oldSettings = dir.resolve("old-settings.properties");
+            Files.writeString(oldSettings, "levelCap=40\npartySize=4\n");
+            GameSettings migrated = GameSettings.load(oldSettings);
+            check(migrated.getLevelCap() == 40 && migrated.getPartySize() == 4, "legacy cap 40 and preferences remain unchanged");
+            SwingUtilities.invokeAndWait(() -> {
                 List<List<Integer>> chosen = new ArrayList<>();
                 SelectionPanel selection = new SelectionPanel(() -> {}, chosen::add);
                 selection.configure(1, List.of(0, 1, 2));
@@ -76,7 +96,7 @@ public final class GameSettingsTest {
             }
             GameProgress party = new GameProgress(List.of(0, 1, 2)); party.advance(); party.applySettings(settings);
             Student resting = party.getParty().stream().filter(s -> s.getId() == 2).findFirst().orElseThrow();
-            resting.gainExperience(250); resting.allocateStatPoint(Student.Stat.ATK); int reserveXp = resting.getExperience();
+            resting.gainExperience(250); resting.allocateStatPoint(Student.Stat.ATK); long reserveXp = resting.getExperience();
             party.setActiveParty(List.of(0));
             SaveStore store = new SaveStore(dir);
             for (SaveStore.Format format : SaveStore.Format.values()) {
@@ -85,9 +105,18 @@ public final class GameSettingsTest {
                 saved.setActiveParty(List.of(0, 2)); Student recovered = saved.getParty().stream().filter(s -> s.getId() == 2).findFirst().orElseThrow();
                 check(recovered.getExperience() == reserveXp && recovered.getAllocatedStatPoints(Student.Stat.ATK) == 1, "reserve stats retained " + format);
             }
+            GameProgress level100 = new GameProgress(List.of(0)); level100.advance();
+            GameSettings maxSettings = new GameSettings(); maxSettings.setLevelCap(100); maxSettings.setGrowthFactor(20);
+            level100.applySettings(maxSettings); Student maxStudent = level100.getParty().get(0);
+            maxStudent.gainExperience(Long.MAX_VALUE); maxStudent.allocateStatPoint(Student.Stat.SPD);
+            for (SaveStore.Format format : SaveStore.Format.values()) {
+                store.save(3, format, level100); Student restored = store.load(3, format).getParty().get(0);
+                check(restored.getLevel() == 100 && restored.getExperience() == maxStudent.getExperience()
+                        && restored.getAllocatedStatPoints(Student.Stat.SPD) == 1, "level 100 save " + format);
+            }
             GameProgress high = new GameProgress(List.of(0)); high.advance(); high.applySettings(settings);
             Student veteran = high.getParty().get(0); veteran.gainExperience(Integer.MAX_VALUE);
-            veteran.configureProgression(7, 20); int veteranXp = veteran.getExperience();
+            veteran.configureProgression(7, 20); long veteranXp = veteran.getExperience();
             for (SaveStore.Format format : SaveStore.Format.values()) {
                 store.save(3, format, high); Student restored = store.load(3, format).getParty().get(0);
                 check(restored.getLevel() == 50 && restored.getLevelCap() == 20 && restored.getExperience() == veteranXp,

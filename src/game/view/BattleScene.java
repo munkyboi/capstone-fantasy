@@ -139,6 +139,9 @@ final class BattleScene extends JPanel {
                 for (Student student : battle.getParty()) {
                     int index = i++;
                     int x = partyX(index, slotWidth), y = partyFootY(h, index) - spriteHeight;
+                    if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
+                        drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index));
+                    }
                     BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
                     if (fallen != null) {
                         int fallenWidth = spriteWidth + 4;
@@ -149,11 +152,6 @@ final class BattleScene extends JPanel {
                         int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
                         int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
                         drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
-                    }
-                    if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
-                        int slice = sprites != null ? sprites.getWidth() / 4 : 0;
-                        int drawnHeight = sprites != null ? fittedHeight(sprites, slice, spriteWidth, spriteHeight) : spriteHeight;
-                        drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index) - drawnHeight - 4, state.partyTarget(index));
                     }
                     if (state.partyTarget(index)) {
                         int slice = sprites != null ? sprites.getWidth() / 4 : 0;
@@ -423,12 +421,25 @@ final class BattleScene extends JPanel {
             return Math.sin(Math.PI * phase);
         }
 
-        private void drawActiveMarker(Graphics2D g, int x, int y, boolean alsoTargeted) {
-            if (alsoTargeted) { x += 11; }
-            g.setColor(Color.BLACK);
-            g.fillPolygon(new int[] {x, x + 5, x, x - 5}, new int[] {y - 12, y - 7, y - 2, y - 7}, 4);
-            g.setColor(new Color(105, 221, 255));
-            g.fillPolygon(new int[] {x, x + 3, x, x - 3}, new int[] {y - 10, y - 7, y - 4, y - 7}, 4);
+        private void drawActiveMarker(Graphics2D g, int x, int footY) {
+            // Pixel-sized light pillars rise behind the sprite while the gold ring marks its feet.
+            int phase = (int) ((System.nanoTime() / 180_000_000L) % 8);
+            int[] offsets = {-14, -11, -8, 8, 11, 14};
+            int[] heights = {12, 19, 11, 15, 21, 12};
+            g.setColor(new Color(255, 174, 57, 30));
+            g.fillOval(x - 17, footY - 6, 34, 13);
+            for (int i = 0; i < offsets.length; i++) {
+                int px = x + offsets[i];
+                int height = heights[i] + ((phase + i * 3) % 5) - 2;
+                g.setColor(new Color(255, 166, 55, 45));
+                g.fillRect(px - 1, footY - height, 3, height - 2);
+                g.setColor(new Color(255, 202, 96, 105));
+                g.fillRect(px, footY - height + 4, 1, height - 4);
+            }
+            g.setColor(new Color(211, 133, 48, 150));
+            g.drawOval(x - 15, footY - 5, 30, 10);
+            g.setColor(new Color(250, 218, 143));
+            g.drawOval(x - 14, footY - 4, 28, 8);
         }
 
         private void drawCursor(Graphics2D g, int x, int y) {

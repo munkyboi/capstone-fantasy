@@ -88,7 +88,7 @@ public final class SaveStore {
                     properties.setProperty(prefix + "sp", Integer.toString(student.getSp()));
                     properties.setProperty(prefix + "maxHp", Integer.toString(student.getMaxHp()));
                     properties.setProperty(prefix + "level", Integer.toString(student.getLevel()));
-                    properties.setProperty(prefix + "experience", Integer.toString(student.getExperience()));
+                    properties.setProperty(prefix + "experience", Long.toString(student.getExperience()));
                     properties.setProperty(prefix + "growth", Integer.toString(student.getExperienceGrowth()));
                     properties.setProperty(prefix + "levelCap", Integer.toString(student.getLevelCap()));
                     for (Student.Stat stat : Student.Stat.values()) {
@@ -152,7 +152,7 @@ public final class SaveStore {
             if (count < 1 || count > 4) throw new IOException("Invalid party size");
             List<Integer> ids = new ArrayList<>();
             List<Integer> hp = new ArrayList<>();
-            List<Integer> xp = new ArrayList<>();
+            List<Long> xp = new ArrayList<>();
             List<int[]> allocations = new ArrayList<>();
             List<int[]> progression = new ArrayList<>();
             for (int i = 1; i <= count; i++) {
@@ -161,7 +161,7 @@ public final class SaveStore {
                 Student expected = new Student(id);
                 int[] rules = "7".equals(version) ? new int[]{Integer.parseInt(properties.getProperty(prefix + "growth")), Integer.parseInt(properties.getProperty(prefix + "levelCap"))} : new int[]{0, 30};
                 expected.restoreProgression(rules[0], rules[1]); progression.add(rules);
-                int experience = ("5".equals(version) || "6".equals(version) || "7".equals(version)) ? Integer.parseInt(properties.getProperty(prefix + "experience")) : 0;
+                long experience = ("5".equals(version) || "6".equals(version) || "7".equals(version)) ? Long.parseLong(properties.getProperty(prefix + "experience")) : 0;
                 expected.restoreExperience(experience);
                 int[] points = new int[Student.Stat.values().length];
                 if ("6".equals(version) || "7".equals(version)) {
@@ -238,7 +238,7 @@ public final class SaveStore {
         Inventory inventory = progress.getInventory();
         List<Integer> ids = new ArrayList<>();
         List<Integer> hp = new ArrayList<>();
-        List<Integer> xp = new ArrayList<>();
+        List<Long> xp = new ArrayList<>();
         List<int[]> allocations = new ArrayList<>();
         List<int[]> progression = new ArrayList<>();
         java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
