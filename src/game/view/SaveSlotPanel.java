@@ -86,7 +86,8 @@ public final class SaveSlotPanel extends JPanel {
     private void refresh(String message) {
         heading.setText((saving ? "SAVE GAME" : "LOAD GAME") + "  •  " + formatName().toUpperCase());
         for (int i = 0; i < slots.length; i++) {
-            slots[i].setText((i == slot ? ">  " : "   ") + "SLOT " + (i + 1) + "     "
+            ViewportFonts.setScaledIcon(slots[i], i == slot ? PixelPointer.HAND : PixelPointer.EMPTY);
+            slots[i].setText("SLOT " + (i + 1) + "     "
                     + (store.exists(i + 1, format) ? "Saved game" : "Empty"));
         }
         info.setText(message);

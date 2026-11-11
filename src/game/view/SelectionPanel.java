@@ -1,5 +1,6 @@
 package game.view;
 
+import game.model.Student;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -27,10 +28,13 @@ public final class SelectionPanel extends JPanel {
     private static final Color LIGHT = new Color(238, 242, 255);
     private static final String[] NAMES = {"Zack", "Bogart", "Charice", "Angel"};
     private static final String[] CLASSES = {"Mage", "Warrior", "Hunter", "Monk"};
-    private static final String[] STATS = {
-        "HP 80  ATK 18  DEF 6  SPD 10", "HP 120  ATK 15  DEF 14  SPD 11",
-        "HP 90  ATK 14  DEF 8  SPD 16", "HP 105  ATK 39  DEF 10  SPD 7"
+    private static final String[] STAT_LABELS = {"HP", "ATK", "DEF", "SPD", "SP"};
+    private static final Color[] STAT_COLORS = {
+        new Color(224, 73, 79), new Color(246, 149, 62), new Color(192, 202, 215),
+        new Color(240, 110, 178), new Color(76, 155, 245)
     };
+    // The bars compare the four starting characters within each stat.
+    private static final int[] STAT_MAXIMA = {120, 39, 14, 16};
     private static final String[] ABILITIES = {
         "Arcane Burst", "Cadet Strike", "Twin Shot", "Healing Kiss"
     };
@@ -76,6 +80,9 @@ public final class SelectionPanel extends JPanel {
         JButton back = new JButton("Back");
         back.setFocusable(false);
         continueButton.setFocusable(false);
+        continueButton.setOpaque(true);
+        continueButton.setContentAreaFilled(true);
+        continueButton.setBorderPainted(true);
         back.addActionListener(event -> goBack.run());
         continueButton.addActionListener(event -> startBattle.accept(new java.util.ArrayList<>(selected)));
         footer.add(back, BorderLayout.WEST);
@@ -120,7 +127,13 @@ public final class SelectionPanel extends JPanel {
     private void refresh() {
         count.setText("← → Select  •  Enter Choose  •  ↓ Continue  •  " + selected.size() + " / " + PARTY_SIZE);
         continueButton.setEnabled(selected.size() == PARTY_SIZE);
-        continueButton.setText(cursor == 4 ? "> Continue" : "Continue");
+        continueButton.setText("Continue");
+        boolean focused = cursor == 4 && continueButton.isEnabled();
+        continueButton.setForeground(focused ? new Color(20, 30, 55) : Color.WHITE);
+        continueButton.setBackground(focused ? GOLD : new Color(27, 43, 75));
+        continueButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(focused ? Color.WHITE : new Color(120, 149, 182), 2),
+                BorderFactory.createEmptyBorder(5, 12, 5, 12)));
         for (int i = 0; i < choices.length; i++) {
             choices[i].getAccessibleContext().setAccessibleName(NAMES[i] + ", " + CLASSES[i]
                     + (selected.contains(i) ? ", selected" : ", not selected"));
@@ -185,7 +198,7 @@ public final class SelectionPanel extends JPanel {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                     int slice = sprites.getWidth() / 4;
-                    int top = ViewportFonts.pixels(60, scale), bottom = Math.max(top + ViewportFonts.pixels(40, scale), h - ViewportFonts.pixels(135, scale));
+                    int top = ViewportFonts.pixels(60, scale), bottom = Math.max(top + ViewportFonts.pixels(40, scale), h - ViewportFonts.pixels(175, scale));
                     int height = Math.min(bottom - top, (w - ViewportFonts.pixels(16, scale)) * sprites.getHeight() / slice);
                     int width = height * slice / sprites.getHeight();
                     BufferedImage pixels = new BufferedImage(96, 128, BufferedImage.TYPE_INT_ARGB);
@@ -198,6 +211,12 @@ public final class SelectionPanel extends JPanel {
                     } finally { pixelGraphics.dispose(); }
                     int left = (w - width) / 2;
                     g.drawImage(pixels, left, top, width, height, null);
+                    if (index == cursor) {
+                        int size = ViewportFonts.pixels(42, scale);
+                        int pointerX = Math.max(ViewportFonts.pixels(6, scale), left - size / 2);
+                        int pointerY = top + height / 2 - size * 3 / 8;
+                        g.drawImage(PixelPointer.ART, pointerX, pointerY, size, size * 232 / 310, null);
+                    }
                 }
                 g.setColor(GOLD);
                 g.setFont(ClassicUi.title(ViewportFonts.pixels(21, scale)));
@@ -205,16 +224,47 @@ public final class SelectionPanel extends JPanel {
                 g.setColor(LIGHT);
                 g.setFont(ClassicUi.body(ViewportFonts.pixels(13, scale)));
                 drawCentered(g, CLASSES[index], w / 2, ViewportFonts.pixels(49, scale));
-                g.setFont(ClassicUi.numbers(ViewportFonts.pixels(11, scale)));
-                drawCentered(g, STATS[index], w / 2, h - ViewportFonts.pixels(102, scale));
+                drawStats(g, w, h, scale);
                 g.setFont(ClassicUi.body(ViewportFonts.pixels(13, scale)));
-                drawCentered(g, ABILITIES[index], w / 2, h - ViewportFonts.pixels(72, scale));
+                drawCentered(g, ABILITIES[index], w / 2, h - ViewportFonts.pixels(48, scale));
                 g.setFont(ClassicUi.body(ViewportFonts.pixels(11, scale)));
-                drawCentered(g, EFFECTS[index], w / 2, h - ViewportFonts.pixels(53, scale));
-                g.setColor(selected.contains(index) ? GOLD : LIGHT);
-                drawCentered(g, (index == cursor ? "> " : "") + (selected.contains(index) ? "SELECTED" : "Select"), w / 2, h - ViewportFonts.pixels(32, scale));
+                drawCentered(g, EFFECTS[index], w / 2, h - ViewportFonts.pixels(31, scale));
+                if (selected.contains(index)) {
+                    g.setColor(GOLD);
+                    drawCentered(g, "SELECTED", w / 2, h - ViewportFonts.pixels(12, scale));
+                }
                 if (hasFocus()) { g.drawRect(6, 6, w - 13, h - 13); }
             } finally { g.dispose(); }
+        }
+
+        private void drawStats(Graphics2D g, int width, int height, double scale) {
+            Student student = Student.create(index);
+            int[] values = {student.getMaxHp(), student.getBaseAttack(), student.getBaseDefense(), student.getSpeed()};
+            int left = ViewportFonts.pixels(12, scale);
+            int barLeft = ViewportFonts.pixels(48, scale);
+            int valueRight = width - ViewportFonts.pixels(12, scale);
+            int barWidth = Math.max(1, valueRight - barLeft - ViewportFonts.pixels(32, scale));
+            int rowHeight = ViewportFonts.pixels(17, scale);
+            int top = height - ViewportFonts.pixels(158, scale);
+            int barHeight = ViewportFonts.pixels(7, scale);
+            g.setFont(ClassicUi.numbers(ViewportFonts.pixels(10, scale)));
+            for (int i = 0; i < STAT_LABELS.length; i++) {
+                int y = top + i * rowHeight;
+                g.setColor(LIGHT);
+                g.drawString(STAT_LABELS[i], left, y + barHeight);
+                g.setColor(new Color(38, 49, 76));
+                g.fillRect(barLeft, y, barWidth, barHeight);
+                if (i < values.length) {
+                    g.setColor(STAT_COLORS[i]);
+                    g.fillRect(barLeft, y, Math.max(1, barWidth * values[i] / STAT_MAXIMA[i]), barHeight);
+                } else {
+                    g.setColor(STAT_COLORS[i]);
+                    g.drawRect(barLeft, y, Math.max(0, barWidth - 1), Math.max(0, barHeight - 1));
+                }
+                String value = i < values.length ? Integer.toString(values[i]) : "--";
+                g.setColor(LIGHT);
+                g.drawString(value, valueRight - g.getFontMetrics().stringWidth(value), y + barHeight);
+            }
         }
 
         private void drawCentered(Graphics2D g, String text, int center, int y) {

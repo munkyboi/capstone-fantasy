@@ -36,12 +36,18 @@ final class ViewportFonts {
         updateIcon(label, current instanceof Double ? (Double) current : 1.0);
     }
 
-    private static void updateIcon(JLabel label, double scale) {
+    static void setScaledIcon(AbstractButton button, ImageIcon icon) {
+        button.putClientProperty(BASE_ICON, icon);
+        Object current = button.getClientProperty(CURRENT_SCALE);
+        updateIcon(button, current instanceof Double ? (Double) current : 1.0);
+    }
+
+    private static void updateIcon(JComponent label, double scale) {
         ImageIcon source = (ImageIcon) label.getClientProperty(BASE_ICON);
-        if (source == null) { label.setIcon(null); return; }
+        if (source == null) { setIcon(label, null); return; }
         int width = pixels(source.getIconWidth(), scale), height = pixels(source.getIconHeight(), scale);
-        if (label.getClientProperty(ICON_SOURCE) == source && label.getIcon() != null
-                && label.getIcon().getIconWidth() == width && label.getIcon().getIconHeight() == height) { return; }
+        if (label.getClientProperty(ICON_SOURCE) == source && iconOf(label) != null
+                && iconOf(label).getIconWidth() == width && iconOf(label).getIconHeight() == height) { return; }
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D graphics = image.createGraphics();
         try {
@@ -49,14 +55,23 @@ final class ViewportFonts {
             graphics.drawImage(source.getImage(), 0, 0, width, height, null);
         } finally { graphics.dispose(); }
         label.putClientProperty(ICON_SOURCE, source);
-        label.setIcon(new ImageIcon(image));
+        setIcon(label, new ImageIcon(image));
+    }
+
+    private static javax.swing.Icon iconOf(JComponent component) {
+        return component instanceof JLabel ? ((JLabel) component).getIcon() : ((AbstractButton) component).getIcon();
+    }
+
+    private static void setIcon(JComponent component, ImageIcon icon) {
+        if (component instanceof JLabel) { ((JLabel) component).setIcon(icon); }
+        else { ((AbstractButton) component).setIcon(icon); ((AbstractButton) component).setDisabledIcon(icon); }
     }
 
     static void apply(Component component, double scale) {
         if (component instanceof JComponent) {
             JComponent ui = (JComponent) component;
             ui.putClientProperty(CURRENT_SCALE, scale);
-            if (ui instanceof JLabel && ui.getClientProperty(BASE_ICON) != null) { updateIcon((JLabel) ui, scale); }
+            if ((ui instanceof JLabel || ui instanceof AbstractButton) && ui.getClientProperty(BASE_ICON) != null) { updateIcon(ui, scale); }
             if (ui instanceof JLabel || ui instanceof AbstractButton || ui instanceof JTextArea || ui instanceof JProgressBar) {
                 Font base = (Font) ui.getClientProperty(BASE_FONT);
                 if (base == null) { base = ui.getFont(); ui.putClientProperty(BASE_FONT, base); }

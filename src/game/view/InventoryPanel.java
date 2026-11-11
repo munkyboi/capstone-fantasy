@@ -38,7 +38,8 @@ public final class InventoryPanel extends JPanel {
     private final JLabel stats = new JLabel();
     private final JLabel[] slots = {new JLabel(), new JLabel(), new JLabel()};
     private final JTextArea bagContents = textArea();
-    private final JTextArea details = textArea();
+    private final JTextArea details = choiceArea();
+    private int choiceCursor = -1;
     private final JScrollPane bagScroll;
     private final JLabel choiceHeading = new JLabel("EQUIPMENT DETAILS");
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-v1.png");
@@ -131,6 +132,25 @@ public final class InventoryPanel extends JPanel {
         text.setOpaque(false); text.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         return text;
     }
+    private JTextArea choiceArea() {
+        JTextArea area = new JTextArea() {
+            @Override protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                if (choiceCursor < 0) { return; }
+                try {
+                    java.awt.geom.Rectangle2D line = modelToView2D(choiceCursor);
+                    if (line == null) { return; }
+                    int width = Math.max(1, Math.round(26 * getFont().getSize2D() / 13));
+                    graphics.drawImage(PixelPointer.HAND.getImage(), (int) line.getX(),
+                            (int) line.getCenterY() - width * 3 / 8, width, width * 3 / 4, null);
+                } catch (javax.swing.text.BadLocationException ignored) { /* selection is being refreshed */ }
+            }
+        };
+        area.setEditable(false); area.setFocusable(false); area.setOpaque(false);
+        area.setFont(ClassicUi.numbers(13)); area.setForeground(Color.WHITE);
+        area.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
+        return area;
+    }
     private static JScrollPane scroll(JTextArea area) {
         JScrollPane pane = new JScrollPane(area); pane.setBorder(null); pane.setFocusable(false); pane.setOpaque(false); pane.getViewport().setOpaque(false);
         javax.swing.JScrollBar bar = pane.getVerticalScrollBar();
@@ -212,7 +232,8 @@ public final class InventoryPanel extends JPanel {
         Student current = student();
         for (int i = 0; i < partyRows.length; i++) {
             Student member = progress.getParty().get(i);
-            partyRows[i].setText("<html>" + (i == studentIndex ? "> " : "&nbsp;&nbsp;") + member.getName()
+            ViewportFonts.setScaledIcon(partyRows[i], i == studentIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
+            partyRows[i].setText("<html>" + member.getName()
                     + "<br>&nbsp;&nbsp; HP " + member.getHp() + " / " + member.getMaxHp() + "</html>");
             styleRow(partyRows[i], i == studentIndex);
         }
@@ -221,7 +242,8 @@ public final class InventoryPanel extends JPanel {
         stats.setText("ATK " + current.getAttack() + "   DEF " + current.getDefense() + "   SPD " + current.getSpeed());
         for (int i = 0; i < slots.length; i++) {
             Equipment.Slot gearSlot = Equipment.Slot.values()[i];
-            slots[i].setText("<html>" + (i == slotIndex ? "> " : "&nbsp;&nbsp;") + gearSlot.name()
+            ViewportFonts.setScaledIcon(slots[i], i == slotIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
+            slots[i].setText("<html>" + gearSlot.name()
                     + "<br>&nbsp;&nbsp; " + name(current.getEquipmentId(gearSlot)) + "</html>");
             styleRow(slots[i], i == slotIndex);
         }
@@ -240,7 +262,7 @@ public final class InventoryPanel extends JPanel {
             for (int i = 0; i < options.size(); i++) {
                 String id = options.get(i);
                 if (i == choiceIndex) { selectedStart = choiceText.length(); }
-                choiceText.append(i == choiceIndex ? "> " : "  ").append(id == null ? "Unequip" : name(id)).append('\n');
+                choiceText.append("    ").append(id == null ? "Unequip" : name(id)).append('\n');
                 if (i == choiceIndex) { selectedEnd = choiceText.length() - 1; }
             }
             String selected = options.get(choiceIndex);
@@ -259,6 +281,7 @@ public final class InventoryPanel extends JPanel {
             }
             choiceText.append("\nEnter to change this slot.");
         }
+        choiceCursor = selectedStart;
         details.setText(choiceText.toString());
         details.getHighlighter().removeAllHighlights();
         if (selectedStart >= 0) {

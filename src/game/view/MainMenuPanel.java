@@ -91,7 +91,8 @@ public final class MainMenuPanel extends JPanel {
         Runnable refresh = () -> {
             String[] labels = {"New Game", "Load Game", "Quit"};
             for (int i = 0; i < buttons.length; i++) {
-                buttons[i].setText((i == cursor ? ">  " : "     ") + labels[i]);
+                buttons[i].setText(labels[i]);
+                ViewportFonts.setScaledIcon(buttons[i], i == cursor ? PixelPointer.HAND : PixelPointer.EMPTY);
             }
         };
         Keys.bind(this, "UP", "menu-up", () -> { cursor = Math.floorMod(cursor - 1, buttons.length); refresh.run(); });

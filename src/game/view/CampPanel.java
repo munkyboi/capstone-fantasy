@@ -19,7 +19,7 @@ import javax.swing.SwingConstants;
 /** Between-battle screen for reviewing the party and using supplies. */
 public final class CampPanel extends JPanel {
     private final javax.swing.ImageIcon[] portraits = CharacterPortraits.load();
-    private final JLabel[] students = {new JLabel(), new JLabel(), new JLabel()};
+    private final JLabel[] students = {studentLabel(), studentLabel(), studentLabel()};
     private final JLabel title = new JLabel("CAMP", SwingConstants.CENTER);
     private final JLabel supplies = new JLabel("", SwingConstants.CENTER);
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
@@ -31,6 +31,19 @@ public final class CampPanel extends JPanel {
     private GameProgress progress;
     private int cursor;
     private boolean complete;
+
+    private static JLabel studentLabel() {
+        return new JLabel() {
+            @Override protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                if (!Boolean.TRUE.equals(getClientProperty("selected")) || getIcon() == null) { return; }
+                int size = Math.max(1, Math.round(32 * getFont().getSize2D() / 15));
+                int x = getInsets().left + getIcon().getIconWidth() + getIconTextGap();
+                graphics.drawImage(PixelPointer.HAND.getImage(), x, (getHeight() - size * 3 / 4) / 2,
+                        size, size * 3 / 4, null);
+            }
+        };
+    }
 
     /** Creates the camp screen.
      * @param nextBattle starts the next encounter
@@ -163,7 +176,8 @@ public final class CampPanel extends JPanel {
         for (int i = 0; i < students.length; i++) {
             Student student = progress.getParty().get(i);
             ViewportFonts.setScaledIcon(students[i], portraits[student.getId()]);
-            students[i].setText(String.format("%s %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s", i == cursor ? ">" : " ",
+            students[i].putClientProperty("selected", i == cursor);
+            students[i].setText(String.format("    %-8s HP %3d/%3d  ATK %2d DEF %2d SPD %2d  %s%s",
                     student.getName(), student.getHp(), student.getMaxHp(), student.getAttack(), student.getDefense(),
                     student.getSpeed(), student.hasVest() ? "[Vest]" : "", student.isAlive() ? "" : " KO"));
         }

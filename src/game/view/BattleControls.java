@@ -91,7 +91,8 @@ final class BattleControls {
     static void updateCommands(JButton[] commands, int commandIndex) {
         String[] names = {"Attack", "Ability", "Item", "Defend"};
         for (int i = 0; i < commands.length; i++) {
-            commands[i].setText((i == commandIndex ? "> " : "  ") + names[i]);
+            commands[i].setText(names[i]);
+            ViewportFonts.setScaledIcon(commands[i], i == commandIndex && commands[i].isEnabled() ? PixelPointer.HAND : PixelPointer.EMPTY);
         }
     }
 
@@ -99,8 +100,9 @@ final class BattleControls {
         boolean over = battle.isOver();
         for (int i = 0; i < partyStatus.length; i++) {
             Student student = battle.getParty().get(i);
-            String marker = !over && student == battle.getCurrent() ? "> " : "  ";
-            partyStatus[i].setText(String.format("%s%-9s  HP %3d / %3d%s", marker,
+            partyStatus[i].setForeground(!over && student == battle.getCurrent()
+                    ? new Color(250, 218, 143) : Color.WHITE);
+            partyStatus[i].setText(String.format("%-9s  HP %3d / %3d%s",
                     student.getName(), student.getHp(), student.getMaxHp(), student.isAlive() ? "" : "  KO"));
         }
     }

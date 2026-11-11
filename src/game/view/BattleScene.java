@@ -101,6 +101,11 @@ final class BattleScene extends JPanel {
                         int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
                         drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
                     }
+                    if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
+                        int slice = sprites != null ? sprites.getWidth() / 4 : 0;
+                        int drawnHeight = sprites != null ? fittedHeight(sprites, slice, spriteWidth, spriteHeight) : spriteHeight;
+                        drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index) - drawnHeight - 4, state.partyTarget(index));
+                    }
                     if (state.partyTarget(index)) {
                         int slice = sprites != null ? sprites.getWidth() / 4 : 0;
                         int drawnHeight = sprites != null ? fittedHeight(sprites, slice, spriteWidth, spriteHeight) : spriteHeight;
@@ -291,6 +296,14 @@ final class BattleScene extends JPanel {
             if (state.attackingSprite() != participant) { return 0.0; }
             double phase = Math.min(1.0, state.effectProgress() * EFFECT_DURATION_MILLIS / HOP_DURATION_MILLIS);
             return Math.sin(Math.PI * phase);
+        }
+
+        private void drawActiveMarker(Graphics2D g, int x, int y, boolean alsoTargeted) {
+            if (alsoTargeted) { x += 11; }
+            g.setColor(Color.BLACK);
+            g.fillPolygon(new int[] {x, x + 5, x, x - 5}, new int[] {y - 12, y - 7, y - 2, y - 7}, 4);
+            g.setColor(new Color(105, 221, 255));
+            g.fillPolygon(new int[] {x, x + 3, x, x - 3}, new int[] {y - 10, y - 7, y - 4, y - 7}, 4);
         }
 
         private void drawCursor(Graphics2D g, int x, int y) {
