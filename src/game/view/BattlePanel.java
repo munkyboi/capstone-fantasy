@@ -50,6 +50,8 @@ public final class BattlePanel extends JPanel {
     private TargetAction targeting = TargetAction.NONE;
     private int targetIndex;
     private String notice;
+    private String victoryReward;
+    private boolean rewardRecorded;
     private final Map<Student, Double> actionPoints = new HashMap<>();
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
     private final Timer apTimer = new Timer(AP_FRAME_MILLIS, event -> tickActionPoints());
@@ -207,6 +209,7 @@ public final class BattlePanel extends JPanel {
         this.progress = progress;
         battle = new Battle(progress, battleRandom, ambushed); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; notice = null;
+        victoryReward = null; rewardRecorded = false;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
@@ -375,6 +378,10 @@ public final class BattlePanel extends JPanel {
         if (over) {
             showAmbush = false;
             ambushAlertTimer.stop();
+            if (battle.isVictory() && !rewardRecorded) {
+                victoryReward = progress.claimStageReward();
+                rewardRecorded = true;
+            }
             if (battle.isVictory() && victoryStartedNanos == 0) {
                 victoryStartedNanos = System.nanoTime();
                 victoryTimer.start();
@@ -385,7 +392,11 @@ public final class BattlePanel extends JPanel {
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
                 : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
                 ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
-        log.setText(targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage());
+        String message = targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage();
+        if (battle.isVictory() && victoryReward != null) {
+            message += "\nVictory reward: " + victoryReward + "!";
+        }
+        log.setText(message);
         log.setCaretPosition(0);
         BattleControls.updateParty(battle, partyStatus);
         BattleControls.updateBars(battle, apBars, actionPoints);
