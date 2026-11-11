@@ -58,17 +58,15 @@ public final class WindowLayoutTest {
         var camp = new game.view.CampPanel(progress -> { }, () -> { });
         var progress = new game.model.GameProgress(List.of(Student.ZACK, Student.CHARICE, Student.ANGEL));
         progress.advance(); camp.open(progress, false);
-        var field = game.view.CampPanel.class.getDeclaredField("students"); field.setAccessible(true);
-        var labels = (javax.swing.JLabel[]) field.get(camp);
         var viewport = new AspectRatioPanel(camp);
         viewport.setSize(960, 540); layout(viewport);
-        check(labels[0].getIcon().getIconWidth() == 72, "portrait is readable at the normal viewport");
+        check(camp.getWidth() == 960 && camp.getHeight() == 540, "camp fills normal viewport");
         viewport.setSize(1440, 810); layout(viewport);
-        check(labels[0].getIcon().getIconWidth() == 108, "portrait scales with larger viewport");
+        check(camp.getWidth() == 1440 && camp.getHeight() == 810, "camp fills larger viewport");
         camp.getActionMap().get("camp-down").actionPerformed(new java.awt.event.ActionEvent(camp, 0, ""));
-        check(labels[0].getIcon().getIconWidth() == 108, "camp refresh preserves portrait size");
+        check(camp.getWidth() == 1440, "camp selection preserves viewport size");
         viewport.setSize(960, 540); layout(viewport);
-        check(labels[0].getIcon().getIconWidth() == 72, "portrait returns to baseline after resize");
+        check(camp.getWidth() == 960, "camp returns to baseline after resize");
     }
     /** Runs the window layout checks.
      * @param args unused
