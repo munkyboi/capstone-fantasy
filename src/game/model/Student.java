@@ -142,12 +142,15 @@ public class Student extends GameCharacter {
     public double getEffectiveSpeed() { return effectiveSpeedWithEquipment(null, null); }
     public double agilityWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
-        return getAgility() * ("hunter_crossbows".equals(weapon) ? 1.05 : 1.0);
+        String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
+        return getAgility() * (1.0 + ("hunter_crossbows".equals(weapon) ? 0.05 : 0)
+                + ("training_uniform".equals(armor) ? 0.05 : 0));
     }
     public double accuracyWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
-        return getAccuracy() * (1.0 + ("scholar_staff".equals(weapon) ? 0.05 : 0)
+        String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
+        return getAccuracy() * (1.0 + ("training_uniform".equals(armor) ? 0.05 : 0) + ("scholar_staff".equals(weapon) ? 0.05 : 0)
                 + ("focus_charm".equals(accessory) ? 0.05 : 0));
     }
     public double effectiveSpeedWithEquipment(Equipment.Slot slot, String replacement) {
@@ -175,6 +178,8 @@ public class Student extends GameCharacter {
             }
         }
         double multiplier = stat != Stat.HP && "ring_of_power".equals(accessory) ? 1.5 : 1.0;
+        if (stat == Stat.HP && ("campus_vest".equals(armor)
+                || (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped))) multiplier += 0.05;
         if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.0;
         if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
         if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
@@ -190,7 +195,7 @@ public class Student extends GameCharacter {
         if (stat == Stat.SPD && "light_saber".equals(weapon)) multiplier += 0.2;
         if (stat == Stat.SPD && "demon_hunter".equals(weapon)) multiplier += 0.75;
         if (stat == Stat.SPD && "giant_slayer_gloves".equals(weapon)) value += 15;
-        return (int) Math.round(value * multiplier);
+        return (int) Math.round(value * multiplier) + (stat == Stat.HP && "sentinel_band".equals(accessory) ? 50 : 0);
     }
     /** Preserve health proportion when equipment changes maximum HP. */
     void adjustHpForEquipment(int previousHp, int previousMax) {

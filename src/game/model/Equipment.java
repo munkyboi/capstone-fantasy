@@ -100,6 +100,9 @@ public final class Equipment extends Item {
     /** Describes special legendary effects in the equipment screen. */
     public String getSpecialDescription() {
         return switch (id) {
+            case "campus_vest" -> "+5% HP; +5% HP regeneration";
+            case "training_uniform" -> "+5% ACC; +5% AGI";
+            case "sentinel_band" -> "+50 HP; +8% HP regeneration";
             case "focus_charm", "scholar_staff" -> "+5% ACC";
             case "hunter_crossbows" -> "+5% AGI";
             case "cadet_blade" -> "+5% HP regeneration";

@@ -352,15 +352,14 @@ public final class Battle {
         List<Student> living = party.stream().filter(Student::isAlive).toList();
         boolean skill = enemy.usesSkillNext();
         enemy.recordAction();
-        Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= 10
+        Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= enemy.getHealSpCost()
                 ? enemies.stream().filter(other -> other != enemy && other.isAlive()
-                        && other.getHp() * 4 <= other.getMaxHp() * 3
-                        && other.getMaxHp() - other.getHp() >= enemy.healingPower())
+                        && other.getHp() * 4 <= other.getMaxHp() * 3)
                     .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)
                 : null;
         if (healTarget != null && enemy.spendHealSp()) {
             lastAbility = new AbilityAnnouncement(enemy.getName(), "Stone Mend");
-            int healed = healTarget.heal(enemy.healingPower());
+            int healed = healTarget.heal(enemy.healingPower(healTarget));
             effects.add(new BattleEffect(healTarget, healed));
             message = enemy.getName() + " uses Stone Mend and heals " + healTarget.getName() + " for " + healed + " HP.";
         } else if (skill && enemy.isSentinel()) {

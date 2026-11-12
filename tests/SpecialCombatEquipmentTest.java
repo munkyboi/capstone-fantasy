@@ -41,13 +41,14 @@ public final class SpecialCombatEquipmentTest {
         Battle sb = new Battle(support, fixed(), false, 1); Enemy sentinel = sb.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy ally = sb.getEnemies().stream().filter(e -> !e.isSentinel()).findFirst().orElseThrow();
         ally.takeDamage(40); int before = ally.getHp();
-        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 4 && sentinel.getSp() == 20,
-                "Sentinel heals injured ally for 20 percent attack and spends SP");
-        check(sb.getEffects().get(0).getAmount() == 4 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
-        check(sb.enemyAttack(sentinel) && sb.enemyAttack(sentinel) && sentinel.getSp() == 0, "Sentinel spends available SP");
+        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 20 && sentinel.getSp() == 190,
+                "Sentinel heals half the ally's missing HP and spends SP");
+        check(sb.getEffects().get(0).getAmount() == 20 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
+        for (int i = 0; i < 19; i++) { ally.takeDamage(ally.getHp() - 25); check(sb.enemyAttack(sentinel), "Sentinel uses Stone Mend"); }
+        check(sentinel.getSp() == 0, "Sentinel spends available SP");
         check(sb.enemyAttack(sentinel) && !sb.getMessage().contains("heals"), "Sentinel cannot heal without SP");
         Enemy hardSentinel = new Enemy("Stone Sentinel", true, false, GameSettings.Difficulty.HARD);
-        check(hardSentinel.getMaxSp() == 45 && hardSentinel.getSp() == 45, "difficulty scales Sentinel SP");
+        check(hardSentinel.getMaxSp() == 300 && hardSentinel.getSp() == 300, "difficulty scales Sentinel SP");
         GameProgress market = new GameProgress(List.of(0, 1, 2, 3)); market.addPetot(13000);
         for (int i = 2; i < 7; i++) check(CarbonMarket.buy(market, i).startsWith("Purchased"), "buy market item " + i);
         check(market.getPetot() == 500 && market.getInventory().getEquipmentIds().contains("light_saber"), "purchase price and items");

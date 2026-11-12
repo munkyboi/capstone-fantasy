@@ -10,6 +10,7 @@ public final class Enemy extends GameCharacter {
     private static final int WISP_A_AP = 24;
     private static final int WISP_AP_STEP = 2;
     private static final int SENTINEL_AP = 32;
+    private static final int SENTINEL_BASE_SP = 200;
     private static final int[] STAGE_PETOT_BONUS = {0, 0, 3, 6, 4};
     private static final int[] STAGE_XP_BONUS = {0, 0, 3, 6, 10};
     private static final double[] STAGE_HP_MULTIPLIER = {1.0, 1.0, 1.08, 1.16, 1.25};
@@ -76,7 +77,7 @@ public final class Enemy extends GameCharacter {
         this.sentinel = sentinel;
         this.boss = boss;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
-        skillPoints = sentinel && !boss ? (int) Math.round(30 * difficultyMultiplier) : 0;
+        skillPoints = sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0;
         petotDrop = boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
         experienceDrop = (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
         maxHp = Math.max(1, (int) Math.round((boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale));
@@ -92,9 +93,11 @@ public final class Enemy extends GameCharacter {
     }
     /** Sentinel healing resources are renewed for each battle. */
     public int getSp() { return skillPoints; }
-    public int getMaxSp() { return sentinel && !boss ? (int) Math.round(30 * difficultyMultiplier) : 0; }
-    boolean spendHealSp() { if (skillPoints < 10) return false; skillPoints -= 10; return true; }
-    int healingPower() { return Math.max(1, (int) Math.round(attack * 0.2 * difficultyMultiplier)); }
+    public int getMaxSp() { return sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0; }
+    /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
+    public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }
+    boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; return true; }
+    int healingPower(Enemy target) { return (int) Math.round((target.getMaxHp() - target.getHp()) * 0.5); }
     int heal(int amount) { int healed = Math.min(maxHp - hp, Math.max(0, amount)); hp += healed; return healed; }
     /** Returns whether the next action uses this monster's skill. */
     boolean usesSkillNext() { return (actionsTaken + 1) % (boss ? 4 : 3) == 0; }

@@ -253,10 +253,16 @@ public final class GameProgress implements java.io.Serializable {
     /** Restores armor before HP validation for equipment that changes maximum HP. */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, List<String> armorIds, int kits, int encounter) {
+        return restore(ids, hitPoints, experience, allocations, progression, armorIds, null, kits, encounter);
+    }
+    /** Restores HP-affecting accessories before validating saved HP. */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
+            List<int[]> allocations, List<int[]> progression, List<String> armorIds, List<String> accessoryIds, int kits, int encounter) {
         if (ids == null || hitPoints == null || experience == null || ids.isEmpty() || ids.size() > 4 || hitPoints.size() != ids.size() || experience.size() != ids.size()
                 || (allocations != null && allocations.size() != ids.size())
                 || (progression != null && progression.size() != ids.size())
                 || (armorIds != null && armorIds.size() != ids.size())
+                || (accessoryIds != null && accessoryIds.size() != ids.size())
                 || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 5) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
@@ -279,6 +285,11 @@ public final class GameProgress implements java.io.Serializable {
                 Equipment armor = Equipment.fromId(armorIds.get(i));
                 if (armor.getSlot() != Equipment.Slot.ARMOR || !armor.canEquip(id)) throw new IllegalArgumentException("Invalid armor");
                 student.setEquipmentId(Equipment.Slot.ARMOR, armor.getId());
+            }
+            if (accessoryIds != null && accessoryIds.get(i) != null) {
+                Equipment accessory = Equipment.fromId(accessoryIds.get(i));
+                if (accessory.getSlot() != Equipment.Slot.ACCESSORY || !accessory.canEquip(id)) throw new IllegalArgumentException("Invalid accessory");
+                student.setEquipmentId(Equipment.Slot.ACCESSORY, accessory.getId());
             }
             student.restoreHp(hitPoints.get(i));
         }

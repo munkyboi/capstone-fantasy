@@ -157,6 +157,7 @@ public final class SaveStore {
             List<int[]> allocations = new ArrayList<>();
             List<int[]> progression = new ArrayList<>();
             List<String> armorIds = new ArrayList<>();
+            List<String> accessoryIds = new ArrayList<>();
             List<Integer> oldMaxSps = new ArrayList<>();
             for (int i = 1; i <= count; i++) {
                 String prefix = "student." + i + ".";
@@ -177,12 +178,17 @@ public final class SaveStore {
                 String armor = properties.getProperty(prefix + "armor", "");
                 armorIds.add(armor.isEmpty() ? null : armor);
                 int newMax = expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, armor.isEmpty() ? null : armor);
+                String accessory = properties.getProperty(prefix + "accessory", "");
+                accessoryIds.add(accessory.isEmpty() ? null : accessory);
+                if ("sentinel_band".equals(accessory)) newMax += 50;
                 int savedMax = Integer.parseInt(properties.getProperty(prefix + "maxHp"));
                 int oldMax = legacyMaxHp(expected, armor);
                 boolean oldStats = !currentStats(version) && savedMax == oldMax;
                 int savedHp = Integer.parseInt(properties.getProperty(prefix + "hp"));
                 if (!expected.getName().equals(properties.getProperty(prefix + "name"))
-                        || (savedMax != newMax && !oldStats) || savedHp < 0 || savedHp > savedMax
+                        || (savedMax != newMax && !("sentinel_band".equals(accessory) && savedMax == newMax - 50)
+                            && !("campus_vest".equals(armor) && savedMax == expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, null)
+                                + ("sentinel_band".equals(accessory) ? 50 : 0)) && !oldStats) || savedHp < 0 || savedHp > savedMax
                         || expected.getLevel() != Integer.parseInt(properties.getProperty(prefix + "level"))) {
                     throw new IOException("Invalid student information");
                 }
@@ -192,7 +198,7 @@ public final class SaveStore {
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
             }
-            GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
+            GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, accessoryIds, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
             restored.getInventory().restoreWhiteFlowers("9".equals(version) ? Integer.parseInt(properties.getProperty("inventory.whiteFlowers")) : 0);
             if ("3".equals(version) || "4".equals(version) || "5".equals(version) || "6".equals(version) || modern(version)) {
@@ -270,6 +276,7 @@ public final class SaveStore {
         List<int[]> allocations = new ArrayList<>();
         List<int[]> progression = new ArrayList<>();
         List<String> armorIds = new ArrayList<>();
+        List<String> accessoryIds = new ArrayList<>();
         java.util.Map<Integer, List<String>> slotsByStudent = new java.util.HashMap<>();
         for (Student student : progress.getRoster()) {
             Student expected = new Student(student.getId());
@@ -290,7 +297,9 @@ public final class SaveStore {
                     || (student.getId() == Student.CHARICE && originalSpeed == 16)
                     || (student.getId() == Student.ANGEL && (originalSpeed == 7 || originalSpeed == 9));
             int expectedHp = expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, student.getEquipmentId(Equipment.Slot.ARMOR));
+            if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) expectedHp += 50;
             boolean legacyStats = student.getMaxHp() == legacyMaxHp(expected, student.getEquipmentId(Equipment.Slot.ARMOR))
+                    + ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY)) ? 50 : 0)
                     && (student.getMaxHp() != expectedHp || student.getBaseAttack() != expected.getBaseAttack()
                         || student.getBaseDefense() != expected.getBaseDefense() || student.getUnmodifiedSpeed() != expected.getUnmodifiedSpeed());
             if (!expected.getName().equals(student.getName()) || (expectedHp != student.getMaxHp() && !legacyStats)
@@ -303,11 +312,12 @@ public final class SaveStore {
             }
             ids.add(student.getId()); hp.add(legacyStats ? scaleResource(student.getHp(), student.getMaxHp(), expectedHp) : student.getHp()); xp.add(student.getExperience());
             armorIds.add(student.getEquipmentId(Equipment.Slot.ARMOR));
+            accessoryIds.add(student.getEquipmentId(Equipment.Slot.ACCESSORY));
             List<String> items = new ArrayList<>();
             for (Equipment.Slot slot : Equipment.Slot.values()) { items.add(student.getEquipmentId(slot)); }
             slotsByStudent.put(student.getId(), items);
         }
-        GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, progress.getKits(), progress.getEncounter());
+        GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, accessoryIds, progress.getKits(), progress.getEncounter());
         restored.restorePetot(progress.getPetot());
         restored.getInventory().restoreWhiteFlowers(inventory.getWhiteFlowers());
         List<List<String>> slots = new ArrayList<>();

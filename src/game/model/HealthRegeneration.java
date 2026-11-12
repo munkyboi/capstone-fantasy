@@ -11,12 +11,14 @@ public final class HealthRegeneration {
     /** Returns the amount restored by a successful attempt, before the HP cap. */
     public static int amount(Student student) {
         double bonus = switch (java.util.Objects.toString(student.getEquipmentId(Equipment.Slot.ARMOR), "")) {
+            case "campus_vest" -> 0.05;
             case "ethereal_robe", "designer_leather_vest" -> 0.10;
             case "blade_mail" -> 0.50;
             case "ultra_instinct_shirt" -> 0.30;
             default -> 0.0;
         };
         if ("cadet_blade".equals(student.getEquipmentId(Equipment.Slot.WEAPON))) bonus += 0.05;
+        if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.08;
         if (student.isDefending()) bonus += 0.20;
         int basis = student.getMaxHp();
         return Math.max(1, (int) Math.round(basis * (BASE_RATES[student.getId()] + bonus)));
