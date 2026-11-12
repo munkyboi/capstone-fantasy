@@ -8,7 +8,7 @@ public final class CarbonMarket {
             new Offer("first_aid_kit", "First-Aid Kit", 20, "Restores HP to one student."),
             new Offer("market_charm", "Market Charm", 60, "+1 ATK and +1 DEF."),
             new Offer("ring_of_power", "Ring of Power", 2500, "+50% ATK/DEF/SPD; 50% chance to refill AP when hit."),
-            new Offer("light_saber", "Light Saber", 2500, "Warrior: +100 ATK, +20% SPD; 100% hit damage over 5s."),
+            new Offer("light_saber", "Light Saber", 2500, "Warrior: +100 ATK, +20% SPD; 100% hit damage over 5 turns."),
             new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD."),
             new Offer("great_sage_staff", "Great Sage Staff", 2500, "Mage: +20% ATK; 50% chance to cast twice."),
             new Offer("giant_slayer_gloves", "Giant Slayer Gloves", 2500, "Monk: +50% ATK, +15 SPD, extra hit."),

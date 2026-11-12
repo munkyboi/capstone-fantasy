@@ -21,7 +21,9 @@ public final class StunIndicatorTest {
             panel.setSize(960,720); layout(panel);
             Field bf=BattlePanel.class.getDeclaredField("battle"); bf.setAccessible(true); Battle b=(Battle)bf.get(panel);
             Student hero=p.getParty().get(0); Enemy merchant=b.getEnemies().get(0);
-            check(b.attack(merchant) && b.enemyAttack(merchant) && b.enemyAttack(merchant), "merchant casts missiles");
+            check(b.attack(merchant) && b.enemyAttack(merchant), "merchant summons copies");
+            b.getEnemies().stream().filter(Enemy::isMirror).forEach(e->e.takeDamage(9999));
+            check(b.enemyAttack(merchant), "merchant casts missiles");
             check(b.getStunTurns(hero)==2, "hero is stunned");
             check(StunIndicatorTest.class.getResource("/assets/ui/stunned-icon-v1.png")!=null, "stun artwork packaged");
             BufferedImage stunned=paint(panel); check(b.consumeStunTurn(hero), "skip first turn");

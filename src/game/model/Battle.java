@@ -23,7 +23,7 @@ public final class Battle {
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
     private final java.util.List<DamageOverTime> burns = new java.util.ArrayList<>();
     private static final class DamageOverTime {
-        final GameCharacter target; final int total; double elapsed; int ticks;
+        final GameCharacter target; final int total; int ticks;
         DamageOverTime(GameCharacter target, int damage) { this.target = target; total = damage; }
     }
     private int turn = -1;
@@ -159,16 +159,13 @@ public final class Battle {
     public boolean hasDamageOverTime(GameCharacter target) {
         return target != null && target.isAlive() && !isOver() && burns.stream().anyMatch(burn -> burn.target == target && burn.ticks < 5);
     }
-    /** Advances damage-over-time effects by elapsed battle time, including command selection. */
-    public boolean advanceDamageOverTime(double seconds) {
-        if (seconds <= 0 || isOver() || burns.isEmpty()) return false;
+    /** Applies one tick to effects on a participant whose action bar has filled. */
+    public boolean tickDamageOverTime(GameCharacter participant) {
+        if (participant == null || isOver() || !participant.isAlive() || burns.isEmpty()) return false;
         boolean changed = false;
         for (DamageOverTime burn : burns) {
             GameCharacter target = burn.target;
-            if (!target.isAlive()) continue;
-            burn.elapsed += seconds;
-            int due = Math.min(5, (int) Math.floor(burn.elapsed + 1e-9));
-            while (burn.ticks < due && target.isAlive()) {
+            if (target != participant || !target.isAlive() || burn.ticks >= 5) continue;
                 int before = (int) ((long) burn.total * burn.ticks / 5);
                 burn.ticks++;
                 int damage = (int) ((long) burn.total * burn.ticks / 5) - before;
@@ -182,7 +179,6 @@ public final class Battle {
                     }
                     changed = true;
                 }
-            }
         }
         burns.removeIf(burn -> !burn.target.isAlive() || burn.ticks >= 5);
         if (changed) {
@@ -191,6 +187,8 @@ public final class Battle {
         }
         return changed;
     }
+    /** Keeps DOT indicators when the participant also performs an action. */
+    public void prependEffects(List<BattleEffect> earlier) { if (earlier != null && !earlier.isEmpty()) effects.addAll(0, earlier); }
     private void applyLightSaber(Student actor, Enemy target, int damage) {
         if (damage > 0 && target.isAlive() && "light_saber".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
             burns.add(new DamageOverTime(target, damage));
@@ -416,6 +414,7 @@ public final class Battle {
             int skill = enemy.merchantSkill(enemies.stream().anyMatch(e -> e.isMirror() && e.isAlive()));
             enemy.recordAction();
             if (skill == 1) {
+                burns.removeIf(burn -> burn.target instanceof Enemy other && other.isMirror());
                 enemies.removeIf(Enemy::isMirror);
                 enemies.add(enemy.mirror(1)); enemies.add(enemy.mirror(2));
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Mirror Image");
@@ -427,6 +426,7 @@ public final class Battle {
                 int percent = 10 + random.nextInt(6);
                 int hpRestored = enemy.heal((int) Math.ceil(hpTotal * percent / 100.0));
                 int spRestored = enemy.absorbSp((int) Math.ceil(spTotal * percent / 100.0));
+                burns.removeIf(burn -> burn.target instanceof Enemy other && other.isMirror());
                 enemies.removeIf(Enemy::isMirror);
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Recall");
                 if (hpRestored > 0) effects.add(new BattleEffect(enemy, hpRestored));
@@ -436,26 +436,28 @@ public final class Battle {
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Magic Missiles");
                 StringBuilder text = new StringBuilder(enemy.getName() + " uses Magic Missiles!");
                 List<Student> unselected = new ArrayList<>();
-                for (int i = 0; i < 3; i++) {
+                for (int i = 0; i < (enemy.isMirror() ? 1 : 3); i++) {
                     List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
                     unselected.removeIf(target -> !target.isAlive());
                     if (unselected.isEmpty()) unselected.addAll(targets);
                     Student target = unselected.remove(random.nextInt(unselected.size()));
-                    if (random.nextDouble() >= 0.6) { effects.add(BattleEffect.status(target, "Miss")); text.append("\nMissed ").append(target.getName()).append("."); continue; }
-                    int power = (int)Math.ceil(enemy.getAttack() * (100 + random.nextInt(41)) / 100.0);
+                    if (random.nextDouble() >= (enemy.isMirror() ? 0.5 : 0.6)) { effects.add(BattleEffect.status(target, "Miss")); text.append("\nMissed ").append(target.getName()).append("."); continue; }
+                    int power = (int)Math.ceil(enemy.getAttack() * (enemy.isMirror() ? 80 + random.nextInt(21) : 100 + random.nextInt(41)) / 100.0);
                     int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1, true);
                     Student recipient = lastDamageRecipient;
-                    if (damage > 0 && recipient.isAlive()) { stuns.put(recipient, 2); effects.add(BattleEffect.status(recipient, "Stunned")); }
+                    if (damage > 0 && recipient.isAlive()) { stuns.merge(recipient, enemy.isMirror() ? 1 : 2, Math::max); effects.add(BattleEffect.status(recipient, "Stunned")); }
                     text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
                 }
                 message = text.toString();
             } else if (skill == 3) {
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Mana Burn");
                 StringBuilder text = new StringBuilder(enemy.getName() + " uses Mana Burn!");
-                for (int i = 0; i < 2; i++) {
-                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
-                    Student target = targets.get(random.nextInt(targets.size()));
-                    int damage = (int)Math.ceil((target.getMaxSp() - target.getSp()) * (60 + random.nextInt(21)) / 100.0);
+                Student target = living.get(random.nextInt(living.size()));
+                if (random.nextDouble() >= 0.6) {
+                    effects.add(BattleEffect.status(target, "Miss"));
+                    text.append("\nMissed ").append(target.getName()).append(".");
+                } else {
+                    int damage = (int)Math.ceil((target.getMaxSp() - target.getSp()) * (50 + random.nextInt(11)) / 100.0);
                     int taken = target.takeDamage(damage); effects.add(new BattleEffect(target, -taken));
                     if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
                     text.append("\n").append(target.getName()).append(" takes ").append(taken).append(" damage.");

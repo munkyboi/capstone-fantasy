@@ -68,15 +68,9 @@ public final class SpecialCombatEquipmentTest {
         Enemy big = burn.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow(); Student warrior = student(fire, 1);
         check(burn.selectStudent(warrior), "select warrior"); int initial = big.getHp(); burn.attack(big); int hit = initial - big.getHp();
         check(burn.hasDamageOverTime(big), "Light Saber applies the shared DOT status");
-        List<BattleEffect> hitEffects = burn.getEffects();
-        check(!burn.advanceDamageOverTime(0.99) && burn.getEffects().equals(hitEffects), "direct hit indicator remains visible before first tick");
-        check(burn.advanceDamageOverTime(0.01), "first tick at one second");
-        List<BattleEffect> tickEffects = burn.getEffects();
-        check(!burn.advanceDamageOverTime(0.05) && burn.getEffects().equals(tickEffects), "tick indicator remains visible between updates");
-        burn.advanceDamageOverTime(0.95);
-        for (int i = 2; i < 5; i++) burn.advanceDamageOverTime(1.0);
-        check(initial - big.getHp() == hit * 2, "five ticks deal 100 percent of hit over five seconds");
-        check(!burn.hasDamageOverTime(big) && !burn.advanceDamageOverTime(1), "DOT status and damage stop after five ticks");
+        for (int i = 0; i < 5; i++) check(burn.tickDamageOverTime(big), "one tick per target turn");
+        check(initial - big.getHp() == hit * 2, "five turns deal 100 percent of hit");
+        check(!burn.hasDamageOverTime(big) && !burn.tickDamageOverTime(big), "DOT status and damage stop after five ticks");
         GameProgress mageParty = new GameProgress(List.of(0, 1, 2)); equip(mageParty, 0, "great_sage_staff"); mageParty.advance();
         Battle casts = new Battle(mageParty, fixed(), false, 1); Student mage = student(mageParty, 0); int sp = mage.getSp();
         check(casts.selectStudent(mage) && casts.ability(null, null) && casts.hasPendingSecondCast()
@@ -118,7 +112,14 @@ public final class SpecialCombatEquipmentTest {
                 Field lastTick = BattlePanel.class.getDeclaredField("lastTickNanos"); lastTick.setAccessible(true);
                 lastTick.setLong(dotPanel, System.nanoTime() - 5_100_000_000L);
                 Method tick = BattlePanel.class.getDeclaredMethod("tickActionPoints"); tick.setAccessible(true); tick.invoke(dotPanel);
-                check(dotBattle.isVictory() && timed.getPetot() > 0, "damage over time continues in selection and awards victory");
+                check(!dotBattle.isVictory() && dotBattle.hasDamageOverTime(guardian), "time passing while selecting does not tick DOT");
+                check(dotBattle.defend(student(timed, 1)), "finish command before the enemy turn");
+                guardian.takeDamage(guardian.getHp() - 1);
+                Field enemyPoints = BattlePanel.class.getDeclaredField("enemyPoints"); enemyPoints.setAccessible(true);
+                @SuppressWarnings("unchecked") Map<Enemy, Double> enemyBars = (Map<Enemy, Double>) enemyPoints.get(dotPanel);
+                enemyBars.put(guardian, (double) guardian.getActionThreshold());
+                advance.invoke(dotPanel, 0.0);
+                check(dotBattle.isVictory() && timed.getPetot() > 0, "DOT ticks on the enemy turn and awards victory");
                 for (String timer : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer")) { Field f = BattlePanel.class.getDeclaredField(timer); f.setAccessible(true); ((javax.swing.Timer) f.get(dotPanel)).stop(); }
             } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
         });

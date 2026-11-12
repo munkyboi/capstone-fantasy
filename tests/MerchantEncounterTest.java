@@ -19,14 +19,16 @@ public final class MerchantEncounterTest {
         check(b.enemyAttack(m)&&b.getEnemies().size()==3&&m.getSp()==710&&b.getLastAbility().skill().equals("Mirror Image"),"mirror summon");
         Enemy image=b.getEnemies().get(1);check(image.isMirror()&&image.getMaxHp()==263&&image.getMaxSp()==600&&image.getAttack()==20&&image.getDefense()==5&&image.getAgility()==5&&image.getAccuracy()==4&&image.getSpeed()==4,"75 percent HP and SP; half other stats and full speed");
         check(b.enemyAttack(image)&&b.getLastAbility().skill().equals("Magic Missiles")&&b.getEnemies().size()==3,"mirror can cast but cannot summon");
+        b.getEnemies().stream().filter(Enemy::isMirror).forEach(e->e.takeDamage(9999));
         Student s=p.getParty().get(0);int hp=s.getHp();
         check(b.enemyAttack(m)&&b.getLastAbility().skill().equals("Magic Missiles")&&m.getSp()==655&&s.getHp()<hp&&b.getStunTurns(s)==2,"missiles and stun");
         check(b.consumeStunTurn(s)&&b.getStunTurns(s)==1&&b.consumeStunTurn(s)&&!b.consumeStunTurn(s),"stun lasts two turns");
-        s.restoreSp(15);int burnHp=s.getHp();check(b.enemyAttack(m)&&b.getLastAbility().skill().equals("Mana Burn")&&s.getHp()==burnHp-24&&s.getSp()==15&&b.getEffects().stream().filter(e->e.getStudent()==s).count()==2,"mana burn deals damage from missing SP twice");
+        s.restoreSp(15);int burnHp=s.getHp();check(b.enemyAttack(m)&&b.getLastAbility().skill().equals("Mana Burn")&&s.getHp()==burnHp-10&&s.getSp()==15&&b.getEffects().stream().filter(e->e.getStudent()==s).count()==1,"mana burn deals 50 percent of missing SP to one target");
         check(b.enemyAttack(m)&&b.getLastAbility().skill().equals("Heat Stroke")&&b.hasDamageOverTime(s)&&b.getEffects().stream().filter(e->e.getStudent()==s).count()==2,"heat stroke applies damage over time twice");
         GameProgress missParty=new GameProgress(List.of(Student.BOGART));missParty.advance();missParty.advance();missParty.advance();
         Battle miss=Battle.merchantBattle(missParty,fixed(.6),GameSettings.Difficulty.NORMAL);Enemy missMerchant=miss.getEnemies().get(0);
-        check(miss.enemyAttack(missMerchant)&&miss.enemyAttack(missMerchant)&&miss.getStunTurns(missParty.getParty().get(0))==0,"missiles miss at 60 percent boundary");
+        check(miss.enemyAttack(missMerchant),"summon for miss test");miss.getEnemies().stream().filter(Enemy::isMirror).forEach(e->e.takeDamage(9999));
+        check(miss.enemyAttack(missMerchant)&&miss.getStunTurns(missParty.getParty().get(0))==0,"missiles miss at 60 percent boundary");
         GameProgress cooldownParty=new GameProgress(List.of(Student.BOGART));cooldownParty.advance();cooldownParty.advance();cooldownParty.advance();
         Battle cooldown=Battle.merchantBattle(cooldownParty,fixed(0),GameSettings.Difficulty.NORMAL);Enemy caster=cooldown.getEnemies().get(0);
         check(cooldown.enemyAttack(caster),"initial copies");

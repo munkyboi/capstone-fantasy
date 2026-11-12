@@ -59,7 +59,8 @@ public final class Enemy extends GameCharacter {
         if (merchant && !mirrorsActive && mirrorCooldown == 0 && skillPoints >= 90) { skillPoints -= 90; mirrorCooldown = 5; return 1; }
         if (merchant && mirrorsActive && recallCooldown == 0 && skillPoints >= 30
                 && (hp * 2 <= maxHp || skillPoints * 4 <= getMaxSp())) { skillPoints -= 30; recallCooldown = 5; return 5; }
-        if (missileCooldown == 0 && skillPoints >= 55) { skillPoints -= 55; missileCooldown = 3; return 2; }
+        if ((mirror || !mirrorsActive) && missileCooldown == 0 && skillPoints >= 55) { skillPoints -= 55; missileCooldown = 3; return 2; }
+        if (mirror) return 0;
         if (drainCooldown == 0 && skillPoints >= 15) { skillPoints -= 15; drainCooldown = 3; return 3; }
         if (lifeDrainCooldown == 0 && skillPoints >= 20) { skillPoints -= 20; lifeDrainCooldown = 3; return 4; }
         return 0;

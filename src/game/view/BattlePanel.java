@@ -300,23 +300,6 @@ public final class BattlePanel extends JPanel {
         long now = System.nanoTime();
         double seconds = Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0);
         lastTickNanos = now;
-        Student previousActor = battle == null ? null : battle.getCurrent();
-        if (battle != null && battle.advanceDamageOverTime(seconds)) {
-            if (previousActor != null && !previousActor.isAlive()) {
-                targeting = TargetAction.NONE; choosingItem = false; notice = null; secondCastTimer.stop();
-                if (battle.hasPendingSecondCast()) battle.completeSecondCast();
-            }
-            if (battle.isOver()) {
-                targeting = TargetAction.NONE; secondCastTimer.stop();
-                if (battle.hasPendingSecondCast()) battle.completeSecondCast();
-            }
-            if (!battle.isOver() && targeting != TargetAction.NONE && !targetsParty() && !targetsAllEnemies()
-                    && !battle.getEnemies().get(targetIndex).isAlive()) {
-                while (!battle.getEnemies().get(targetIndex).isAlive()) targetIndex = (targetIndex + 1) % battle.getEnemies().size();
-            }
-            showActionEffects(null);
-            refresh();
-        }
         advanceActionPoints(seconds);
     }
 
@@ -335,7 +318,13 @@ public final class BattlePanel extends JPanel {
             boolean enemyActed = false;
             for (Enemy enemy : battle.getEnemies()) {
                 if (enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
+                    boolean dotTicked = battle.tickDamageOverTime(enemy);
+                    List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : List.of();
+                    if (!enemy.isAlive() || battle.isOver()) {
+                        enemyPoints.put(enemy, 0.0); showActionEffects(null); enemyActed = true; changed = true; break;
+                    }
                     if (battle.enemyAttack(enemy)) {
+                        battle.prependEffects(dotEffects);
                         enemyPoints.put(enemy, 0.0);
                         for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
                         java.util.List<Student> refilled = new java.util.ArrayList<>();
@@ -396,8 +385,16 @@ public final class BattlePanel extends JPanel {
     private boolean selectReadyStudent() {
         if (battle.isOver() || battle.getCurrent() != null) { return false; }
         for (Student student : battle.getParty()) {
+            if (battle.isOver()) return false;
             if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
+                boolean dotTicked = battle.tickDamageOverTime(student);
+                List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : List.of();
+                if (dotTicked) {
+                    showActionEffects(null);
+                    if (!student.isAlive() || battle.isOver()) { actionPoints.put(student, 0.0); refresh(); continue; }
+                }
                 if (battle.consumeStunTurn(student)) {
+                    battle.prependEffects(dotEffects);
                     actionPoints.put(student, 0.0); showActionEffects(null); refresh(); continue;
                 }
                 actionPoints.put(student, (double) student.getActionThreshold());
