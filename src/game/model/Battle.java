@@ -23,8 +23,9 @@ public final class Battle {
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
     private final java.util.List<DamageOverTime> burns = new java.util.ArrayList<>();
     private static final class DamageOverTime {
-        final GameCharacter target; final int total; int ticks;
-        DamageOverTime(GameCharacter target, int damage) { this.target = target; total = damage; }
+        final GameCharacter target; final int total; final boolean manaLeak; int ticks;
+        DamageOverTime(GameCharacter target, int damage) { this(target, damage, false); }
+        DamageOverTime(GameCharacter target, int damage, boolean manaLeak) { this.target = target; total = damage; this.manaLeak = manaLeak; }
     }
     private int turn = -1;
     private boolean pendingSecondCast;
@@ -172,7 +173,7 @@ public final class Battle {
                 int taken = target.takeDamage(damage);
                 if (taken > 0) {
                     if (!changed) effects.clear();
-                    if (target instanceof Enemy enemy) effects.add(new BattleEffect(enemy, -taken));
+                    if (target instanceof Enemy enemy) { effects.add(new BattleEffect(enemy, -taken)); applyManaLeak(burn.manaLeak, enemy, taken); }
                     else if (target instanceof Student student) {
                         effects.add(new BattleEffect(student, -taken));
                         if (!student.isAlive()) { guards.remove(student); student.endDefend(); if (getCurrent() == student) turn = -1; }
@@ -191,7 +192,7 @@ public final class Battle {
     public void prependEffects(List<BattleEffect> earlier) { if (earlier != null && !earlier.isEmpty()) effects.addAll(0, earlier); }
     private void applyLightSaber(Student actor, Enemy target, int damage) {
         if (damage > 0 && target.isAlive() && "light_saber".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
-            burns.add(new DamageOverTime(target, damage));
+            burns.add(new DamageOverTime(target, damage, hasManaLeak(actor)));
         }
     }
     /** Rolls once for each character whose AP has just filled. */
@@ -336,6 +337,7 @@ public final class Battle {
             Enemy target = living.get(random.nextInt(living.size()));
             int damage = target.takeDamage((int) Math.ceil(actor.getAttack() * (20 + random.nextInt(21)) / 100.0));
             effects.add(new BattleEffect(target, -damage));
+            applyManaLeak(true, target, damage);
             text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
         }
         return text.toString();
@@ -575,7 +577,7 @@ public final class Battle {
         if (damage > 0 && "blade_mail".equals(armor)) {
             effects.add(BattleEffect.status(target, "Reflect"));
             int reflected = enemy.takeDamage((int) Math.round(damage * 0.5));
-            if (reflected > 0) effects.add(new BattleEffect(enemy, -reflected));
+            if (reflected > 0) { effects.add(new BattleEffect(enemy, -reflected)); applyManaLeak(hasManaLeak(target), enemy, reflected); }
         }
         if (damage > 0 && target.isAlive() && "ethereal_robe".equals(armor)) target.chargeEthereal();
         if (damage > 0 && target.isAlive() && "ring_of_power".equals(target.getEquipmentId(Equipment.Slot.ACCESSORY))
@@ -589,7 +591,17 @@ public final class Battle {
         if (!hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         int damage = target.takeDamage(Math.max(MINIMUM_DAMAGE, attack - target.getDefense() + random.nextInt(DAMAGE_VARIATION)));
         effects.add(new BattleEffect(target, -damage));
+        applyManaLeak(hasManaLeak(getCurrent()), target, damage);
         return damage;
+    }
+    private static boolean hasManaLeak(Student student) {
+        return student != null && "looper_ring".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY));
+    }
+    private void applyManaLeak(boolean enabled, Enemy target, int damage) {
+        if (!enabled || damage <= 0 || target.getSp() <= 0) return;
+        int amount = (int) Math.ceil(target.getSp() * (10 + random.nextInt(6)) / 100.0);
+        int drained = target.loseSp(amount);
+        if (drained > 0) effects.add(BattleEffect.manaLeak(target, drained));
     }
     private String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
     private void clearGuards() {

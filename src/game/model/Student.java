@@ -67,6 +67,9 @@ public class Student extends GameCharacter {
     // False identifies a serialized save from before SP existed.
     private int skillPoints;
     private boolean skillPointsInitialized;
+    private boolean looperManaLeakVersion = true;
+    /** Identifies saves created after Looper Ring stopped increasing maximum SP. */
+    public boolean hasLooperManaLeakVersion() { return looperManaLeakVersion; }
     private boolean defending;
     private transient boolean etherealCharged;
     private boolean vestEquipped;
@@ -285,9 +288,7 @@ public class Student extends GameCharacter {
     /** Returns the student's maximum skill points. */
     public int getMaxSp() { return maxSpWithEquipment(null, null); }
     public int maxSpWithEquipment(Equipment.Slot slot, String replacement) {
-        String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
-        int base = MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
-        return "looper_ring".equals(accessory) ? base * 2 : base;
+        return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
     }
     /** Returns points earned but not spent. */
     public int getUnspentStatPoints() {

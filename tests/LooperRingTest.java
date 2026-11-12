@@ -33,14 +33,14 @@ public final class LooperRingTest {
         GameProgress p=new GameProgress(List.of(Student.BOGART)); p.addPetot(2500);
         check(CarbonMarket.buy(p,index).contains("Purchased") && p.getPetot()==0,"purchase");
         Student s=p.getParty().get(0); check(p.equip(s,Equipment.Slot.ACCESSORY,"looper_ring"),"equip purchased");
-        check(s.getMaxSp()==70 && s.getSp()==70 && s.getDefense()==13 && s.getSpeed()==17 && s.getAbilitySpCost()==6,"bonuses");
+        check(s.getMaxSp()==35 && s.getSp()==35 && s.getDefense()==13 && s.getSpeed()==17 && s.getAbilitySpCost()==6,"bonuses");
         s.restoreSp(35); p.advance();
         Path path=Files.createTempDirectory("looper-test");
         try { SaveStore store=new SaveStore(path); for (SaveStore.Format f:SaveStore.Format.values()) {
             store.save(1,f,p); Student loaded=store.load(1,f).getParty().get(0);
-            check(loaded.getSp()==35 && loaded.getMaxSp()==70 && "looper_ring".equals(loaded.getEquipmentId(Equipment.Slot.ACCESSORY)),"save " + f);
+            check(loaded.getSp()==35 && loaded.getMaxSp()==35 && "looper_ring".equals(loaded.getEquipmentId(Equipment.Slot.ACCESSORY)),"save " + f);
         }} finally {try(var paths=Files.walk(path)){for(Path item:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(item);}}
-        check(p.equip(s,Equipment.Slot.ACCESSORY,null) && s.getMaxSp()==35 && s.getSp()==18,"unequip proportion");
+        check(p.equip(s,Equipment.Slot.ACCESSORY,null) && s.getMaxSp()==35 && s.getSp()==35,"unequip preserves SP");
         proc(0,0); proc(.499999,20); proc(.5,0);
         GameProgress abilityParty=equipped(); Student attacker=abilityParty.getParty().get(0);
         Battle ability=new Battle(abilityParty,new Rolls(0,0)); Enemy target=ability.getEnemies().get(0);

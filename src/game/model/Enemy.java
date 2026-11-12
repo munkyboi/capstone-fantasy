@@ -139,6 +139,8 @@ public final class Enemy extends GameCharacter {
     }
     /** Sentinel healing resources are renewed for each battle. */
     public int getSp() { return skillPoints; }
+    /** Removes up to the supplied amount of current SP. */
+    int loseSp(int amount) { int lost = Math.min(skillPoints, Math.max(0, amount)); skillPoints -= lost; return lost; }
     public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 1 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0; }
     /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
     public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }

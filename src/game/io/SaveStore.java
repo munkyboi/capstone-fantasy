@@ -69,6 +69,7 @@ public final class SaveStore {
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
                 properties.setProperty("version", "9");
+                properties.setProperty("mechanics.looperManaLeak", "true");
                 properties.setProperty("party.count", Integer.toString(checked.getRoster().size()));
                 properties.setProperty("party.active", checked.getParty().stream().map(s -> Integer.toString(s.getId())).collect(java.util.stream.Collectors.joining(",")));
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
@@ -149,6 +150,9 @@ public final class SaveStore {
             Properties properties = new Properties();
             try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) { properties.load(reader); }
             String version = properties.getProperty("version");
+            String looperMechanics = properties.getProperty("mechanics.looperManaLeak", "false");
+            if (!looperMechanics.equals("true") && !looperMechanics.equals("false")) throw new IOException("Invalid Looper Ring mechanics");
+            boolean legacyLooper = !Boolean.parseBoolean(looperMechanics);
             if (!"1".equals(version) && !"2".equals(version) && !"3".equals(version) && !"4".equals(version) && !"5".equals(version) && !"6".equals(version) && !modern(version)) { throw new IOException("Unsupported save version"); }
             int count = modern(version) ? Integer.parseInt(properties.getProperty("party.count")) : 3;
             if (count < 1 || count > 4) throw new IOException("Invalid party size");
@@ -193,7 +197,8 @@ public final class SaveStore {
                     throw new IOException("Invalid student information");
                 }
                 ids.add(id); hp.add(oldStats ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
-                oldMaxSps.add(!currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithEquipment(Equipment.Slot.ACCESSORY, accessory.isEmpty() ? null : accessory));
+                int oldMaxSp = !currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithEquipment(Equipment.Slot.ACCESSORY, accessory.isEmpty() ? null : accessory);
+                oldMaxSps.add(legacyLooper && "looper_ring".equals(accessory) ? oldMaxSp * 2 : oldMaxSp);
             }
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
@@ -211,7 +216,8 @@ public final class SaveStore {
                     Student student = restored.getParty().stream().filter(member -> member.getId() == id).findFirst().orElseThrow();
                     int oldMax = oldMaxSps.get(i - 1);
                     if (sp < 0 || sp > oldMax) throw new IOException("Invalid SP");
-                    student.restoreSp(currentStats(version) ? sp : scaleResource(sp, oldMax, student.getMaxSp()));
+                    boolean oldLooper = legacyLooper && "looper_ring".equals(accessoryIds.get(i - 1));
+                    student.restoreSp(currentStats(version) && !oldLooper ? sp : scaleResource(sp, oldMax, student.getMaxSp()));
                 }
             }
             if ("4".equals(version) || "5".equals(version) || "6".equals(version) || modern(version)) {
@@ -299,6 +305,7 @@ public final class SaveStore {
                     || (student.getId() == Student.BOGART && (originalSpeed == 7 || originalSpeed == 11))
                     || (student.getId() == Student.CHARICE && originalSpeed == 16)
                     || (student.getId() == Student.ANGEL && (originalSpeed == 7 || originalSpeed == 9));
+            boolean oldLooper = !student.hasLooperManaLeakVersion() && "looper_ring".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY));
             int expectedHp = expected.maxHpWithEquipment(student.getEquipmentId(Equipment.Slot.ARMOR), student.getEquipmentId(Equipment.Slot.ACCESSORY));
             boolean legacyStats = student.getMaxHp() == legacyMaxHp(expected, student.getEquipmentId(Equipment.Slot.ARMOR))
                     + ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY)) ? 50 : 0)
@@ -309,7 +316,7 @@ public final class SaveStore {
                     || (expected.getBaseDefense() != student.getBaseDefense() && !oldDefense && !legacyStats)
                     || (expected.getUnmodifiedSpeed() != student.getUnmodifiedSpeed() && !oldSpeed && !legacyStats) || expected.getLevel() != student.getLevel()
                     || student.getHp() < 0 || student.getHp() > student.getMaxHp()
-                    || student.getSp() < 0 || student.getSp() > Math.max(student.getMaxSp(), legacyMaxSp(student))) {
+                    || student.getSp() < 0 || student.getSp() > Math.max(oldLooper ? student.getMaxSp() * 2 : student.getMaxSp(), legacyMaxSp(student))) {
                 throw new IllegalArgumentException("Invalid student information");
             }
             ids.add(student.getId()); hp.add(legacyStats ? scaleResource(student.getHp(), student.getMaxHp(), expectedHp) : student.getHp()); xp.add(student.getExperience());
@@ -330,7 +337,9 @@ public final class SaveStore {
             Student old = progress.getRoster().stream().filter(member -> member.getId() == id).findFirst().orElseThrow();
             boolean oldStats = old.getMaxHp() != student.getMaxHp() || old.getBaseAttack() != student.getBaseAttack()
                     || old.getBaseDefense() != student.getBaseDefense() || old.getUnmodifiedSpeed() != student.getUnmodifiedSpeed();
+            boolean oldLooper = !old.hasLooperManaLeakVersion() && "looper_ring".equals(old.getEquipmentId(Equipment.Slot.ACCESSORY));
             student.restoreSp(!old.hasInitializedSkillPoints() ? student.getMaxSp()
+                    : oldLooper ? scaleResource(old.getSp(), (oldStats ? legacyMaxSp(old) : student.getMaxSp()) * 2, student.getMaxSp())
                     : oldStats ? scaleResource(old.getSp(), legacyMaxSp(old), student.getMaxSp()) : old.getSp());
         }
         boolean[] claimed = new boolean[5];

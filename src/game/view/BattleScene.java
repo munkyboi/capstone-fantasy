@@ -437,7 +437,9 @@ final class BattleScene extends JPanel {
             Battle battle = state.battle();
             Map<Object, int[]> changes = new java.util.LinkedHashMap<>();
             Map<Object, java.util.List<String>> labels = new java.util.LinkedHashMap<>();
+            Map<Enemy, Integer> manaLeaks = new java.util.LinkedHashMap<>();
             for (BattleEffect effect : battle.getEffects()) {
+                if (effect.isManaLeak()) { manaLeaks.merge(effect.getEnemy(), effect.getAmount(), Integer::sum); continue; }
                 Object target = effect.getStudent() != null ? effect.getStudent() : effect.getEnemy();
                 int[] amounts = changes.computeIfAbsent(target, ignored -> new int[2]);
                 if (effect.getLabel() != null) labels.computeIfAbsent(target, ignored -> new java.util.ArrayList<>()).add(effect.getLabel());
@@ -495,6 +497,29 @@ final class BattleScene extends JPanel {
                     g.setColor(new Color(250, 218, 143, alpha)); g.drawString(label, px, py);
                     py = Math.max(20, py - 22);
                 }
+            }
+            for (Map.Entry<Enemy, Integer> entry : manaLeaks.entrySet()) {
+                Enemy enemy = entry.getKey();
+                int index = battle.getEnemies().indexOf(enemy);
+                if (index < 0) continue;
+                int slot = enemySlot(index, battle.getEnemies());
+                int spriteWidth = Math.max(20, slotWidth * 3 / 4);
+                BufferedImage art = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                int width = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                int boxHeight = enemy.isMerchant() || enemy.isMirror() || enemy.isSentinel() && !enemy.isBoss() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : spriteHeight;
+                int height = art != null ? fittedHeight(art, art.getWidth(), width, boxHeight) : boxHeight;
+                int centerX = enemyX(slot, slotWidth) + slotWidth / 2 + attackOffset(enemy, -1);
+                int centerY = enemyFootY(h, slot) - height / 2 + attackLift(enemy);
+                double progress = state.effectProgress();
+                int alpha = (int) Math.round(255 * Math.max(0, Math.min(1, Math.min(progress * 4, (1 - progress) * 4))));
+                String text = entry.getValue() + " SP";
+                int px = Math.round((float) centerX * 960 / w) - g.getFontMetrics().stringWidth(text) / 2;
+                int py = Math.round((float) centerY * hudHeight() / h) + (int) (progress * 20);
+                g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
+                g.setColor(new Color(255, 255, 255, alpha));
+                for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0) g.drawString(text, px + dx, py + dy);
+                g.setColor(new Color(255, 157, 45, alpha)); g.drawString(text, px, py);
             }
         }
 
