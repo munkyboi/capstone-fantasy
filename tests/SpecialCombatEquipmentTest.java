@@ -78,7 +78,9 @@ public final class SpecialCombatEquipmentTest {
                 && mage.getSp() == sp - mage.getAbilitySpCost(), "double cast spends SP once");
         GameProgress monkParty = finalParty(); equip(monkParty, 3, "giant_slayer_gloves"); Battle punches = new Battle(monkParty, fixed(), false, 4);
         check(punches.selectStudent(student(monkParty, 3)) && punches.attack(punches.getEnemies().get(0))
-                && punches.getEffects().size() == 4, "gloves add one basic hit");
+                && punches.hasPendingAngelAttack(), "gloves start timed combo");
+        int punchCount = 1; while (!punches.isAngelExplosionPending() && punches.hasPendingAngelAttack()) { punches.advanceAngelAttack(); punchCount++; }
+        check(punchCount == 5, "gloves add two basic hits"); punches.advanceAngelAttack();
         GameProgress ringParty = new GameProgress(List.of(0, 1, 2)); Student first = ringParty.getParty().get(0); equip(ringParty, first.getId(), "ring_of_power");
         Battle ring = new Battle(ringParty, fixed()); check(ring.enemyAttack(ring.getEnemies().get(0))
                 && ring.consumeApRefills().contains(first), "ring can refill AP when damaged");

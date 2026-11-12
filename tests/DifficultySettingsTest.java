@@ -10,7 +10,7 @@ public final class DifficultySettingsTest {
     private static void check(boolean ok, String text) { if (!ok) throw new AssertionError(text); }
     private static void key(SettingsPanel panel, String action) { panel.getActionMap().get(action).actionPerformed(new ActionEvent(panel, 0, "")); }
     public static void main(String[] args) throws Exception {
-        int[] hp = {49, 65, 98, 130}, speed = {4, 5, 8, 10}, threshold = {32, 24, 16, 12};
+        int[] hp = {49, 65, 98, 130}, speed = {2, 3, 5, 6}, threshold = {48, 36, 24, 18};
         int[] xp = {15, 20, 30, 40}, damage = {9, 12, 18, 24};
         for (GameSettings.Difficulty difficulty : GameSettings.Difficulty.values()) {
             int i = difficulty.ordinal(); Enemy wisp = new Enemy("Library Wisp A", false, false, difficulty);

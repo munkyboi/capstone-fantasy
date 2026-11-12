@@ -73,6 +73,8 @@ public final class BattlePanel extends JPanel {
     private final Timer victoryTimer;
     private final Timer secondCastTimer;
     private final Timer looperHitTimer;
+    private final Timer angelAttackTimer;
+    private final Timer sparkExplosionTimer;
     private long victoryStartedNanos;
     private boolean showAmbush;
     private boolean showEffects;
@@ -174,6 +176,10 @@ public final class BattlePanel extends JPanel {
         secondCastTimer = new Timer(SECOND_CAST_DELAY_MILLIS, event -> completeSecondCast());
         secondCastTimer.setRepeats(false);
         looperHitTimer = new Timer(LOOPER_HIT_DELAY_MILLIS, event -> advanceLooperHit());
+        angelAttackTimer = new Timer(300, event -> advanceAngelAttack());
+        angelAttackTimer.setRepeats(false);
+        sparkExplosionTimer = new Timer(300, event -> resolveSparkExplosion());
+        sparkExplosionTimer.setRepeats(false);
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
@@ -209,10 +215,12 @@ public final class BattlePanel extends JPanel {
                 if (isShowing() && battle != null && !battle.isOver()) {
                     lastTickNanos = System.nanoTime();
                     apTimer.start();
-                    if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+                    if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
+                    else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+                    else if (battle.hasPendingAngelAttack()) scheduleAngelAttack();
                     else if (battle.hasPendingSecondCast()) secondCastTimer.restart();
                 }
-                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
+                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); sparkExplosionTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
             }
         });
     }
@@ -279,7 +287,7 @@ public final class BattlePanel extends JPanel {
         targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
         abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
-        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop();
+        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); sparkExplosionTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
         showAmbush = ambushed;
@@ -309,6 +317,7 @@ public final class BattlePanel extends JPanel {
 
     private void advanceActionPoints(double seconds) {
         if (battle == null || battle.isOver()) { apTimer.stop(); return; }
+        if (battle.hasPendingSparkExplosion()) return;
         // Wait mode: freeze clocks while a ready student chooses a command or target.
         if (battle.getCurrent() != null) {
             if (battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
@@ -341,12 +350,14 @@ public final class BattlePanel extends JPanel {
                         boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
                         showActionEffects(healing ? null : enemy);
                         announceAbility();
+                        if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
                         enemyActed = true;
                         changed = true;
                     }
                     break;
                 }
             }
+            if (battle.hasPendingSparkExplosion()) break;
             if (enemyActed) { continue; }
             if (remaining <= 0.0) { break; }
             double untilReady = Double.POSITIVE_INFINITY;
@@ -413,7 +424,11 @@ public final class BattlePanel extends JPanel {
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         Student actor = battle.getCurrent();
         action.run();
-        if (battle.hasPendingLooperHits()) {
+        if (battle.hasPendingAngelAttack()) {
+            actionPoints.put(actor, 0.0);
+            showActionEffects(attacking ? actor : null);
+            scheduleAngelAttack();
+        } else if (battle.hasPendingLooperHits()) {
             actionPoints.put(actor, 0.0);
             showActionEffects(attacking ? actor : null);
             looperHitTimer.restart();
@@ -451,9 +466,35 @@ public final class BattlePanel extends JPanel {
         showActionEffects(null);
         if (!battle.hasPendingLooperHits()) {
             looperHitTimer.stop();
-            if (battle.hasPendingSecondCast() && !battle.isOver()) secondCastTimer.restart();
+            if (battle.hasPendingAngelAttack() && !battle.isOver()) scheduleAngelAttack();
+            else if (battle.hasPendingSecondCast() && !battle.isOver()) secondCastTimer.restart();
             else if (!battle.isOver()) selectReadyStudent();
         }
+        if (battle.isOver()) apTimer.stop();
+        lastTickNanos = System.nanoTime();
+        refresh();
+    }
+
+    private void scheduleAngelAttack() {
+        angelAttackTimer.setInitialDelay(300);
+        angelAttackTimer.restart();
+    }
+    private void resolveSparkExplosion() {
+        if (battle == null || !battle.resolveSparkExplosion()) return;
+        for (Student student : battle.consumeApRefills()) actionPoints.put(student, (double) student.getActionThreshold());
+        showActionEffects(null);
+        if (battle.isOver()) apTimer.stop();
+        lastTickNanos = System.nanoTime();
+        refresh();
+    }
+    private void advanceAngelAttack() {
+        if (battle == null || !battle.hasPendingAngelAttack()) return;
+        Student actor = battle.getCurrent();
+        battle.advanceAngelAttack();
+        showActionEffects(actor);
+        if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+        else if (battle.hasPendingAngelAttack()) scheduleAngelAttack();
+        else if (!battle.isOver()) selectReadyStudent();
         if (battle.isOver()) apTimer.stop();
         lastTickNanos = System.nanoTime();
         refresh();
@@ -497,7 +538,8 @@ public final class BattlePanel extends JPanel {
 
     private boolean validPartyTarget(Student target) {
         return targeting == TargetAction.DEFEND ? battle.canDefend(target)
-                : targeting == TargetAction.WHITE_FLOWER ? !target.isAlive() : target.isAlive();
+                : targeting == TargetAction.WHITE_FLOWER ? !target.isAlive()
+                : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS || target.isAlive();
     }
 
     private void moveTarget(int direction) {
@@ -530,7 +572,10 @@ public final class BattlePanel extends JPanel {
                     || (action == TargetAction.ABILITY && battle.getCurrent().getAbilityType() != Student.AbilityType.HEALING_KISS);
             performAction(() -> {
                 if (action == TargetAction.ATTACK) { battle.attack(enemy); }
-                else if (action == TargetAction.ABILITY) { if (battle.ability(target, enemy)) announceAbility(); }
+                else if (action == TargetAction.ABILITY) {
+                    boolean fallen = target != null && !target.isAlive();
+                    if (battle.ability(target, enemy)) { if (fallen) actionPoints.put(target, 0.0); announceAbility(); }
+                }
                 else if (action == TargetAction.DEFEND) { battle.defend(target); }
                 else if (action == TargetAction.WHITE_FLOWER) {
                     if (battle.useWhiteFlower(target)) actionPoints.put(target, 0.0);

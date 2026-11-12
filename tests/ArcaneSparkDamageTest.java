@@ -6,8 +6,8 @@ public final class ArcaneSparkDamageTest {
     private static void check(boolean ok, String message) { if (!ok) throw new AssertionError(message); }
     private static int thirdHit(GameSettings.Difficulty difficulty, int variation) {
         Random random = new Random() {
-            @Override public int nextInt(int bound) { return bound == 5 ? variation : 0; }
-            @Override public double nextDouble() { return 0; }
+            @Override public int nextInt(int bound) { return bound == 21 ? variation : 0; }
+            @Override public double nextDouble() { return .5; }
         };
         GameProgress p = new GameProgress(List.of(Student.ZACK));
         Battle battle = new Battle(p, random, false, 0, difficulty);
@@ -18,11 +18,11 @@ public final class ArcaneSparkDamageTest {
         return before - target.getHp();
     }
     public static void main(String[] args) {
-        int[][] ranges = {{14,17},{18,22},{27,33},{36,44}};
+        int[][] ranges = {{9,12},{12,16},{18,24},{24,32}};
         GameSettings.Difficulty[] difficulties = GameSettings.Difficulty.values();
         for (int i=0;i<difficulties.length;i++) {
             check(thirdHit(difficulties[i],0)==ranges[i][0], difficulties[i] + " minimum");
-            check(thirdHit(difficulties[i],4)==ranges[i][1], difficulties[i] + " maximum");
+            check(thirdHit(difficulties[i],20)==ranges[i][1], difficulties[i] + " maximum");
         }
         System.out.println("Arcane Spark difficulty damage checks passed");
     }

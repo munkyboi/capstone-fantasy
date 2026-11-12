@@ -6,8 +6,8 @@ public final class Enemy extends GameCharacter {
     private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 105;
     private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 20;
     private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 9;
-    private static final int WISP_SPEED = 5, SENTINEL_SPEED = 2;
-    private static final int WISP_A_AP = 24;
+    private static final int WISP_SPEED = 3, SENTINEL_SPEED = 2;
+    private static final int WISP_A_AP = 36;
     private static final int WISP_AP_STEP = 2;
     private static final int SENTINEL_AP = 32;
     private static final int SENTINEL_BASE_SP = 200;
@@ -34,7 +34,7 @@ public final class Enemy extends GameCharacter {
     private final double difficultyMultiplier;
     private int actionsTaken;
     private int skillPoints;
-    private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown;
+    private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown, sparkCooldown;
 
     private Enemy(Enemy original, GameSettings.Difficulty difficulty, double partyLevel, boolean copy, int number) {
         double levels = partyLevel - 1, p = levels / 99.0, curve = p * p * (3.0 - 2.0 * p);
@@ -123,7 +123,7 @@ public final class Enemy extends GameCharacter {
         this.lootGoblin = lootGoblin;
         this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
-        skillPoints = lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0;
+        skillPoints = lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : !sentinel && !boss ? 80 : 0;
         petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
         experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
         maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale));
@@ -141,7 +141,12 @@ public final class Enemy extends GameCharacter {
     public int getSp() { return skillPoints; }
     /** Removes up to the supplied amount of current SP. */
     int loseSp(int amount) { int lost = Math.min(skillPoints, Math.max(0, amount)); skillPoints -= lost; return lost; }
-    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0; }
+    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : !sentinel && !boss ? 80 : 0; }
+    boolean useArcaneSpark() {
+        if (sparkCooldown > 0) { sparkCooldown--; return false; }
+        if (actionsTaken < 2 || skillPoints < 12) return false;
+        skillPoints -= 12; sparkCooldown = 3; return true;
+    }
     /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
     public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }
     boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; return true; }

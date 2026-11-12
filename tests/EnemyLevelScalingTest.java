@@ -19,18 +19,18 @@ public final class EnemyLevelScalingTest {
         check(wisp.getMaxHp() == 66 && wisp.getAttack() == 16 && wisp.getExperienceDrop() == 22,
                 "active party average includes KO and excludes reserve");
         Enemy levelOne = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 1);
-        check(levelOne.getMaxHp() == 65 && levelOne.getActionThreshold() == 24, "level-one balance stays unchanged");
+        check(levelOne.getMaxHp() == 65 && levelOne.getActionThreshold() == 36, "level-one balance stays unchanged");
         Enemy veteran = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 51);
         Enemy hard = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.HARD, 0, 51);
         check(veteran.getMaxHp() == 326 && veteran.getAttack() == 48 && veteran.getDefense() == 13
-                && veteran.getActionThreshold() == 16 && veteran.getExperienceDrop() == 70, "level 51 scaling");
-        check(hard.getMaxHp() == 489 && hard.getActionThreshold() == 11 && hard.getExperienceDrop() == 105,
+                && veteran.getActionThreshold() == 24 && veteran.getExperienceDrop() == 70, "level 51 scaling");
+        check(hard.getMaxHp() == 489 && hard.getActionThreshold() == 16 && hard.getExperienceDrop() == 105,
                 "difficulty stacks with party level");
         Enemy early = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 11);
         Enemy middle = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 51);
         Enemy late = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 91);
         Enemy max = new Enemy("Library Wisp A", false, false, GameSettings.Difficulty.NORMAL, 0, 100);
-        check(max.getActionThreshold() == 12 && max.getMaxHp() == 580, "level 100 reaches the capped endpoints");
+        check(max.getActionThreshold() == 18 && max.getMaxHp() == 580, "level 100 reaches the capped endpoints");
         check(early.getMaxHp() - levelOne.getMaxHp() < middle.getMaxHp() - early.getMaxHp()
                 && max.getMaxHp() - late.getMaxHp() < middle.getMaxHp() - early.getMaxHp(), "S-curve eases in and out");
         Enemy previous = levelOne;

@@ -21,7 +21,7 @@ public final class LooperRingTest {
         GameProgress p=equipped(); Student s=p.getParty().get(0);
         Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
         check(b.selectStudent(s) && b.attack(e), "attack");
-        long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null).count();
+        long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null && !x.isManaLeak()).count();
         check(count==1 && b.hasPendingLooperHits()==(chance < .5), "proc boundary " + chance);
         if (chance < .5) {
             int bonus=(int)Math.ceil(s.getAttack()*(20+percent)/100.0);

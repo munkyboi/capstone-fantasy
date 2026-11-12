@@ -14,7 +14,10 @@ public final class MonsterSkillsTest {
         check(wispBattle.enemyAttack(wisp) && wispBattle.getMessage().contains("Arcane Spark"), "third Wisp action uses skill");
         check(wispBattle.getEffects().size() == 1 && wispBattle.getEffects().get(0).getAmount() < 0,
                 "Arcane Spark produces one damage indicator");
-        check(wispBattle.enemyAttack(wisp) && wispBattle.getMessage().contains("attacks"), "cadence resets after skill");
+        check(wisp.getSp()==68 && wispBattle.hasPendingSparkExplosion(), "spark spends SP and queues explosion");
+        check(wispBattle.resolveSparkExplosion(), "resolve explosion");
+        for(int i=0;i<3;i++){ wispBattle.getParty().forEach(s -> s.heal(999)); check(wispBattle.enemyAttack(wisp) && wispBattle.getMessage().contains("attacks"), "cooldown action " + i); }
+        wispBattle.getParty().forEach(s -> s.heal(999)); check(wispBattle.enemyAttack(wisp) && wisp.getSp()==56 && wispBattle.getMessage().contains("Arcane Spark"), "skill returns after three actions");
 
         GameProgress progress = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL)); progress.advance();
         Battle battle = new Battle(progress, fixed());

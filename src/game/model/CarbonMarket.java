@@ -11,7 +11,7 @@ public final class CarbonMarket {
             new Offer("light_saber", "Light Saber", 2500, "Warrior: +100 ATK, +20% SPD; 100% hit damage over 5 turns."),
             new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD."),
             new Offer("great_sage_staff", "Great Sage Staff", 2500, "Mage: +20% ATK; 50% chance to cast twice."),
-            new Offer("giant_slayer_gloves", "Giant Slayer Gloves", 2500, "Monk: +50% ATK, +15 SPD, extra hit."),
+            new Offer("giant_slayer_gloves", "Giant Slayer Gloves", 2500, "Monk: +50% ATK, +15 SPD, two extra hits."),
             new Offer("blade_mail", "Blade Mail", 2500, "-50% DEF, -20% SPD, +200% HP; 50% reflect; +50% regen."),
             new Offer("ultra_instinct_shirt", "Ultra Instinct Shirt", 2500, "-20% DEF, +20% SPD; 50% dodge; +30% regen."),
             new Offer("designer_leather_vest", "Designer Leather Vest", 2500, "+10% DEF, +20% SPD, +50 HP; 2x XP; +10% regen."),

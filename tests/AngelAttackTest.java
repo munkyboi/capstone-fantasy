@@ -1,79 +1,63 @@
-import game.model.Battle;
-import game.model.BattleEffect;
-import game.model.Enemy;
-import game.model.GameProgress;
-import game.model.Student;
+import game.model.*;
 import game.view.BattlePanel;
 import java.awt.event.ActionEvent;
 import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import javax.swing.SwingUtilities;
+import java.util.*;
+import javax.swing.*;
 
-/** Verifies Angel's multi-hit basic attack and one-action AP cost. */
 public final class AngelAttackTest {
-    private static void check(boolean value, String message) { if (!value) { throw new AssertionError(message); } }
-    private static Random fixed(int count) {
-        return new Random() {
-            private boolean initial = true;
-            @Override public double nextDouble() { return 0; }
-            @Override public int nextInt(int bound) {
-                if (bound == 100) return 0;
-                if (initial) { initial = false; return count - 1; }
-                return bound == 5 ? 0 : bound - 1;
-            }
-        };
+    static void check(boolean v,String s){if(!v)throw new AssertionError(s);}
+    static Random fixed(){return new Random(){public int nextInt(int n){return 0;}public double nextDouble(){return 0;}};}
+    static Object field(Object o,String n)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);return f.get(o);}
+    static void testCombo(boolean gloves){
+        GameProgress p=new GameProgress(List.of(Student.ANGEL)); Student angel=p.getParty().get(0);
+        if(gloves){p.getInventory().addEquipment("giant_slayer_gloves");check(p.equip(angel,Equipment.Slot.WEAPON,"giant_slayer_gloves"),"equip gloves");}
+        p.advance();p.advance();p.advance(); Battle b=Battle.merchantBattle(p,fixed(),GameSettings.Difficulty.NORMAL);Enemy enemy=b.getEnemies().get(0);int hp=enemy.getHp();
+        check(b.selectStudent(angel)&&b.attack(enemy),"first hit");int count=1,total=hp-enemy.getHp();
+        check(!b.attack(enemy),"controls locked during combo");
+        while(!b.isAngelExplosionPending()){int before=enemy.getHp();check(b.advanceAngelAttack(),"next hit");total+=before-enemy.getHp();count++;}
+        check(count==(gloves?5:3),"number of punches");int before=enemy.getHp();check(b.advanceAngelAttack(),"explosion");
+        check(before-enemy.getHp()==(int)Math.ceil(total*.80),"explosion is 80 percent of actual damage");
+        check(!b.hasPendingAngelAttack()&&b.getCurrent()==null,"one action finishes");
     }
-    private static Battle battle(int count) { return new Battle(List.of(Student.ZACK, Student.CHARICE, Student.ANGEL), fixed(count)); }
-    private static Student angel(Battle battle) {
-        return battle.getParty().stream().filter(s -> s.getId() == Student.ANGEL).findFirst().orElseThrow();
+    static void testEquipmentCombo(int percentRoll){
+        GameProgress p=new GameProgress(List.of(Student.ANGEL));Student angel=p.getParty().get(0);
+        p.getInventory().addEquipment("giant_slayer_gloves");p.getInventory().addEquipment("looper_ring");
+        check(p.equip(angel,Equipment.Slot.WEAPON,"giant_slayer_gloves") && p.equip(angel,Equipment.Slot.ACCESSORY,"looper_ring"),"equip both items");
+        p.advance();p.advance();p.advance();Random rolls=new Random(){public int nextInt(int n){return n==21?percentRoll:0;}public double nextDouble(){return 0;}};
+        Battle b=Battle.merchantBattle(p,rolls,GameSettings.Difficulty.INSANE);Enemy enemy=b.getEnemies().get(0);int start=enemy.getHp();
+        check(b.selectStudent(angel)&&b.attack(enemy),"start equipment combo");
+        for(int i=1;i<5;i++)check(b.advanceAngelAttack(),"glove punch");
+        check(b.hasPendingLooperHits() && b.isAngelExplosionPending() && !b.advanceAngelAttack(),"looper hits precede explosion");
+        for(int i=0;i<5;i++)check(b.advanceLooperHit(),"looper hit");
+        int total=start-enemy.getHp(), before=enemy.getHp();
+        check(b.advanceAngelAttack(),"explode after all hits");
+        check(before-enemy.getHp()==(int)Math.ceil(total*(80+percentRoll)/100.0),"explosion includes glove and looper damage");
+        check(!b.isActionAnimating(),"combo finishes once");
     }
-    public static void main(String[] args) throws Exception {
-        for (int count = 1; count <= 3; count++) {
-            Battle battle = battle(count);
-            List<Enemy> enemies = battle.getEnemies();
-            check(enemies.size() == count && battle.selectStudent(angel(battle)), "select Angel for " + count);
-            check(battle.attack(enemies.get(0)), "attack succeeds");
-            List<BattleEffect> effects = battle.getEffects();
-            check(effects.size() == (count == 1 ? 2 : 3), "correct number of hits for " + count);
-            check(effects.get(0).getEnemy() == enemies.get(0), "first hit uses selected target");
-            for (int i = 1; i < effects.size(); i++) {
-                check(effects.get(i).getEnemy() == enemies.get(count - 1), "follow-up target uses random living monster");
-                check(effects.get(i).getAmount() == -20, "follow-up damage and indicator");
-            }
-            check(battle.getCurrent() == null, "all hits consume only one action");
-            check(battle.getMessage().contains("takes 20 damage"), "attack log identifies damage");
-        }
-        Battle retarget = battle(2);
-        Enemy first = retarget.getEnemies().get(0), other = retarget.getEnemies().get(1);
-        first.takeDamage(60);
-        check(retarget.selectStudent(angel(retarget)) && retarget.attack(first), "attack weak selected enemy");
-        check(!first.isAlive() && retarget.getEffects().size() == 3
-                && retarget.getEffects().get(1).getEnemy() == other && retarget.getEffects().get(2).getEnemy() == other,
-                "follow-ups retarget a living enemy after knockout");
-        Battle finish = battle(1);
-        Enemy last = finish.getEnemies().get(0); last.takeDamage(60);
-        check(finish.selectStudent(angel(finish)) && finish.attack(last), "finish last enemy");
-        check(finish.getEffects().size() == 1 && finish.isVictory(), "attack stops when battle ends");
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                BattlePanel panel = new BattlePanel(() -> {}, p -> {}, new game.model.GameSettings(), fixed(2));
-                panel.start(new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL)), true);
-                Field battleField = BattlePanel.class.getDeclaredField("battle"); battleField.setAccessible(true);
-                Battle active = (Battle) battleField.get(panel); Student actor = angel(active);
-                Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
-                @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(panel);
-                points.put(actor, (double) actor.getActionThreshold());
-                check(active.selectStudent(actor), "Angel is selected for UI action");
-                var refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true); refresh.invoke(panel);
-                panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel, 0, ""));
-                panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel, 0, ""));
-                check(points.get(actor) == 0.0 && active.getEffects().size() == 3, "three hits reset AP once");
-                Field timer = BattlePanel.class.getDeclaredField("effectTimer"); timer.setAccessible(true);
-                ((javax.swing.Timer) timer.get(panel)).stop();
-            } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
-        });
-        System.out.println("Angel multi-hit checks passed");
+    public static void main(String[] args)throws Exception{
+        testCombo(false);testCombo(true);testEquipmentCombo(0);testEquipmentCombo(20);
+        GameProgress p=new GameProgress(List.of(Student.ANGEL,Student.BOGART));Student angel=p.getParty().stream().filter(s->s.getId()==Student.ANGEL).findFirst().orElseThrow();Student ally=p.getParty().stream().filter(s->s.getId()==Student.BOGART).findFirst().orElseThrow();
+        ally.takeDamage(9999);ally.restoreSp(0);Battle b=new Battle(p,fixed());check(b.selectStudent(angel)&&b.ability(ally,null),"Angel Hug revives");
+        check(ally.getHp()==45&&ally.getSp()==11,"revive restores 30 percent HP and SP rounded up");
+        check(b.getLastAbility().skill().equals("Angel Hug"),"renamed ability");
+        SwingUtilities.invokeAndWait(()->{try{
+            GameProgress uiParty=new GameProgress(List.of(Student.ANGEL));uiParty.advance();uiParty.advance();uiParty.advance();BattlePanel panel=new BattlePanel(()->{},x->{},new GameSettings(),fixed());panel.startMerchant(uiParty);
+            Battle battle=(Battle)field(panel,"battle");panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel,0,""));panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel,0,""));
+            javax.swing.Timer timer=(javax.swing.Timer)field(panel,"angelAttackTimer");check(timer.isRunning()&&timer.getInitialDelay()==300,"punch delay");timer.stop();
+            for(int i=0;i<2;i++){for(var listener:timer.getActionListeners())listener.actionPerformed(new ActionEvent(timer,0,""));timer.stop();}
+            check(battle.isAngelExplosionPending()&&timer.getInitialDelay()==300,"explosion delay");
+            for(var listener:timer.getActionListeners())listener.actionPerformed(new ActionEvent(timer,0,""));
+            for(String n:List.of("angelAttackTimer","effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","looperHitTimer","abilityAlertTimer"))((javax.swing.Timer)field(panel,n)).stop();
+            GameProgress revival=new GameProgress(List.of(Student.ANGEL,Student.BOGART));Student uiAngel=revival.getParty().stream().filter(s->s.getId()==Student.ANGEL).findFirst().orElseThrow();
+            Student ko=revival.getParty().stream().filter(s->s.getId()==Student.BOGART).findFirst().orElseThrow();ko.takeDamage(9999);ko.restoreSp(0);
+            BattlePanel healer=new BattlePanel(()->{},x->{},new GameSettings(),fixed());healer.start(revival,false,0);Battle healBattle=(Battle)field(healer,"battle");
+            @SuppressWarnings("unchecked") Map<Student,Double> points=(Map<Student,Double>)field(healer,"actionPoints");points.put(uiAngel,(double)uiAngel.getActionThreshold());points.put(ko,17.0);check(healBattle.getCurrent()==uiAngel || healBattle.selectStudent(uiAngel),"select healer");
+            healer.getActionMap().get("battle-down").actionPerformed(new ActionEvent(healer,0,""));healer.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(healer,0,""));
+            healer.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(healer,0,""));
+            check(ko.isAlive() && ko.getHp()==45 && ko.getSp()==11 && points.get(ko)==0.0,"keyboard selects fallen ally and resets their AP");
+            for(String n:List.of("angelAttackTimer","effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","looperHitTimer","abilityAlertTimer"))((javax.swing.Timer)field(healer,n)).stop();
+        }catch(Exception e){throw new RuntimeException(e);}});
+        System.out.println("Angel combo and Angel Hug checks passed");
     }
 }

@@ -115,7 +115,7 @@ public final class Equipment extends Item {
             case "light_saber" -> "+20% SPD; 100% hit damage over 5 turns";
             case "demon_hunter" -> "+20% ATK; +75% SPD";
             case "great_sage_staff" -> "+20% ATK; 50% chance to cast twice";
-            case "giant_slayer_gloves" -> "+50% ATK; +15 SPD; extra basic hit";
+            case "giant_slayer_gloves" -> "+50% ATK; +15 SPD; two extra basic hits";
             case "blade_mail" -> "-50% DEF, -20% SPD; +200% HP; 50% reflect; +50% regen";
             case "ultra_instinct_shirt" -> "-20% DEF; +20% SPD; 50% dodge; +30% regen";
             case "designer_leather_vest" -> "+10% DEF; +20% SPD; +50 HP; 2x XP; +10% regen";
