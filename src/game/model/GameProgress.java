@@ -123,8 +123,10 @@ public final class GameProgress implements java.io.Serializable {
         if (previous != null) { bag.addEquipment(previous); }
         int oldMaxHp = student.getMaxHp();
         int oldHp = student.getHp();
+        int oldMaxSp = student.getMaxSp(), oldSp = student.getSp();
         student.setEquipmentId(slot, itemId);
         student.adjustHpForEquipment(oldHp, oldMaxHp);
+        student.restoreSp(Math.min(student.getMaxSp(), (int) Math.round((double) oldSp * student.getMaxSp() / oldMaxSp)));
         if ("campus_vest".equals(previous)) { bag.setVestOwner(-1); }
         if ("campus_vest".equals(itemId)) { bag.setVestOwner(student.getId()); }
         return true;

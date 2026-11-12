@@ -282,14 +282,15 @@ public final class InventoryPanel extends JPanel {
             String selected = options.get(choiceIndex);
             String old = current.getEquipmentId(slot());
             int hpDelta = current.statWithEquipment(Student.Stat.HP, slot(), selected) - current.getMaxHp();
+            int spDelta = current.maxSpWithEquipment(slot(), selected) - current.getMaxSp();
             int attackDelta = current.statWithEquipment(Student.Stat.ATK, slot(), selected) - current.getAttack();
             int defenseDelta = current.statWithEquipment(Student.Stat.DEF, slot(), selected) - current.getDefense();
             double speedDelta = Math.ceil(current.effectiveSpeedWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveSpeed() - 1e-9);
             double agilityDelta = Math.ceil(current.agilityWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveAgility() - 1e-9);
             double accuracyDelta = Math.ceil(current.accuracyWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveAccuracy() - 1e-9);
             choiceText.append("\nPreview:\n");
-            choiceText.append(String.format("HP %+d   ATK %+d\nDEF %+d  SPD %s\nAGI %s  ACC %s\n",
-                    hpDelta, attackDelta, defenseDelta, formatDelta(speedDelta), formatDelta(agilityDelta), formatDelta(accuracyDelta)));
+            choiceText.append(String.format("HP %+d   SP %+d\nATK %+d  DEF %+d\nSPD %s  AGI %s\nACC %s\n",
+                    hpDelta, spDelta, attackDelta, defenseDelta, formatDelta(speedDelta), formatDelta(agilityDelta), formatDelta(accuracyDelta)));
             if (selected != null && !Equipment.fromId(selected).getSpecialDescription().isEmpty()) {
                 choiceText.append(Equipment.fromId(selected).getSpecialDescription()).append('\n');
             }

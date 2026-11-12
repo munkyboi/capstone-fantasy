@@ -177,10 +177,9 @@ public final class SaveStore {
                 allocations.add(points);
                 String armor = properties.getProperty(prefix + "armor", "");
                 armorIds.add(armor.isEmpty() ? null : armor);
-                int newMax = expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, armor.isEmpty() ? null : armor);
                 String accessory = properties.getProperty(prefix + "accessory", "");
                 accessoryIds.add(accessory.isEmpty() ? null : accessory);
-                if ("sentinel_band".equals(accessory)) newMax += 50;
+                int newMax = expected.maxHpWithEquipment(armor.isEmpty() ? null : armor, accessory.isEmpty() ? null : accessory);
                 int savedMax = Integer.parseInt(properties.getProperty(prefix + "maxHp"));
                 int oldMax = legacyMaxHp(expected, armor);
                 boolean oldStats = !currentStats(version) && savedMax == oldMax;
@@ -193,7 +192,7 @@ public final class SaveStore {
                     throw new IOException("Invalid student information");
                 }
                 ids.add(id); hp.add(oldStats ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
-                oldMaxSps.add(!currentStats(version) ? legacyMaxSp(expected) : expected.getMaxSp());
+                oldMaxSps.add(!currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithEquipment(Equipment.Slot.ACCESSORY, accessory.isEmpty() ? null : accessory));
             }
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
@@ -296,8 +295,7 @@ public final class SaveStore {
                     || (student.getId() == Student.BOGART && (originalSpeed == 7 || originalSpeed == 11))
                     || (student.getId() == Student.CHARICE && originalSpeed == 16)
                     || (student.getId() == Student.ANGEL && (originalSpeed == 7 || originalSpeed == 9));
-            int expectedHp = expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, student.getEquipmentId(Equipment.Slot.ARMOR));
-            if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) expectedHp += 50;
+            int expectedHp = expected.maxHpWithEquipment(student.getEquipmentId(Equipment.Slot.ARMOR), student.getEquipmentId(Equipment.Slot.ACCESSORY));
             boolean legacyStats = student.getMaxHp() == legacyMaxHp(expected, student.getEquipmentId(Equipment.Slot.ARMOR))
                     + ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY)) ? 50 : 0)
                     && (student.getMaxHp() != expectedHp || student.getBaseAttack() != expected.getBaseAttack()

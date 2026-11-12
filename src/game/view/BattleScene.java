@@ -66,6 +66,15 @@ final class BattleScene extends JPanel {
                 scaledWidth, scaledHeight, null);
     }
 
+    private static void drawFlippedFit(Graphics2D g, BufferedImage image, int x, int y, int width, int height) {
+        double scale = Math.min((double) width / image.getWidth(), (double) height / image.getHeight());
+        int drawnWidth = Math.max(1, (int) Math.round(image.getWidth() * scale));
+        int drawnHeight = Math.max(1, (int) Math.round(image.getHeight() * scale));
+        int left = x + (width - drawnWidth) / 2, top = y + height - drawnHeight;
+        g.drawImage(image, left + drawnWidth, top, left, top + drawnHeight,
+                0, 0, image.getWidth(), image.getHeight(), null);
+    }
+
     private static int fittedHeight(BufferedImage image, int sourceWidth, int width, int height) {
         double scale = Math.min((double) width / sourceWidth, (double) height / image.getHeight());
         return Math.max(1, (int) Math.round(image.getHeight() * scale));
@@ -95,6 +104,7 @@ final class BattleScene extends JPanel {
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v3.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
         private final BufferedImage boss = image("/assets/sprites/crystal-guardian-v1.png");
+        private final BufferedImage goblin = trimIcon(image("/assets/sprites/itmigims-v1.png"));
         private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
         private final BufferedImage uniformIcon = trimIcon(image("/assets/ui/reward-uniform-v1.png"));
         private final BufferedImage[] rewardArt = rewardArt();
@@ -189,23 +199,31 @@ final class BattleScene extends JPanel {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int slot = enemySlot(enemyIndex, battle.getEnemies());
                     int x = enemyX(slot, slotWidth);
-                    BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
-                    if (enemyImage != null && enemy.isAlive()) {
+                    BufferedImage enemyImage = enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    boolean escaping = enemy.hasEscaped() && state.attackingSprite() == enemy
+                            && state.showEffects() && state.effectProgress() < 1.0;
+                    if (enemyImage != null && (enemy.isAlive() || escaping)) {
                         int enemyWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                         int enemyHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
-                        int enemyX = x + (slotWidth - enemyWidth) / 2 + attackOffset(enemy, -1);
+                        int enemyX = x + (slotWidth - enemyWidth) / 2 + (escaping
+                                ? (int) Math.ceil((w + enemyWidth - x) * state.effectProgress()) : attackOffset(enemy, -1));
                         int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
-                        drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY,
-                                enemyWidth, enemyHeight);
-                        if (enemy.isBoss()) {
+                        if (escaping) drawFlippedFit(g, enemyImage, enemyX, enemyY, enemyWidth, enemyHeight);
+                        else drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY, enemyWidth, enemyHeight);
+                        if (enemy.isAlive() && (enemy.isBoss() || (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0))) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
                             int textX = x + slotWidth / 2 + 10;
                             int textY = enemyFootY(h, slot) - drawnHeight - 5;
                             g.setFont(ClassicUi.numbers(12));
-                            g.setColor(Color.BLACK); g.drawString(Integer.toString(enemy.getBossCountdown()), textX + 1, textY + 1);
-                            g.setColor(new Color(250, 218, 143)); g.drawString(Integer.toString(enemy.getBossCountdown()), textX, textY);
+                            String countdown = Integer.toString(enemy.isBoss() ? enemy.getBossCountdown() : enemy.getEscapeCountdown());
+                            if (enemy.isLootGoblin()) {
+                                int textWidth = g.getFontMetrics().stringWidth(countdown);
+                                textX = Math.max(0, Math.min(w - textWidth - 2, x + slotWidth / 2 - textWidth / 2));
+                            }
+                            g.setColor(Color.BLACK); g.drawString(countdown, textX + 1, textY + 1);
+                            g.setColor(new Color(250, 218, 143)); g.drawString(countdown, textX, textY);
                         }
-                        if (state.enemyTarget(enemyIndex)) {
+                        if (enemy.isAlive() && state.enemyTarget(enemyIndex)) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
                             drawCursor(g, x + slotWidth / 2, enemyFootY(h, slot) - drawnHeight - 3);
                         }
@@ -242,7 +260,7 @@ final class BattleScene extends JPanel {
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
                     output.drawString((enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " / "
-                            + enemy.getMaxHp() + " HP" + (enemy.isAlive() ? "" : " KO"), left + 7, y);
+                            + enemy.getMaxHp() + " HP" + (enemy.hasEscaped() ? " ESCAPED" : enemy.isAlive() ? "" : " KO"), left + 7, y);
                     output.setColor(new Color(52, 68, 101));
                     output.fillRect(left + 7, y + 5, 122, 4);
                     output.setColor(new Color(239, 157, 102));
@@ -412,7 +430,7 @@ final class BattleScene extends JPanel {
                     x = enemyX(slot, slotWidth) + slotWidth / 2;
                     ground = enemyFootY(h, slot);
                     Enemy enemy = (Enemy) entry.getKey();
-                    BufferedImage enemyImage = enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    BufferedImage enemyImage = enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
                     int boxWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                     int boxHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;

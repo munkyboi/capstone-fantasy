@@ -19,6 +19,7 @@ public final class AngelAttackTest {
             private boolean initial = true;
             @Override public double nextDouble() { return 0; }
             @Override public int nextInt(int bound) {
+                if (bound == 100) return 0;
                 if (initial) { initial = false; return count - 1; }
                 return bound == 5 ? 0 : bound - 1;
             }

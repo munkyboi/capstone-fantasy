@@ -163,6 +163,13 @@ public class Student extends GameCharacter {
         String weapon = slotToReplace == Equipment.Slot.WEAPON ? replacement : weaponId;
         String armor = slotToReplace == Equipment.Slot.ARMOR ? replacement : armorId;
         String accessory = slotToReplace == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        return calculateStat(stat, weapon, armor, accessory, slotToReplace);
+    }
+    /** Calculates maximum HP with the specified armor and accessory for save validation. */
+    public int maxHpWithEquipment(String armor, String accessory) {
+        return calculateStat(Stat.HP, weaponId, armor, accessory, Equipment.Slot.ARMOR);
+    }
+    private int calculateStat(Stat stat, String weapon, String armor, String accessory, Equipment.Slot slotToReplace) {
         int value = switch (stat) {
             case HP -> maxHp + (getLevel() - 1) * 5 + allocatedHp * 5;
             case ATK -> getBaseAttack();
@@ -180,13 +187,18 @@ public class Student extends GameCharacter {
         double multiplier = stat != Stat.HP && "ring_of_power".equals(accessory) ? 1.5 : 1.0;
         if (stat == Stat.HP && ("campus_vest".equals(armor)
                 || (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped))) multiplier += 0.05;
+        if (stat == Stat.HP && "heroes_ring".equals(accessory)) multiplier += 0.1;
         if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.0;
         if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
         if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
+        if (stat == Stat.DEF && "heroes_ring".equals(accessory)) multiplier += 0.1;
+        if (stat == Stat.DEF && "looper_ring".equals(accessory)) multiplier -= 0.2;
         if (stat == Stat.DEF && "blade_mail".equals(armor)) multiplier -= 0.5;
         if (stat == Stat.DEF && "ultra_instinct_shirt".equals(armor)) multiplier -= 0.2;
         if (stat == Stat.DEF && "designer_leather_vest".equals(armor)) multiplier += 0.1;
         if (stat == Stat.DEF && "ethereal_robe".equals(armor)) multiplier += 0.15;
+        if (stat == Stat.SPD && "heroes_ring".equals(accessory)) multiplier -= 0.3;
+        if (stat == Stat.SPD && "looper_ring".equals(accessory)) multiplier += 0.1;
         if (stat == Stat.SPD && "blade_mail".equals(armor)) multiplier -= 0.2;
         if (stat == Stat.SPD && "ultra_instinct_shirt".equals(armor)) multiplier += 0.2;
         if (stat == Stat.SPD && "designer_leather_vest".equals(armor)) multiplier += 0.2;
@@ -195,7 +207,7 @@ public class Student extends GameCharacter {
         if (stat == Stat.SPD && "light_saber".equals(weapon)) multiplier += 0.2;
         if (stat == Stat.SPD && "demon_hunter".equals(weapon)) multiplier += 0.75;
         if (stat == Stat.SPD && "giant_slayer_gloves".equals(weapon)) value += 15;
-        return (int) Math.round(value * multiplier) + (stat == Stat.HP && "sentinel_band".equals(accessory) ? 50 : 0);
+        return (int) Math.round(value * multiplier + 1e-9) + (stat == Stat.HP && "sentinel_band".equals(accessory) ? 50 : 0);
     }
     /** Preserve health proportion when equipment changes maximum HP. */
     void adjustHpForEquipment(int previousHp, int previousMax) {
@@ -271,7 +283,12 @@ public class Student extends GameCharacter {
     /** Whether a serialized student has an explicit SP balance. */
     public boolean hasInitializedSkillPoints() { return skillPointsInitialized; }
     /** Returns the student's maximum skill points. */
-    public int getMaxSp() { return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3; }
+    public int getMaxSp() { return maxSpWithEquipment(null, null); }
+    public int maxSpWithEquipment(Equipment.Slot slot, String replacement) {
+        String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        int base = MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
+        return "looper_ring".equals(accessory) ? base * 2 : base;
+    }
     /** Returns points earned but not spent. */
     public int getUnspentStatPoints() {
         return getLevel() - 1 - allocatedHp - allocatedSp - allocatedAttack - allocatedDefense - allocatedSpeed;
@@ -286,7 +303,7 @@ public class Student extends GameCharacter {
         if (stat == null || getUnspentStatPoints() <= 0) { return false; }
         switch (stat) {
             case HP -> { int previousMax = getMaxHp(); allocatedHp++; if (isAlive()) { hp += getMaxHp() - previousMax; } }
-            case SP -> { int oldSp = getSp(); allocatedSp++; skillPoints = oldSp + 3; skillPointsInitialized = true; }
+            case SP -> { int oldSp = getSp(), oldMax = getMaxSp(); allocatedSp++; skillPoints = oldSp + getMaxSp() - oldMax; skillPointsInitialized = true; }
             case ATK -> allocatedAttack++;
             case DEF -> allocatedDefense++;
             case SPD -> allocatedSpeed++;
@@ -303,7 +320,10 @@ public class Student extends GameCharacter {
         allocatedDefense = defPoints; allocatedSpeed = spdPoints;
     }
     /** Returns the skill-point cost of the student's ability. */
-    public int getAbilitySpCost() { return ABILITY_SP_COST[id] + getLevel() - 1; }
+    public int getAbilitySpCost() {
+        int cost = ABILITY_SP_COST[id] + getLevel() - 1;
+        return "looper_ring".equals(accessoryId) ? (int) Math.ceil(cost * 1.1 - 1e-9) : cost;
+    }
     /** Uses skill points if enough are available. */
     public boolean spendAbilitySp() {
         if (getSp() < getAbilitySpCost()) { return false; }

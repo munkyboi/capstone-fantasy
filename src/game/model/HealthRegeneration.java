@@ -19,6 +19,7 @@ public final class HealthRegeneration {
         };
         if ("cadet_blade".equals(student.getEquipmentId(Equipment.Slot.WEAPON))) bonus += 0.05;
         if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.08;
+        if ("heroes_ring".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.10;
         if (student.isDefending()) bonus += 0.20;
         int basis = student.getMaxHp();
         return Math.max(1, (int) Math.round(basis * (BASE_RATES[student.getId()] + bonus)));

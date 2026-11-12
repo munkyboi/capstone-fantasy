@@ -1,0 +1,55 @@
+import game.model.*;
+import game.io.SaveStore;
+import java.nio.file.*;
+import java.util.*;
+
+public final class LooperRingTest {
+    private static void check(boolean ok, String message) { if (!ok) throw new AssertionError(message); }
+    private static final class Rolls extends Random {
+        final double chance; final int percent; int doubles;
+        Rolls(double chance, int percent) { this.chance=chance; this.percent=percent; }
+        @Override public int nextInt(int bound) { return bound == 21 ? percent : 0; }
+        @Override public double nextDouble() { return doubles++ == 0 ? 0 : chance; }
+    }
+    private static GameProgress equipped() {
+        GameProgress p = new GameProgress(List.of(Student.BOGART));
+        p.getInventory().addEquipment("looper_ring");
+        check(p.equip(p.getParty().get(0), Equipment.Slot.ACCESSORY, "looper_ring"), "equip");
+        return p;
+    }
+    private static void proc(double chance, int percent) {
+        GameProgress p=equipped(); Student s=p.getParty().get(0);
+        Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
+        check(b.selectStudent(s) && b.attack(e), "attack");
+        long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null).count();
+        check(count==(chance < .2 ? 6 : 1), "proc boundary " + chance + ": " + count);
+        if (chance < .2) {
+            int bonus=(int)Math.ceil(s.getAttack()*(20+percent)/100.0);
+            check(b.getEffects().stream().skip(1).allMatch(x -> x.getAmount()==-bonus), "bonus damage range " + percent);
+        }
+    }
+    public static void main(String[] args) throws Exception {
+        int index=java.util.stream.IntStream.range(0,CarbonMarket.offers().size()).filter(i -> CarbonMarket.offers().get(i).id().equals("looper_ring")).findFirst().orElseThrow();
+        GameProgress p=new GameProgress(List.of(Student.BOGART)); p.addPetot(2500);
+        check(CarbonMarket.buy(p,index).contains("Purchased") && p.getPetot()==0,"purchase");
+        Student s=p.getParty().get(0); check(p.equip(s,Equipment.Slot.ACCESSORY,"looper_ring"),"equip purchased");
+        check(s.getMaxSp()==70 && s.getSp()==70 && s.getDefense()==13 && s.getSpeed()==17 && s.getAbilitySpCost()==6,"bonuses");
+        s.restoreSp(35); p.advance();
+        Path path=Files.createTempDirectory("looper-test");
+        try { SaveStore store=new SaveStore(path); for (SaveStore.Format f:SaveStore.Format.values()) {
+            store.save(1,f,p); Student loaded=store.load(1,f).getParty().get(0);
+            check(loaded.getSp()==35 && loaded.getMaxSp()==70 && "looper_ring".equals(loaded.getEquipmentId(Equipment.Slot.ACCESSORY)),"save " + f);
+        }} finally {try(var paths=Files.walk(path)){for(Path item:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(item);}}
+        check(p.equip(s,Equipment.Slot.ACCESSORY,null) && s.getMaxSp()==35 && s.getSp()==18,"unequip proportion");
+        proc(0,0); proc(.199999,20); proc(.2,0);
+        GameProgress abilityParty=equipped(); Student attacker=abilityParty.getParty().get(0);
+        Battle ability=new Battle(abilityParty,new Rolls(0,0)); Enemy target=ability.getEnemies().get(0);
+        check(ability.selectStudent(attacker) && ability.ability(null,target),"ability with ring");
+        check(ability.getMessage().contains("Looper Ring activates!") && ability.getEffects().size()==6,"ring activates after damaging ability");
+        GameProgress healerParty=new GameProgress(List.of(Student.ANGEL)); Student healer=healerParty.getParty().get(0);
+        healerParty.getInventory().addEquipment("looper_ring"); check(healerParty.equip(healer,Equipment.Slot.ACCESSORY,"looper_ring"),"healer equips");
+        Battle healing=new Battle(healerParty,new Rolls(0,0));
+        check(healing.selectStudent(healer) && healing.ability(healer,null) && !healing.getMessage().contains("Looper Ring"),"healing is not an attack");
+        System.out.println("Looper Ring checks passed");
+    }
+}

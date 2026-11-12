@@ -331,7 +331,9 @@ public final class BattlePanel extends JPanel {
                             actionPoints.put(student, (double) student.getActionThreshold());
                         }
                         if (!refilled.isEmpty()) battle.regenerate(refilled, true);
-                        showActionEffects(enemy);
+                        Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
+                        boolean healing = enemyAbility != null && "Stone Mend".equals(enemyAbility.skill());
+                        showActionEffects(healing ? null : enemy);
                         announceAbility();
                         enemyActed = true;
                         changed = true;
@@ -512,9 +514,9 @@ public final class BattlePanel extends JPanel {
                 java.util.List<String> rewards = new java.util.ArrayList<>(progress.claimStageRewardItems(encounterStage));
                 rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom));
                 victoryRewardItems = List.copyOf(rewards);
-                int earned = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getPetotDrop).sum();
+                int earned = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getPetotDrop).sum();
                 victoryPetot = progress.addPetot(earned * (settings.isGreedIsGood() ? 10 : 1));
-                int baseExperience = battle.getEnemies().stream().filter(enemy -> !enemy.isAlive()).mapToInt(Enemy::getExperienceDrop).sum();
+                int baseExperience = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getExperienceDrop).sum();
                 double multiplier = switch (progress.getParty().size()) {
                     case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
                     default -> throw new IllegalStateException("Invalid party size");

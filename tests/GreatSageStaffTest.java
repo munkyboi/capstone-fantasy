@@ -29,14 +29,14 @@ public final class GreatSageStaffTest {
         check(b.selectStudent(mage) && b.ability(null, null), "cast succeeds");
         check(b.hasPendingSecondCast() == twice && random.rolls == 1 + enemies.size(), "probability boundary " + value);
         for (Enemy e : enemies) {
-            int hit = mage.getAttack() + 4 - e.getDefense();
+            int hit = mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40) - e.getDefense();
             check(e.getMaxHp() - e.getHp() == hit, "only first cast happens immediately");
         }
         if (twice) check(b.completeSecondCast() && b.getMessage().contains("casts Arcane Burst again"), "second cast resolves");
         check(mage.getSp() == sp - mage.getAbilitySpCost(), "SP charged once");
         for (Enemy e : enemies) {
-            int hit = mage.getAttack() + 4 - e.getDefense();
-            check(e.getMaxHp() - e.getHp() == hit * (twice ? 2 : 1), "damage applied for each cast");
+            int hit = mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40) - e.getDefense();
+            check(e.getMaxHp() - e.getHp() == Math.min(e.getMaxHp(), hit * (twice ? 2 : 1)), "damage applied for each cast");
         }
         check(b.getEffects().size() == enemies.size(), "latest cast produces one effect per target");
     }
@@ -62,8 +62,9 @@ public final class GreatSageStaffTest {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 GameProgress progress = party(true); Student mage = progress.getParty().get(0);
+                progress.advance();
                 BattlePanel panel = new BattlePanel(() -> {}, ignored -> {}, new GameSettings(), new Roll(0));
-                panel.start(progress, false, 0);
+                panel.start(progress, false, 1);
                 int sp = mage.getSp();
                 for (String key : List.of("battle-down", "battle-confirm", "battle-confirm")) {
                     panel.getActionMap().get(key).actionPerformed(new ActionEvent(panel, 0, key));
@@ -100,7 +101,8 @@ public final class GreatSageStaffTest {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 GameProgress progress = party(true); BattlePanel panel = new BattlePanel(() -> {}, ignored -> {}, new GameSettings(), new Roll(0));
-                panel.start(progress, false, 0);
+                progress.advance();
+                panel.start(progress, false, 1);
                 for (String key : List.of("battle-down", "battle-confirm", "battle-confirm"))
                     panel.getActionMap().get(key).actionPerformed(new ActionEvent(panel, 0, key));
                 Battle battle = (Battle) getField(panel, "battle");

@@ -7,10 +7,7 @@ import java.util.Random;
 
 /** Controls an encounter, independent of the Swing interface. */
 public final class Battle {
-    private static final int KISS_HEAL = 28;
-    private static final int ARCANE_BURST_BONUS = 4;
-    private static final int CADET_STRIKE_BONUS = 9;
-    private static final int TWIN_SHOT_BONUS = 4;
+    private static final int ARCANE_SPARK_BONUS = 6;
     private static final int DAMAGE_VARIATION = 5;
     private static final int MINIMUM_DAMAGE = 1;
     private final List<Student> party = new ArrayList<>();
@@ -69,8 +66,12 @@ public final class Battle {
         }
         this.progress = progress;
         this.random = random;
-        this.accuracyScalingFactor = 100.0 * java.util.Objects.requireNonNull(difficulty).multiplier();
         party.addAll(progress.getParty());
+        double partyMultiplier = switch (party.size()) {
+            case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
+            default -> throw new IllegalArgumentException("Invalid party size");
+        };
+        this.accuracyScalingFactor = 100.0 * java.util.Objects.requireNonNull(difficulty).multiplier() * partyMultiplier;
         for (Student student : party) { student.clearDefense(); }
         party.sort(Comparator.comparingDouble(Student::getEffectiveSpeed).reversed());
         if (party.stream().noneMatch(Student::isAlive)) {
@@ -90,12 +91,23 @@ public final class Battle {
             enemies.add(new Enemy(name, true, false, difficulty, encounter, averageLevel));
         }
         if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true, difficulty, encounter, averageLevel)); }
+        boolean goblinSpawned = !finalEncounter && random.nextInt(100) >= 95;
+        if (goblinSpawned) {
+            for (int index = enemies.size() - 1; index >= 0; index--) {
+                if (!enemies.get(index).isSentinel()) { enemies.remove(index); wisps--; break; }
+            }
+            enemies.add(Enemy.itmigims(difficulty, encounter, averageLevel));
+        }
         message = finalEncounter ? "The Crystal Guardian and five Stone Sentinels appear!"
                 : sentinels > 0 ? sentinels + " Stone Sentinel(s)" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appear!")
-                : count + " Library Wisp(s) appear! Choose an action.";
+                : wisps > 0 ? wisps + " Library Wisp(s) appear! Choose an action."
+                : "Itmigims appears! Choose an action.";
+        if (goblinSpawned && (wisps > 0 || sentinels > 0)) { message += "\nItmigims appears!"; }
         if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
     }
+    /** The shared hit/dodge scaling factor, fixed from the party size at battle start. */
+    public double getAccuracyScalingFactor() { return accuracyScalingFactor; }
     /** Returns party in speed order.
      * @return party in speed order
      */ public List<Student> getParty() { return List.copyOf(party); }
@@ -217,12 +229,12 @@ public final class Battle {
                 text.append("\n").append(currentTarget.getName()).append(" takes ")
                         .append(damage).append(" damage.").append(defeated(currentTarget));
             }
-            finish(text.toString());
+            finish(looperHits(actor, text.toString()));
             return true;
         }
         int damage = hurt(target, attackPower);
         applyLightSaber(actor, target, damage);
-        finish(actor.getName() + " attacks " + target.getName() + " for " + damage + " damage." + defeated(target));
+        finish(looperHits(actor, actor.getName() + " attacks " + target.getName() + " for " + damage + " damage." + defeated(target)));
         return true;
     }
     /** Uses the current student's special ability.
@@ -246,7 +258,7 @@ public final class Battle {
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
             if (!validAlly(ally)) { return false; }
             effects.clear();
-            int healed = ally.heal(KISS_HEAL);
+            int healed = ally.heal((int) Math.ceil((ally.getMaxHp() - ally.getHp()) * 0.5));
             if (healed > 0) { effects.add(new BattleEffect(ally, healed)); }
             finish("Angel uses Healing Kiss. " + ally.getName() + " recovers " + healed + " HP.");
         } else if (actor.getAbilityType() == Student.AbilityType.ARCANE_BURST) {
@@ -261,11 +273,12 @@ public final class Battle {
         } else {
             if (!validEnemy(enemy)) { return false; }
             effects.clear();
-            int damage = hurt(enemy, actor.getAttack() + (actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? CADET_STRIKE_BONUS : TWIN_SHOT_BONUS));
+            double bonusRate = actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? 0.60 : 0.50;
+            int damage = hurt(enemy, actor.getAttack() + (int) Math.ceil(actor.getBaseAttack() * bonusRate));
             applyLightSaber(actor, enemy, damage);
             if (actor.getAbilityType() == Student.AbilityType.TWIN_SHOT && enemy.isAlive()) { damage += hurt(enemy, actor.getAttack()); }
             String ability = actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? "Cadet Strike" : "Twin Shot";
-            finish(actor.getName() + " uses " + ability + " on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy));
+            finish(looperHits(actor, actor.getName() + " uses " + ability + " on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy)));
         }
         return true;
     }
@@ -274,9 +287,24 @@ public final class Battle {
         StringBuilder text = new StringBuilder(heading);
         for (Enemy target : enemies) {
             if (target.isAlive()) {
-                int damage = hurt(target, actor.getAttack() + ARCANE_BURST_BONUS);
+                int damage = hurt(target, actor.getAttack() + (int) Math.ceil(actor.getBaseAttack() * 0.40));
                 text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
             }
+        }
+        return looperHits(actor, text.toString());
+    }
+    /** Rolls once per damaging action or cast, then strikes up to five living random enemies. */
+    private String looperHits(Student actor, String message) {
+        if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
+                || isVictory() || random.nextDouble() >= 0.20) return message;
+        StringBuilder text = new StringBuilder(message).append("\nLooper Ring activates!");
+        for (int i = 0; i < 5; i++) {
+            List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
+            if (living.isEmpty()) break;
+            Enemy target = living.get(random.nextInt(living.size()));
+            int damage = target.takeDamage((int) Math.ceil(actor.getAttack() * (20 + random.nextInt(21)) / 100.0));
+            effects.add(new BattleEffect(target, -damage));
+            text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
         }
         return text.toString();
     }
@@ -350,10 +378,21 @@ public final class Battle {
         if (isOver() || getCurrent() != null || !validEnemy(enemy)) { return false; }
         effects.clear(); blockingStudent = null; protectedStudent = null; lastAbility = null;
         List<Student> living = party.stream().filter(Student::isAlive).toList();
-        boolean skill = enemy.usesSkillNext();
+        if (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0) {
+            enemy.advanceEscapeCountdown();
+            if (enemy.getEscapeCountdown() == 0 && enemy.escape()) {
+                enemy.recordAction();
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Escape");
+                effects.add(BattleEffect.status(enemy, "Escape"));
+                message = enemy.getName() + " uses Escape and flees!";
+                if (isVictory()) { message += "\nThe remaining enemies are gone!"; clearGuards(); }
+                return true;
+            }
+        }
+        boolean skill = !enemy.isLootGoblin() && enemy.usesSkillNext();
         enemy.recordAction();
         Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= enemy.getHealSpCost()
-                ? enemies.stream().filter(other -> other != enemy && other.isAlive()
+                ? enemies.stream().filter(other -> other.isAlive()
                         && other.getHp() * 4 <= other.getMaxHp() * 3)
                     .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)
                 : null;
@@ -378,7 +417,7 @@ public final class Battle {
         } else {
             if (skill) lastAbility = new AbilityAnnouncement(enemy.getName(), "Arcane Spark");
             Student target = living.get(random.nextInt(living.size()));
-            int damage = enemyDamage(enemy, target, skill ? 4 : 0, 1);
+            int damage = enemyDamage(enemy, target, skill ? ARCANE_SPARK_BONUS : 0, 1);
             Student recipient = lastDamageRecipient;
             message = skill ? enemy.getName() + " uses Arcane Spark on " + target.getName() + "."
                     : enemy.getName() + " attacks " + target.getName() + ".";
@@ -405,6 +444,11 @@ public final class Battle {
         Student intended = target;
         Student protector = party.stream().filter(candidate -> candidate != intended && candidate.isDefending()
                 && candidate.isAlive() && guards.get(candidate) == intended).findFirst().orElse(null);
+        if (protector == null) {
+            Student ringBearer = party.stream().filter(candidate -> candidate != intended && candidate.isAlive()
+                    && "heroes_ring".equals(candidate.getEquipmentId(Equipment.Slot.ACCESSORY))).findFirst().orElse(null);
+            if (ringBearer != null && random.nextDouble() < 0.5) protector = ringBearer;
+        }
         if (protector != null) {
             target = protector; blockingStudent = protector; protectedStudent = intended;
             effects.add(BattleEffect.status(protector, "Guard"));

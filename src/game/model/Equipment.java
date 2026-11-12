@@ -41,6 +41,8 @@ public final class Equipment extends Item {
             case "sentinel_band" -> new Equipment(id, "Sentinel Band", Slot.ACCESSORY, 0, 2, -1);
             case "guardian_band" -> new Equipment(id, "Guardian Band", Slot.ACCESSORY, 0, 3, -1);
             case "courage_charm" -> new Equipment(id, "Courage Charm", Slot.ACCESSORY, 3, 1, -1);
+            case "heroes_ring" -> new Equipment(id, "Hero’s Ring", Slot.ACCESSORY, 0, 0, -1);
+            case "looper_ring" -> new Equipment(id, "Looper Ring", Slot.ACCESSORY, 0, 0, -1);
             case "ring_of_power" -> new Equipment(id, "Ring of Power", Slot.ACCESSORY, 0, 0, -1);
             case "light_saber" -> new Equipment(id, "Light Saber", Slot.WEAPON, 100, 0, Student.BOGART);
             case "demon_hunter" -> new Equipment(id, "Demon Hunter", Slot.WEAPON, 0, 0, Student.CHARICE);
@@ -107,6 +109,8 @@ public final class Equipment extends Item {
             case "hunter_crossbows" -> "+5% AGI";
             case "cadet_blade" -> "+5% HP regeneration";
             case "champion_wraps" -> "+5% SPD";
+            case "heroes_ring" -> "+10% HP/DEF; +10% regen; -30% SPD; 50% auto defend";
+            case "looper_ring" -> "+100% SP; +10% ability cost; -20% DEF; +10% SPD; 20% chance of 5 random hits";
             case "ring_of_power" -> "+50% ATK/DEF/SPD; 50% AP refill when hit";
             case "light_saber" -> "+20% SPD; 100% hit damage over 5 sec";
             case "demon_hunter" -> "+20% ATK; +75% SPD";
