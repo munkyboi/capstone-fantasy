@@ -16,6 +16,9 @@ public final class Battle {
     private final List<Student> party = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
     private final Random random;
+    private final java.util.Map<Student, Student> guards = new java.util.HashMap<>();
+    private Student blockingStudent, protectedStudent, lastDamageRecipient;
+    private final double accuracyScalingFactor;
     private final GameProgress progress;
     private final List<BattleEffect> effects = new ArrayList<>();
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
@@ -63,9 +66,10 @@ public final class Battle {
         }
         this.progress = progress;
         this.random = random;
+        this.accuracyScalingFactor = 100.0 * java.util.Objects.requireNonNull(difficulty).multiplier();
         party.addAll(progress.getParty());
         for (Student student : party) { student.clearDefense(); }
-        party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
+        party.sort(Comparator.comparingDouble(Student::getEffectiveSpeed).reversed());
         if (party.stream().noneMatch(Student::isAlive)) {
             throw new IllegalArgumentException("At least one student must be able to battle");
         }
@@ -132,13 +136,34 @@ public final class Battle {
             }
         }
         burns.removeIf(burn -> !burn.target.isAlive() || burn.ticks >= 5);
-        if (changed) message = isVictory() ? "Light Saber damage defeats the last enemy! Victory!" : "Light Saber damage strikes!";
+        if (changed) {
+            message = isVictory() ? "Light Saber damage defeats the last enemy! Victory!" : "Light Saber damage strikes!";
+            if (isVictory()) clearGuards();
+        }
         return changed;
     }
     private void applyLightSaber(Student actor, Enemy target, int damage) {
         if (damage > 0 && target.isAlive() && "light_saber".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
             burns.add(new DamageOverTime(target, damage));
         }
+    }
+    /** Rolls once for each character whose AP has just filled. */
+    public boolean regenerate(java.util.List<Student> students, boolean keepCurrentEffects) {
+        boolean restored = false;
+        StringBuilder text = new StringBuilder();
+        for (Student student : students) {
+            if (!party.contains(student)) throw new IllegalArgumentException("Unknown party member");
+            int healed = HealthRegeneration.attempt(student, random);
+            if (healed > 0) {
+                if (!restored && !keepCurrentEffects) effects.clear();
+                effects.add(new BattleEffect(student, healed));
+                if (text.length() > 0) text.append("  ");
+                text.append(student.getName()).append(" regenerated ").append(healed).append(" HP.");
+                restored = true;
+            }
+        }
+        if (restored) message = keepCurrentEffects ? message + "\n" + text : text.toString();
+        return restored;
     }
     /** Selects a living student whose AP is ready.
      * @param student student chosen by the battle clock
@@ -147,6 +172,8 @@ public final class Battle {
     public boolean selectStudent(Student student) {
         int index = party.indexOf(student);
         if (isOver() || getCurrent() != null || index < 0 || !student.isAlive()) { return false; }
+        guards.remove(student);
+        student.endDefend();
         turn = index;
         return true;
     }
@@ -270,8 +297,32 @@ public final class Battle {
                 + " recovers " + healed + " HP.");
         return true;
     }
-    /** Defends the current student. */
-    public void defend() { if (pendingSecondCast || isOver() || getCurrent() == null) { return; } effects.clear(); Student actor = getCurrent(); actor.defend(); finish(actor.getName() + " defends."); }
+    /** Whether a living party member can be protected by the current actor. */
+    public boolean canDefend(Student target) {
+        Student actor = getCurrent();
+        return actor != null && validAlly(target) && (target != actor || party.stream().filter(Student::isAlive).count() == 1);
+    }
+    /** Protects one ally until the defender is selected for their next action. */
+    public boolean defend(Student target) {
+        if (pendingSecondCast || isOver() || !canDefend(target)) return false;
+        effects.clear(); Student actor = getCurrent(); actor.defend(); guards.put(actor, target);
+        blockingStudent = null; protectedStudent = null;
+        finish(actor.getName() + " protects " + target.getName() + ".");
+        return true;
+    }
+    /** Legacy self-defense entry point: protects the first other living party member. */
+    public void defend() {
+        Student actor = getCurrent();
+        if (actor == null) return;
+        Student target = party.stream().filter(this::canDefend).findFirst().orElse(null);
+        if (target != null) defend(target);
+    }
+    public Student getBlockingStudent() { return blockingStudent; }
+    public Student getProtectedStudent() { return protectedStudent; }
+    public Student getGuardedAlly(Student defender) {
+        Student ally = guards.get(defender);
+        return defender != null && defender.isAlive() && ally != null && ally.isAlive() ? ally : null;
+    }
 
     /** Lets a ready enemy act. Every third action uses its species-specific skill.
      * @param enemy ready enemy
@@ -279,7 +330,7 @@ public final class Battle {
      */
     public boolean enemyAttack(Enemy enemy) {
         if (isOver() || getCurrent() != null || !validEnemy(enemy)) { return false; }
-        effects.clear();
+        effects.clear(); blockingStudent = null; protectedStudent = null;
         List<Student> living = party.stream().filter(Student::isAlive).toList();
         boolean skill = enemy.usesSkillNext();
         enemy.recordAction();
@@ -296,24 +347,50 @@ public final class Battle {
         } else if (skill && enemy.isSentinel()) {
             StringBuilder text = new StringBuilder(enemy.getName() + (enemy.isBoss() ? " uses Crystal Pulse!" : " uses Stone Sweep!"));
             for (Student target : living) {
+                if (!target.isAlive()) continue;
                 int damage = enemyDamage(enemy, target, enemy.isBoss() ? 0 : -5, enemy.isBoss() ? 2 : 1);
-                text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.");
-                if (!target.isAlive()) { text.append(" ").append(target.getName()).append(" is knocked out."); }
+                Student recipient = lastDamageRecipient;
+                text.append("\n");
+                if (recipient != target) text.append(recipient.getName()).append(" protects ").append(target.getName()).append(". ");
+                text.append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
+                if (!recipient.isAlive()) text.append(" ").append(recipient.getName()).append(" is knocked out.");
             }
             message = text.toString();
         } else {
             Student target = living.get(random.nextInt(living.size()));
             int damage = enemyDamage(enemy, target, skill ? 4 : 0, 1);
-            message = skill ? enemy.getName() + " uses Arcane Spark on " + target.getName() + " for " + damage + " damage."
-                    : enemy.getName() + " attacks " + target.getName() + " for " + damage + " damage.";
-            if (!target.isAlive()) { message += " " + target.getName() + " is knocked out."; }
+            Student recipient = lastDamageRecipient;
+            message = skill ? enemy.getName() + " uses Arcane Spark on " + target.getName() + "."
+                    : enemy.getName() + " attacks " + target.getName() + ".";
+            if (recipient != target) message += " " + recipient.getName() + " protects " + target.getName() + ".";
+            message += " " + recipient.getName() + " takes " + damage + " damage.";
+            if (!recipient.isAlive()) { message += " " + recipient.getName() + " is knocked out."; }
         }
-        if (isDefeat()) { message += "\nThe party is defeated."; }
-        else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; }
+        if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
+        else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); }
         return true;
     }
 
+    /** Chance to hit, based on the defender's agility and attacker's accuracy. */
+    public static double hitChance(double agility, double accuracy, double scalingFactor) {
+        if (!Double.isFinite(agility) || !Double.isFinite(accuracy) || agility < 0 || accuracy <= 0 || !Double.isFinite(scalingFactor) || scalingFactor <= 0)
+            throw new IllegalArgumentException("Invalid accuracy parameters");
+        double dodge = agility / (agility + accuracy / scalingFactor);
+        return Math.max(0.0, Math.min(1.0, (accuracy - dodge) / accuracy));
+    }
+    private boolean hits(GameCharacter attacker, GameCharacter defender) {
+        return random.nextDouble() < hitChance(defender.getEffectiveAgility(), attacker.getEffectiveAccuracy(), accuracyScalingFactor);
+    }
     private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier) {
+        Student intended = target;
+        Student protector = party.stream().filter(candidate -> candidate != intended && candidate.isDefending()
+                && candidate.isAlive() && guards.get(candidate) == intended).findFirst().orElse(null);
+        if (protector != null) {
+            target = protector; blockingStudent = protector; protectedStudent = intended;
+            effects.add(BattleEffect.status(protector, "Guard"));
+        }
+        lastDamageRecipient = target;
+        if (!hits(enemy, target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         String armor = target.getEquipmentId(Equipment.Slot.ARMOR);
         if ("ultra_instinct_shirt".equals(armor) && random.nextDouble() < 0.5) {
             effects.add(BattleEffect.status(target, "Dodge"));
@@ -324,7 +401,7 @@ public final class Battle {
         effects.add(new BattleEffect(target, -damage));
         if (damage > 0 && "blade_mail".equals(armor)) {
             effects.add(BattleEffect.status(target, "Reflect"));
-            int reflected = enemy.takeDamage((int) Math.round(damage * 0.3));
+            int reflected = enemy.takeDamage((int) Math.round(damage * 0.5));
             if (reflected > 0) effects.add(new BattleEffect(enemy, -reflected));
         }
         if (damage > 0 && target.isAlive() && "ethereal_robe".equals(armor)) target.chargeEthereal();
@@ -336,14 +413,19 @@ public final class Battle {
     private boolean validAlly(Student target) { return target != null && party.contains(target) && target.isAlive(); }
     private boolean validEnemy(Enemy target) { return target != null && enemies.contains(target) && target.isAlive(); }
     private int hurt(Enemy target, int attack) {
+        if (!hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         int damage = target.takeDamage(Math.max(MINIMUM_DAMAGE, attack - target.getDefense() + random.nextInt(DAMAGE_VARIATION)));
         effects.add(new BattleEffect(target, -damage));
         return damage;
     }
     private String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
+    private void clearGuards() {
+        guards.clear();
+        for (Student student : party) student.endDefend();
+    }
     private void finish(String action) {
         message = action;
-        if (isVictory()) { message += "\nAll enemies defeated! Victory!"; return; }
+        if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); return; }
         turn = -1;
     }
 }

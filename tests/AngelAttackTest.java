@@ -17,6 +17,7 @@ public final class AngelAttackTest {
     private static Random fixed(int count) {
         return new Random() {
             private boolean initial = true;
+            @Override public double nextDouble() { return 0; }
             @Override public int nextInt(int bound) {
                 if (initial) { initial = false; return count - 1; }
                 return bound == 5 ? 0 : bound - 1;

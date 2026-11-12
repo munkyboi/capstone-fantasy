@@ -32,7 +32,7 @@ public final class GameProgress implements java.io.Serializable {
             student.setEquipmentId(Equipment.Slot.WEAPON, Equipment.starterWeapon(id));
             party.add(student);
         }
-        party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
+        party.sort(Comparator.comparingDouble(Student::getEffectiveSpeed).reversed());
     }
     /** Returns the current party in speed order.
      * @return the current party in speed order
@@ -54,7 +54,7 @@ public final class GameProgress implements java.io.Serializable {
             selected.add(member);
         }
         if (selected.stream().noneMatch(Student::isAlive)) throw new IllegalArgumentException("Select a living student");
-        party.clear(); party.addAll(selected); party.sort(Comparator.comparingInt(Student::getSpeed).reversed());
+        party.clear(); party.addAll(selected); party.sort(Comparator.comparingDouble(Student::getEffectiveSpeed).reversed());
         roster.removeAll(selected); reserve = roster;
     }
     /** Returns first-aid kits remaining.

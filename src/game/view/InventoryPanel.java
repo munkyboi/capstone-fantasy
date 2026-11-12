@@ -91,7 +91,10 @@ public final class InventoryPanel extends JPanel {
         bagScroll = scroll(bagContents); bagCard.add(bagScroll, BorderLayout.CENTER);
         JPanel choiceCard = panel(null); choiceHeading.setFont(ClassicUi.title(14));
         choiceHeading.setForeground(GOLD); choiceHeading.setBorder(BorderFactory.createEmptyBorder(0, 0, 7, 0));
-        choiceCard.add(choiceHeading, BorderLayout.NORTH); choiceCard.add(scroll(details), BorderLayout.CENTER);
+        choiceCard.add(choiceHeading, BorderLayout.NORTH);
+        JScrollPane choiceScroll = scroll(details);
+        choiceScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        choiceCard.add(choiceScroll, BorderLayout.CENTER);
         right.add(bagCard); right.add(choiceCard); center.add(right, BorderLayout.EAST);
         add(center, BorderLayout.CENTER);
 
@@ -147,6 +150,7 @@ public final class InventoryPanel extends JPanel {
             }
         };
         area.setEditable(false); area.setFocusable(false); area.setOpaque(false);
+        area.setLineWrap(true); area.setWrapStyleWord(true);
         area.setFont(ClassicUi.numbers(13)); area.setForeground(Color.WHITE);
         area.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         return area;
@@ -217,6 +221,12 @@ public final class InventoryPanel extends JPanel {
         else { back.run(); }
     }
     private static String name(String id) { return id == null ? "Empty" : Equipment.fromId(id).getName(); }
+    private static String formatStat(double value) {
+        return Long.toString((long) Math.ceil(value - 1e-9));
+    }
+    private static String formatDelta(double value) {
+        return (value >= -0.000001 ? "+" : "") + formatStat(Math.abs(value) < 0.000001 ? 0 : value);
+    }
     private static String role(int id) {
         return switch (id) { case Student.ZACK -> "Mage"; case Student.BOGART -> "Warrior";
             case Student.CHARICE -> "Hunter"; case Student.ANGEL -> "Monk"; default -> "Student"; };
@@ -236,12 +246,13 @@ public final class InventoryPanel extends JPanel {
             Student member = progress.getParty().get(i);
             ViewportFonts.setScaledIcon(partyRows[i], i == studentIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
             partyRows[i].setText("<html>" + member.getName()
-                    + "<br>&nbsp;&nbsp; HP " + member.getHp() + " / " + member.getMaxHp() + "</html>");
+                    + "<br>&nbsp;&nbsp; HP " + member.getHp() + "/" + member.getMaxHp() + "<br>&nbsp;&nbsp; SP " + member.getSp() + "/" + member.getMaxSp() + "</html>");
             styleRow(partyRows[i], i == studentIndex);
         }
         ViewportFonts.setScaledIcon(profile, portraits[current.getId()]);
         profile.setText(current.getName() + "  •  " + role(current.getId()));
-        stats.setText("ATK " + current.getAttack() + "   DEF " + current.getDefense() + "   SPD " + current.getSpeed());
+        stats.setText("<html>ATK " + current.getAttack() + " &nbsp; DEF " + current.getDefense() + " &nbsp; SPD " + formatStat(current.getEffectiveSpeed())
+                + "<br>AGI " + formatStat(current.getEffectiveAgility()) + " &nbsp; ACC " + formatStat(current.getEffectiveAccuracy()) + "</html>");
         for (int i = 0; i < slots.length; i++) {
             Equipment.Slot gearSlot = Equipment.Slot.values()[i];
             ViewportFonts.setScaledIcon(slots[i], i == slotIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
@@ -272,8 +283,12 @@ public final class InventoryPanel extends JPanel {
             int hpDelta = current.statWithEquipment(Student.Stat.HP, slot(), selected) - current.getMaxHp();
             int attackDelta = current.statWithEquipment(Student.Stat.ATK, slot(), selected) - current.getAttack();
             int defenseDelta = current.statWithEquipment(Student.Stat.DEF, slot(), selected) - current.getDefense();
-            int speedDelta = current.statWithEquipment(Student.Stat.SPD, slot(), selected) - current.getSpeed();
-            choiceText.append(String.format("\nPreview: HP %+d  ATK %+d  DEF %+d  SPD %+d\n", hpDelta, attackDelta, defenseDelta, speedDelta));
+            double speedDelta = Math.ceil(current.effectiveSpeedWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveSpeed() - 1e-9);
+            double agilityDelta = Math.ceil(current.agilityWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveAgility() - 1e-9);
+            double accuracyDelta = Math.ceil(current.accuracyWithEquipment(slot(), selected) - 1e-9) - Math.ceil(current.getEffectiveAccuracy() - 1e-9);
+            choiceText.append("\nPreview:\n");
+            choiceText.append(String.format("HP %+d   ATK %+d\nDEF %+d  SPD %s\nAGI %s  ACC %s\n",
+                    hpDelta, attackDelta, defenseDelta, formatDelta(speedDelta), formatDelta(agilityDelta), formatDelta(accuracyDelta)));
             if (selected != null && !Equipment.fromId(selected).getSpecialDescription().isEmpty()) {
                 choiceText.append(Equipment.fromId(selected).getSpecialDescription()).append('\n');
             }

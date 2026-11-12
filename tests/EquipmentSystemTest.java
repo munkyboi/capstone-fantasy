@@ -37,7 +37,7 @@ public final class EquipmentSystemTest {
                 "second-stage popup receives the actual uniform reward");
         boosted.claimStageReward();
         check(boosted.equip(find(boosted, Student.ZACK), Equipment.Slot.WEAPON, "scholar_staff"), "equip upgraded staff");
-        java.util.Random fixed = new java.util.Random() { @Override public int nextInt(int bound) { return 0; } };
+        java.util.Random fixed = new java.util.Random() { @Override public int nextInt(int bound) { return 0; } @Override public double nextDouble() { return 0; } };
         game.model.Battle baseBattle = new game.model.Battle(unboosted, fixed);
         game.model.Battle boostedBattle = new game.model.Battle(boosted, fixed);
         var baseTarget = baseBattle.getEnemies().get(0); var boostedTarget = boostedBattle.getEnemies().get(0);

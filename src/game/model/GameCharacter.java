@@ -11,6 +11,12 @@ public abstract class GameCharacter implements java.io.Serializable, Combatant, 
      * @return attack power
      */
     public abstract int getAttack();
+    /** Returns agility used to evade attacks. */
+    public abstract int getAgility();
+    /** Returns accuracy used to land attacks. */
+    public abstract int getAccuracy();
+    public double getEffectiveAgility() { return getAgility(); }
+    public double getEffectiveAccuracy() { return getAccuracy(); }
     /** Returns whether the participant can fight.
      * @return true when HP remains
      */

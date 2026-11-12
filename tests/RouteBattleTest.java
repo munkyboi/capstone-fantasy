@@ -48,7 +48,7 @@ public final class RouteBattleTest {
         check(new Student(0).getActionThreshold() == 35 && new Student(1).getActionThreshold() == 30
                 && new Student(2).getActionThreshold() == 28 && new Student(3).getActionThreshold() == 50, "student AP thresholds");
         check(new Student(Student.CHARICE).getSpeed() > new Student(Student.BOGART).getSpeed()
-                && new Student(Student.BOGART).getSpeed() == new Student(Student.ZACK).getSpeed()
+                && new Student(Student.BOGART).getSpeed() < new Student(Student.ZACK).getSpeed()
                 && new Student(Student.ZACK).getSpeed() > new Student(Student.ANGEL).getSpeed(),
                 "speed order matches configured stats, with Angel slowest");
         Battle battle = new Battle(progress, new Random(1));
@@ -151,7 +151,7 @@ public final class RouteBattleTest {
                             "clocks pause while choosing");
                     int firstHp = active.getEnemies().get(0).getHp(), secondHp = active.getEnemies().get(1).getHp();
                     key(panel, "battle-confirm"); key(panel, "battle-right"); key(panel, "battle-confirm");
-                    check(active.getEnemies().get(0).getHp() == firstHp && active.getEnemies().get(1).getHp() < secondHp,
+                    check(active.getEnemies().get(0).getHp() == firstHp && (active.getEnemies().get(1).getHp() < secondHp || active.getEffects().stream().anyMatch(e -> e.getEnemy() == active.getEnemies().get(1) && "Dodge".equals(e.getLabel()))),
                             "keyboard targets selected enemy");
                     check(points.get(active.getParty().get(0)) == 0.0, "only acting student's AP resets");
                     advance.invoke(panel, 2.0 / 3.0);

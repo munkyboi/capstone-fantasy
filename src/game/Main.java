@@ -79,7 +79,7 @@ public final class Main {
             });
             campHolder[0] = camp;
             InventoryPanel inventory = new InventoryPanel(() -> {
-                camp.open(campHolder[0].getProgress(), false);
+                camp.resume(campHolder[0].getProgress(), false);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();
             });

@@ -20,14 +20,14 @@ public final class GreatSageStaffTest {
     private static class Roll extends Random {
         final double value; int rolls;
         Roll(double value) { this.value = value; }
-        @Override public double nextDouble() { rolls++; return value; }
+        @Override public double nextDouble() { rolls++; return rolls == 1 ? value : 0; }
         @Override public int nextInt(int bound) { return bound == 2 ? 1 : 0; }
     }
     private static void outcome(double value, boolean twice) {
         GameProgress p = party(true); Student mage = p.getParty().get(0); Roll random = new Roll(value);
         Battle b = new Battle(p, random, false, 0); List<Enemy> enemies = b.getEnemies(); int sp = mage.getSp();
         check(b.selectStudent(mage) && b.ability(null, null), "cast succeeds");
-        check(b.hasPendingSecondCast() == twice && random.rolls == 1, "probability boundary " + value);
+        check(b.hasPendingSecondCast() == twice && random.rolls == 1 + enemies.size(), "probability boundary " + value);
         for (Enemy e : enemies) {
             int hit = mage.getAttack() + 4 - e.getDefense();
             check(e.getMaxHp() - e.getHp() == hit, "only first cast happens immediately");
@@ -51,7 +51,7 @@ public final class GreatSageStaffTest {
                 && finishing.isVictory() && !finishing.hasPendingSecondCast(), "no follow-up blocks a first-cast victory");
         Roll noStaff = new Roll(0); GameProgress normal = party(false); Battle noBonus = new Battle(normal, noStaff, false, 0);
         check(noBonus.selectStudent(normal.getParty().get(0)) && noBonus.ability(null, null)
-                && noStaff.rolls == 0 && !noBonus.getMessage().contains("casts Arcane Burst again"), "staff required");
+                && noStaff.rolls == noBonus.getEnemies().size() && !noBonus.getMessage().contains("casts Arcane Burst again"), "staff required");
         Random rolls = new Random(51773); int doubled = 0, attempts = 5000;
         for (int i = 0; i < attempts; i++) {
             double roll = rolls.nextDouble(); GameProgress p = party(true); Battle b = new Battle(p, new Roll(roll), false, 0);

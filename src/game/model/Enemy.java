@@ -19,6 +19,7 @@ public final class Enemy extends GameCharacter {
     private final int attack;
     private final int defense;
     private final int speed;
+    private final int agility, accuracy;
     private int hp;
     private final boolean sentinel;
     private final boolean boss;
@@ -82,6 +83,8 @@ public final class Enemy extends GameCharacter {
         hp = maxHp;
         attack = (int) Math.round(((boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
         defense = (int) Math.round((boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
+        agility = Math.max(1, (int) Math.round((boss ? 10 : sentinel ? 5 : 9) + levels));
+        accuracy = Math.max(1, (int) Math.round((boss ? 12 : sentinel ? 9 : 8) + levels));
         speed = Math.max(1, (int) Math.round((sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
         int wispIndex = suffix >= 'A' && suffix <= 'F' ? suffix - 'A' : 0;
@@ -130,6 +133,8 @@ public final class Enemy extends GameCharacter {
     /** Returns speed stat.
      * @return speed stat
      */ public int getSpeed() { return speed; }
+    public int getAgility() { return agility; }
+    public int getAccuracy() { return accuracy; }
     /** Returns AP required before this enemy can attack.
      * @return AP required before this enemy can attack
      */ public int getActionThreshold() { return actionThreshold; }

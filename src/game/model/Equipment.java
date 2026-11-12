@@ -100,15 +100,19 @@ public final class Equipment extends Item {
     /** Describes special legendary effects in the equipment screen. */
     public String getSpecialDescription() {
         return switch (id) {
+            case "focus_charm", "scholar_staff" -> "+5% ACC";
+            case "hunter_crossbows" -> "+5% AGI";
+            case "cadet_blade" -> "+5% HP regeneration";
+            case "champion_wraps" -> "+5% SPD";
             case "ring_of_power" -> "+50% ATK/DEF/SPD; 50% AP refill when hit";
             case "light_saber" -> "+20% SPD; 100% hit damage over 5 sec";
             case "demon_hunter" -> "+20% ATK; +75% SPD";
             case "great_sage_staff" -> "+20% ATK; 50% chance to cast twice";
             case "giant_slayer_gloves" -> "+50% ATK; +15 SPD; extra basic hit";
-            case "blade_mail" -> "-20% DEF/SPD; +200% HP; reflect 30% damage";
-            case "ultra_instinct_shirt" -> "-20% DEF; +10% SPD; 50% dodge";
-            case "designer_leather_vest" -> "+10% DEF; +20% SPD; +50 HP; 2x XP";
-            case "ethereal_robe" -> "+15% DEF; +100 HP; damage gives next basic attack +300% ATK";
+            case "blade_mail" -> "-50% DEF, -20% SPD; +200% HP; 50% reflect; +50% regen";
+            case "ultra_instinct_shirt" -> "-20% DEF; +20% SPD; 50% dodge; +30% regen";
+            case "designer_leather_vest" -> "+10% DEF; +20% SPD; +50 HP; 2x XP; +10% regen";
+            case "ethereal_robe" -> "+15% DEF; +100 HP; +10% regen; damage empowers next attack";
             default -> "";
         };
     }

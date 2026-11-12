@@ -47,7 +47,7 @@ public final class BattlePanel extends JPanel {
     private GameProgress progress;
     private int commandIndex;
     private final JButton[] commands = {attack, ability, item, defend};
-    private enum TargetAction { NONE, ATTACK, ABILITY, ITEM }
+    private enum TargetAction { NONE, ATTACK, ABILITY, ITEM, DEFEND }
     private TargetAction targeting = TargetAction.NONE;
     private int targetIndex;
     private String notice;
@@ -130,6 +130,8 @@ public final class BattlePanel extends JPanel {
             }
             @Override public double enemyPoints(Enemy enemy) { return enemyPoints.getOrDefault(enemy, 0.0); }
             @Override public Object attackingSprite() { return attackingSprite; }
+            @Override public Student blockingStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getBlockingStudent(); }
+            @Override public Student protectedStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getProtectedStudent(); }
             @Override public double effectProgress() {
                 return showEffects ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
             }
@@ -156,7 +158,7 @@ public final class BattlePanel extends JPanel {
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
-        defend.addActionListener(e -> performAction(() -> { notice = null; battle.defend(); }, false));
+        defend.addActionListener(e -> beginTargeting(TargetAction.DEFEND));
         ability.addActionListener(e -> {
             Student actor = battle.getCurrent();
             if (actor != null && actor.getSp() < actor.getAbilitySpCost()) {
@@ -292,9 +294,12 @@ public final class BattlePanel extends JPanel {
                 if (enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
                     if (battle.enemyAttack(enemy)) {
                         enemyPoints.put(enemy, 0.0);
+                        java.util.List<Student> refilled = new java.util.ArrayList<>();
                         for (Student student : battle.consumeApRefills()) {
+                            if (actionPoints.get(student) + AP_EPSILON < student.getActionThreshold()) refilled.add(student);
                             actionPoints.put(student, (double) student.getActionThreshold());
                         }
+                        if (!refilled.isEmpty()) battle.regenerate(refilled, true);
                         showActionEffects(enemy);
                         enemyActed = true;
                         changed = true;
@@ -313,10 +318,17 @@ public final class BattlePanel extends JPanel {
             }
             double step = Math.min(remaining, untilReady);
             if (step <= 0.0 || !Double.isFinite(step)) { break; }
+            java.util.List<Student> newlyReady = new java.util.ArrayList<>();
             for (Student student : battle.getParty()) {
                 if (student.isAlive()) {
-                    actionPoints.put(student, Math.min(student.getActionThreshold(), actionPoints.get(student) + studentRate(student, rate) * step));
+                    double before = actionPoints.get(student);
+                    double after = Math.min(student.getActionThreshold(), before + studentRate(student, rate) * step);
+                    actionPoints.put(student, after);
+                    if (before + AP_EPSILON < student.getActionThreshold() && after + AP_EPSILON >= student.getActionThreshold()) newlyReady.add(student);
                 }
+            }
+            if (!newlyReady.isEmpty() && battle.regenerate(newlyReady, false)) {
+                showActionEffects(null); changed = true;
             }
             for (Enemy enemy : battle.getEnemies()) {
                 if (enemy.isAlive()) {
@@ -331,7 +343,7 @@ public final class BattlePanel extends JPanel {
     }
 
     private double studentRate(Student student, double baseRate) {
-        return baseRate * student.getSpeed() / student.getUnmodifiedSpeed();
+        return baseRate * student.getEffectiveSpeed() / student.getUnmodifiedSpeed();
     }
 
     private boolean selectReadyStudent() {
@@ -380,11 +392,18 @@ public final class BattlePanel extends JPanel {
         if (battle == null || battle.isOver() || battle.hasPendingSecondCast()) { return; }
         if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
         commandIndex = Math.floorMod(commandIndex + direction, commands.length);
+        updateCommandDisplay();
+    }
+
+    private void updateCommandDisplay() {
         BattleControls.updateCommands(commands, commandIndex);
+        if (battle != null && battle.getCurrent() != null && !battle.isOver()) {
+            ability.setText("Ability " + battle.getCurrent().getAbilitySpCost() + " SP");
+        }
     }
 
     private boolean targetsParty() {
-        return targeting == TargetAction.ITEM
+        return targeting == TargetAction.ITEM || targeting == TargetAction.DEFEND
                 || (targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS);
     }
 
@@ -397,18 +416,22 @@ public final class BattlePanel extends JPanel {
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         notice = null; targeting = action; targetIndex = 0;
         if (targetsParty()) {
-            while (!battle.getParty().get(targetIndex).isAlive()) { targetIndex++; }
+            while (!validPartyTarget(battle.getParty().get(targetIndex))) { targetIndex++; }
         } else {
             while (!battle.getEnemies().get(targetIndex).isAlive()) { targetIndex++; }
         }
         refresh();
     }
 
+    private boolean validPartyTarget(Student target) {
+        return targeting == TargetAction.DEFEND ? battle.canDefend(target) : target.isAlive();
+    }
+
     private void moveTarget(int direction) {
         if (battle == null || battle.isOver() || targeting == TargetAction.NONE || targetsAllEnemies()) { return; }
         int size = targetsParty() ? battle.getParty().size() : battle.getEnemies().size();
         do { targetIndex = Math.floorMod(targetIndex + direction, size); }
-        while (targetsParty() ? !battle.getParty().get(targetIndex).isAlive() : !battle.getEnemies().get(targetIndex).isAlive());
+        while (targetsParty() ? !validPartyTarget(battle.getParty().get(targetIndex)) : !battle.getEnemies().get(targetIndex).isAlive());
         refresh();
     }
 
@@ -430,6 +453,7 @@ public final class BattlePanel extends JPanel {
             performAction(() -> {
                 if (action == TargetAction.ATTACK) { battle.attack(enemy); }
                 else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
+                else if (action == TargetAction.DEFEND) { battle.defend(target); }
                 else if (!battle.useKit(target)) { notice = target.getName() + " already has full HP."; }
             }, attacking);
         }
@@ -483,7 +507,7 @@ public final class BattlePanel extends JPanel {
         attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
-        BattleControls.updateCommands(commands, commandIndex);
+        updateCommandDisplay();
         scene.repaint();
     }
 

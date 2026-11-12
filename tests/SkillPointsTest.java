@@ -7,8 +7,8 @@ import java.util.*;
 public final class SkillPointsTest {
     private static void check(boolean ok, String message) { if (!ok) { throw new AssertionError(message); } }
     public static void main(String[] args) throws Exception {
-        int[] hp = {80,120,90,105}, atk = {22,15,14,25}, def = {6,13,8,10}, speed = {12,12,18,5};
-        int[] sp = {150,50,45,30}, cost = {15,5,6,10};
+        int[] hp = {60,150,90,125}, atk = {24,16,11,25}, def = {4,16,5,10}, speed = {17,15,19,5};
+        int[] sp = {180,35,60,30}, cost = {15,5,6,10};
         for (int id = 0; id < 4; id++) {
             Student s = new Student(id);
             check(s.getMaxHp() == hp[id] && s.getBaseAttack() == atk[id] && s.getBaseDefense() == def[id]
@@ -36,7 +36,7 @@ public final class SkillPointsTest {
                 check(store.load(1, fmt).getParty().get(0).getSp() == 7, "SP persists in " + fmt);
             }
             Path text = dir.resolve("slot-1.txt");
-            String old = Files.readString(text).replace("version=7", "version=2").replaceAll("(?m)^student\\.[123]\\.sp=.*\\R", "");
+            String old = Files.readString(text).replace("version=8", "version=2").replaceAll("(?m)^student\\.[123]\\.sp=.*\\R", "");
             Files.writeString(text, old);
             check(store.load(1, SaveStore.Format.TEXT).getParty().stream().allMatch(s -> s.getSp() == s.getMaxSp()), "old save defaults to full SP");
             // A pre-SP binary has old stats and no initialized SP field.
@@ -46,7 +46,7 @@ public final class SkillPointsTest {
             java.lang.reflect.Field initialized = Student.class.getDeclaredField("skillPointsInitialized"); initialized.setAccessible(true); initialized.setBoolean(legacy, false);
             try (var out = new java.io.ObjectOutputStream(Files.newOutputStream(dir.resolve("slot-2.dat")))) { out.writeObject(p); }
             Student migrated = store.load(2, SaveStore.Format.BINARY).getParty().stream().filter(s -> s.getId() == Student.ZACK).findFirst().orElseThrow();
-            check(migrated.getBaseAttack() == 22 && migrated.getSpeed() == 12 && migrated.getSp() == 150, "old binary stats and SP migrate");
+            check(migrated.getBaseAttack() == 24 && migrated.getSpeed() == 17 && migrated.getSp() == 180, "old binary stats and SP migrate");
         } finally {
             try (var files = Files.walk(dir)) { for (Path f : files.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(f); } }
         }

@@ -39,13 +39,14 @@ public class Student extends GameCharacter {
     private static final int STARTING_LEVEL = 1;
     private static final int MINIMUM_DAMAGE = 1;
     private static final long serialVersionUID = 1L;
-    private static final int[] STARTING_HEALTH = {80, 120, 90, 105};
-    private static final int[] STARTING_ATTACK = {22, 15, 14, 25};
-    private static final int[] STARTING_DEFENSE = {6, 13, 8, 10};
-    private static final int[] STARTING_SPEED = {12, 12, 18, 5};
-    private static final int[] MAX_SP = {150, 50, 45, 30};
+    private static final int[] STARTING_HEALTH = {60, 150, 90, 125};
+    private static final int[] STARTING_ATTACK = {24, 16, 11, 25};
+    private static final int[] STARTING_DEFENSE = {4, 16, 5, 10};
+    private static final int[] STARTING_SPEED = {17, 15, 19, 5};
+    private static final int[] MAX_SP = {180, 35, 60, 30};
+    private static final int[] STARTING_AGILITY = {7, 4, 13, 10};
+    private static final int[] STARTING_ACCURACY = {8, 9, 12, 10};
     private static final int[] ABILITY_SP_COST = {15, 5, 6, 10};
-    private static final int DEFENSE_DIVISOR = 2;
     private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 50};
     private final int id;
     private final String name;
@@ -105,7 +106,10 @@ public class Student extends GameCharacter {
     public int getBaseAttack() { return attack + (getLevel() - 1) * 2 + allocatedAttack; }
     /** Returns defense value.
      * @return defense value
-     */ public int getDefense() { return statWithEquipment(Stat.DEF, null, null); }
+     */ public int getDefense() {
+        int value = statWithEquipment(Stat.DEF, null, null);
+        return defending ? (int) Math.round(value * 1.2) : value;
+    }
     /** Returns defense before equipment bonuses.
      * @return base defense
      */
@@ -128,7 +132,29 @@ public class Student extends GameCharacter {
     }
     /** Returns speed value.
      * @return speed value
-    */ public int getSpeed() { return statWithEquipment(Stat.SPD, null, null); }
+    */ public int getSpeed() { return (int) Math.round(effectiveSpeedWithEquipment(null, null)); }
+    /** Agility and accuracy each increase by one per level. */
+    public int getAgility() { return STARTING_AGILITY[id] + getLevel() - 1; }
+    public int getAccuracy() { return STARTING_ACCURACY[id] + getLevel() - 1; }
+    /** Precise equipment-adjusted combat stats, including fractional percentage bonuses. */
+    public double getEffectiveAgility() { return agilityWithEquipment(null, null); }
+    public double getEffectiveAccuracy() { return accuracyWithEquipment(null, null); }
+    public double getEffectiveSpeed() { return effectiveSpeedWithEquipment(null, null); }
+    public double agilityWithEquipment(Equipment.Slot slot, String replacement) {
+        String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
+        return getAgility() * ("hunter_crossbows".equals(weapon) ? 1.05 : 1.0);
+    }
+    public double accuracyWithEquipment(Equipment.Slot slot, String replacement) {
+        String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
+        String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        return getAccuracy() * (1.0 + ("scholar_staff".equals(weapon) ? 0.05 : 0)
+                + ("focus_charm".equals(accessory) ? 0.05 : 0));
+    }
+    public double effectiveSpeedWithEquipment(Equipment.Slot slot, String replacement) {
+        String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
+        return statWithEquipment(Stat.SPD, slot, replacement)
+                + ("champion_wraps".equals(weapon) ? getUnmodifiedSpeed() * 0.05 : 0);
+    }
     /** Previews a stat if a slot were changed; pass a null slot for current equipment. */
     public int statWithEquipment(Stat stat, Equipment.Slot slotToReplace, String replacement) {
         String weapon = slotToReplace == Equipment.Slot.WEAPON ? replacement : weaponId;
@@ -152,11 +178,12 @@ public class Student extends GameCharacter {
         if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.0;
         if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
         if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
-        if (stat == Stat.DEF && ("blade_mail".equals(armor) || "ultra_instinct_shirt".equals(armor))) multiplier -= 0.2;
+        if (stat == Stat.DEF && "blade_mail".equals(armor)) multiplier -= 0.5;
+        if (stat == Stat.DEF && "ultra_instinct_shirt".equals(armor)) multiplier -= 0.2;
         if (stat == Stat.DEF && "designer_leather_vest".equals(armor)) multiplier += 0.1;
         if (stat == Stat.DEF && "ethereal_robe".equals(armor)) multiplier += 0.15;
         if (stat == Stat.SPD && "blade_mail".equals(armor)) multiplier -= 0.2;
-        if (stat == Stat.SPD && "ultra_instinct_shirt".equals(armor)) multiplier += 0.1;
+        if (stat == Stat.SPD && "ultra_instinct_shirt".equals(armor)) multiplier += 0.2;
         if (stat == Stat.SPD && "designer_leather_vest".equals(armor)) multiplier += 0.2;
         if (stat == Stat.ATK && ("demon_hunter".equals(weapon) || "great_sage_staff".equals(weapon))) multiplier += 0.2;
         if (stat == Stat.ATK && "giant_slayer_gloves".equals(weapon)) multiplier += 0.5;
@@ -236,6 +263,8 @@ public class Student extends GameCharacter {
     }
     /** Returns current and maximum skill points and the ability cost. */
     public int getSp() { return skillPointsInitialized ? skillPoints : getMaxSp(); }
+    /** Whether a serialized student has an explicit SP balance. */
+    public boolean hasInitializedSkillPoints() { return skillPointsInitialized; }
     /** Returns the student's maximum skill points. */
     public int getMaxSp() { return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3; }
     /** Returns points earned but not spent. */
@@ -269,7 +298,7 @@ public class Student extends GameCharacter {
         allocatedDefense = defPoints; allocatedSpeed = spdPoints;
     }
     /** Returns the skill-point cost of the student's ability. */
-    public int getAbilitySpCost() { return ABILITY_SP_COST[id]; }
+    public int getAbilitySpCost() { return ABILITY_SP_COST[id] + getLevel() - 1; }
     /** Uses skill points if enough are available. */
     public boolean spendAbilitySp() {
         if (getSp() < getAbilitySpCost()) { return false; }
@@ -289,7 +318,9 @@ public class Student extends GameCharacter {
     /** Returns whether the student can act.
      * @return whether the student can act
      */ public boolean isAlive() { return hp > 0; }
-    /** Protects against the next incoming attack. */ public void defend() { defending = true; }
+    /** Activates defensive bonuses for a guard action. */ public void defend() { defending = true; }
+    public boolean isDefending() { return defending; }
+    public void endDefend() { defending = false; }
     /** Clears temporary combat state between encounters. */ public void clearDefense() { defending = false; etherealCharged = false; }
     public boolean hasEtherealCharge() { return etherealCharged; }
     void chargeEthereal() { etherealCharged = true; }
@@ -307,13 +338,12 @@ public class Student extends GameCharacter {
      * @return actual HP restored
      */
     public int heal(int amount) { int old = hp; hp = Math.min(getMaxHp(), hp + Math.max(0, amount)); return hp - old; }
-    /** Applies damage, using and clearing a defend action if present.
+    /** Applies damage.
      * @param amount incoming damage
      * @return actual HP lost
      */
     public int takeDamage(int amount) {
-        int damage = Math.max(MINIMUM_DAMAGE, defending ? amount / DEFENSE_DIVISOR : amount);
-        defending = false;
+        int damage = Math.max(MINIMUM_DAMAGE, amount);
         int old = hp; hp = Math.max(0, hp - damage); return old - hp;
     }
 }

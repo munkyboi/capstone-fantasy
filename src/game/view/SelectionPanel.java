@@ -28,13 +28,13 @@ public final class SelectionPanel extends JPanel {
     private static final Color LIGHT = new Color(238, 242, 255);
     private static final String[] NAMES = {"Zack", "Bogart", "Charice", "Angel"};
     private static final String[] CLASSES = {"Mage", "Warrior", "Hunter", "Monk"};
-    private static final String[] STAT_LABELS = {"HP", "ATK", "DEF", "SPD", "SP"};
+    private static final String[] STAT_LABELS = {"HP", "SP", "ATK", "DEF", "SPD", "AGI", "ACC"};
     private static final Color[] STAT_COLORS = {
-        new Color(224, 73, 79), new Color(246, 149, 62), new Color(192, 202, 215),
-        new Color(240, 110, 178), new Color(76, 155, 245)
+        new Color(224, 73, 79), new Color(76, 155, 245), new Color(246, 149, 62),
+        new Color(192, 202, 215), new Color(240, 110, 178), new Color(91, 207, 177), new Color(198, 151, 231)
     };
     // The bars compare the four starting characters within each stat.
-    private static final int[] STAT_MAXIMA = {120, 25, 13, 18, 150};
+    private static final int[] STAT_MAXIMA = {150, 180, 25, 16, 19, 13, 12};
     private static final String[] ABILITIES = {
         "Arcane Burst", "Cadet Strike", "Twin Shot", "Healing Kiss"
     };
@@ -221,7 +221,7 @@ public final class SelectionPanel extends JPanel {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                     int slice = sprites.getWidth() / 4;
-                    int top = ViewportFonts.pixels(60, scale), bottom = Math.max(top + ViewportFonts.pixels(40, scale), h - ViewportFonts.pixels(175, scale));
+                    int top = ViewportFonts.pixels(60, scale), bottom = Math.max(top + ViewportFonts.pixels(40, scale), h - ViewportFonts.pixels(205, scale));
                     int height = Math.min(bottom - top, (w - ViewportFonts.pixels(16, scale)) * sprites.getHeight() / slice);
                     int width = height * slice / sprites.getHeight();
                     BufferedImage pixels = new BufferedImage(96, 128, BufferedImage.TYPE_INT_ARGB);
@@ -264,13 +264,13 @@ public final class SelectionPanel extends JPanel {
 
         private void drawStats(Graphics2D g, int width, int height, double scale) {
             Student student = Student.create(index);
-            int[] values = {student.getMaxHp(), student.getBaseAttack(), student.getBaseDefense(), student.getSpeed(), student.getMaxSp()};
+            int[] values = {student.getMaxHp(), student.getMaxSp(), student.getBaseAttack(), student.getBaseDefense(), student.getSpeed(), student.getAgility(), student.getAccuracy()};
             int left = ViewportFonts.pixels(12, scale);
             int barLeft = ViewportFonts.pixels(48, scale);
             int valueRight = width - ViewportFonts.pixels(7, scale);
             int barWidth = Math.max(1, valueRight - barLeft - ViewportFonts.pixels(32, scale));
             int rowHeight = ViewportFonts.pixels(17, scale);
-            int top = height - ViewportFonts.pixels(158, scale);
+            int top = height - ViewportFonts.pixels(192, scale);
             int barHeight = ViewportFonts.pixels(7, scale);
             g.setFont(ClassicUi.numbers(ViewportFonts.pixels(10, scale)));
             for (int i = 0; i < STAT_LABELS.length; i++) {

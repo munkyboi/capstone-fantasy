@@ -42,6 +42,8 @@ final class BattleScene extends JPanel {
         double victoryProgress();
         double enemyPoints(Enemy enemy);
         Object attackingSprite();
+        default Student blockingStudent() { return null; }
+        default Student protectedStudent() { return null; }
         double effectProgress();
     }
     private final State state;
@@ -136,9 +138,13 @@ final class BattleScene extends JPanel {
                 int slotWidth = Math.max(27, w / 7);
                 int spriteWidth = Math.max(20, slotWidth * 3 / 4);
                 int spriteHeight = Math.max(28, h * 3 / 8);
-                int i = 0;
-                for (Student student : battle.getParty()) {
-                    int index = i++;
+                java.util.List<Student> drawParty = new java.util.ArrayList<>(battle.getParty());
+                if (state.showEffects() && state.blockingStudent() != null) {
+                    drawParty.remove(state.blockingStudent());
+                    drawParty.add(state.blockingStudent());
+                }
+                for (Student student : drawParty) {
+                    int index = battle.getParty().indexOf(student);
                     int x = partyX(index, slotWidth), y = partyFootY(h, index) - spriteHeight;
                     if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
                         drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index));
@@ -152,8 +158,16 @@ final class BattleScene extends JPanel {
                         int slice = sprites.getWidth() / 4, id = student.getId();
                         int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
                         int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
+                        if (student == state.blockingStudent() && state.protectedStudent() != null && state.showEffects()) {
+                            int targetIndex = battle.getParty().indexOf(state.protectedStudent());
+                            if (targetIndex >= 0) {
+                                double movement = guardMovement();
+                                left += (int) Math.round((partyX(targetIndex, slotWidth) - x + 7) * movement);
+                                lift += (int) Math.round((partyFootY(h, targetIndex) - partyFootY(h, index)) * movement);
+                            }
+                        }
                         java.awt.Composite previousComposite = g.getComposite();
-                        if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.8f));
+                        if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.5f));
                         drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
                         g.setComposite(previousComposite);
                     }
@@ -436,6 +450,13 @@ final class BattleScene extends JPanel {
             return -(int) Math.round(4 * Math.max(0, Math.sin(phase * 2 * Math.PI)));
         }
 
+        private double guardMovement() {
+            double elapsed = state.effectProgress() * EFFECT_DURATION_MILLIS;
+            if (elapsed < 140) return elapsed / 140.0;
+            if (elapsed < 550) return 1.0;
+            if (elapsed < 800) return (800.0 - elapsed) / 250.0;
+            return 0.0;
+        }
         private int attackOffset(Object participant, int direction) {
             return direction * (int) Math.round(4 * attackHop(participant));
         }

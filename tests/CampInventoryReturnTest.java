@@ -21,7 +21,8 @@ public final class CampInventoryReturnTest {
                 var party = progress.getParty().stream().sorted(java.util.Comparator.comparingInt(Student::getId)).toList();
                 Student first = party.get(0), second = party.get(1);
                 first.takeDamage(30); second.takeDamage(30);
-                CampPanel camp = new CampPanel(ignored -> { }, () -> { });
+                CampPanel camp = new CampPanel(ignored -> { }, () -> { }, ignored -> { }, ignored -> { },
+                        new java.util.Random() { @Override public double nextDouble() { return 1.0; } });
                 camp.open(progress, false);
                 key(camp, "camp-use");
                 check(progress.getKits() == 2 && first.getHp() == first.getMaxHp(), "first kit heals once");
@@ -31,7 +32,7 @@ public final class CampInventoryReturnTest {
                 key(bag, "inventory-down");
                 key(bag, "inventory-confirm");
                 check(progress.getParty().stream().anyMatch(s -> s.getDefense() > s.getBaseDefense()), "equipment change persists");
-                camp.open(progress, false);
+                camp.resume(progress, false);
                 key(camp, "camp-down");
                 key(camp, "camp-use");
                 check(progress.getKits() == 1 && second.getHp() == second.getMaxHp(), "second kit heals the selected student");

@@ -15,8 +15,8 @@ public final class FinalStagesLevelTest {
         Student hero = new Student(Student.ZACK); hero.takeDamage(20);
         check(hero.gainExperience(99) == 0 && hero.getLevel() == 1, "no early level");
         hero.restoreSp(0);
-        check(hero.gainExperience(201) == 3 && hero.getLevel() == 4 && hero.getMaxHp() == 95
-                && hero.getBaseAttack() == 28 && hero.getBaseDefense() == 9 && hero.getHp() == hero.getMaxHp()
+        check(hero.gainExperience(201) == 3 && hero.getLevel() == 4 && hero.getMaxHp() == 75
+                && hero.getBaseAttack() == 30 && hero.getBaseDefense() == 7 && hero.getHp() == hero.getMaxHp()
                 && hero.getSp() == hero.getMaxSp(), "multiple levels grow stats and restore HP and SP");
         Student runner = new Student(Student.ZACK);
         int startingSpeed = runner.getSpeed();

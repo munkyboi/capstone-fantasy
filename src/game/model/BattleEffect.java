@@ -17,6 +17,9 @@ public final class BattleEffect {
      */
     public BattleEffect(Enemy enemy, int amount) { this.student = null; this.enemy = enemy; this.amount = amount; this.label = null; }
     private BattleEffect(Student student, String label) { this.student = student; this.enemy = null; this.amount = 0; this.label = label; }
+    private BattleEffect(Enemy enemy, String label) { this.student = null; this.enemy = enemy; this.amount = 0; this.label = label; }
+    /** Creates a textual combat indicator for a monster. */
+    public static BattleEffect status(Enemy enemy, String label) { return new BattleEffect(enemy, label); }
     /** Creates a textual combat indicator for a character. */
     public static BattleEffect status(Student student, String label) { return new BattleEffect(student, label); }
     public String getLabel() { return label; }

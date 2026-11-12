@@ -9,7 +9,7 @@ public final class LevelUpRewardsTest {
     private static void check(boolean ok, String message) { if (!ok) throw new AssertionError(message); }
     public static void main(String[] args) throws Exception {
         Student student = Student.create(0); student.takeDamage(40); student.restoreSp(0);
-        student.gainExperience(99); check(student.getHp() == 40 && student.getSp() == 0, "XP alone does not heal");
+        student.gainExperience(99); check(student.getHp() == 20 && student.getSp() == 0, "XP alone does not heal");
         student.gainExperience(1); check(student.getHp() == student.getMaxHp() && student.getSp() == student.getMaxSp(), "level-up fully restores HP and SP");
         student.takeDamage(999); student.restoreSp(0); student.gainExperience(1);
         check(!student.isAlive() && student.getSp() == 0, "KO remains until a level is gained");

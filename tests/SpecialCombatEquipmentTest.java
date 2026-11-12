@@ -52,15 +52,15 @@ public final class SpecialCombatEquipmentTest {
         for (int i = 2; i < 7; i++) check(CarbonMarket.buy(market, i).startsWith("Purchased"), "buy market item " + i);
         check(market.getPetot() == 500 && market.getInventory().getEquipmentIds().contains("light_saber"), "purchase price and items");
         equip(market, 0, "great_sage_staff"); equip(market, 1, "light_saber"); equip(market, 2, "demon_hunter"); equip(market, 3, "giant_slayer_gloves"); equip(market, 2, "ring_of_power");
-        Student hunter = student(market, 2); check(hunter.getAttack() == 24 && hunter.getSpeed() == 41 && hunter.getDefense() == 12, "percentage stats stack additively");
-        check(student(market, 1).getAttack() == 115 && student(market, 1).getSpeed() == 14, "Light Saber stats");
+        Student hunter = student(market, 2); check(hunter.getAttack() == 19 && hunter.getSpeed() == 43 && hunter.getDefense() == 8, "percentage stats stack additively");
+        check(student(market, 1).getAttack() == 116 && student(market, 1).getSpeed() == 18, "Light Saber stats");
         check(student(market, 3).getAttack() == 38 && student(market, 3).getSpeed() == 20, "glove stats");
         market.advance(); Path dir = Files.createTempDirectory("special-equipment-");
         try {
             SaveStore store = new SaveStore(dir);
             for (SaveStore.Format format : SaveStore.Format.values()) {
                 store.save(1, format, market); GameProgress loaded = store.load(1, format);
-                check(student(loaded, 2).getSpeed() == 41 && student(loaded, 1).getAttack() == 115, "legendary equipment save " + format);
+                check(student(loaded, 2).getSpeed() == 43 && student(loaded, 1).getAttack() == 116, "legendary equipment save " + format);
             }
         } finally { try (var files = Files.walk(dir)) { for (Path f : files.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(f); } }
         GameProgress fire = finalParty(); equip(fire, 1, "light_saber"); Battle burn = new Battle(fire, fixed(), false, 4, GameSettings.Difficulty.INSANE);
@@ -93,7 +93,7 @@ public final class SpecialCombatEquipmentTest {
                 Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true); advance.invoke(panel, 1.0);
                 Field points = BattlePanel.class.getDeclaredField("actionPoints"); points.setAccessible(true);
                 @SuppressWarnings("unchecked") Map<Student, Double> values = (Map<Student, Double>) points.get(panel);
-                check(Math.abs(values.get(student(speedParty, 2)) - 17.7777777778) < 0.001, "speed equipment accelerates AP");
+                check(Math.abs(values.get(student(speedParty, 2)) - (10.0 * 33 / 19)) < 0.001, "speed equipment accelerates AP");
                 for (String timer : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer")) { Field f = BattlePanel.class.getDeclaredField(timer); f.setAccessible(true); ((javax.swing.Timer) f.get(panel)).stop(); }
                 GameProgress ringProgress = new GameProgress(List.of(0, 1, 2));
                 equip(ringProgress, 2, "ring_of_power");

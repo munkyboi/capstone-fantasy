@@ -29,11 +29,15 @@ public final class CampPanel extends JPanel {
     private final BufferedImage scenePixels = new BufferedImage(480, 270, BufferedImage.TYPE_INT_ARGB);
     private double cameraOffset;
     private double cameraTarget;
+    private final java.util.Map<Integer, Integer> healingNumbers = new java.util.HashMap<>();
+    private long healingStartedNanos;
+    private final javax.swing.Timer healingAnimation = new javax.swing.Timer(33, event -> advanceHealing());
     private final javax.swing.Timer animation = new javax.swing.Timer(16, event -> advanceCamera());
     private final Consumer<GameProgress> nextBattle;
     private final Runnable menu;
     private final Consumer<GameProgress> save;
     private final Consumer<GameProgress> inventory;
+    private final java.util.Random regenerationRandom;
     private GameProgress progress;
     private int cursor;
     private boolean complete;
@@ -75,11 +79,17 @@ public final class CampPanel extends JPanel {
     /** Creates a camp screen with save and inventory actions. */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save,
             Consumer<GameProgress> inventory) {
+        this(nextBattle, menu, save, inventory, new java.util.Random());
+    }
+    /** Creates a camp with an injectable random source for regeneration. */
+    public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save,
+            Consumer<GameProgress> inventory, java.util.Random regenerationRandom) {
         this.nextBattle = nextBattle; this.menu = menu; this.save = save; this.inventory = inventory;
+        this.regenerationRandom = java.util.Objects.requireNonNull(regenerationRandom);
         setPreferredSize(new Dimension(WIDTH, HEIGHT)); setFocusable(true);
         addHierarchyListener(event -> {
             if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
-                if (!isShowing()) { animation.stop(); }
+                if (!isShowing()) { animation.stop(); healingAnimation.stop(); healingNumbers.clear(); }
             }
         });
         Keys.bind(this, "UP", "camp-up", () -> move(-1));
@@ -100,9 +110,23 @@ public final class CampPanel extends JPanel {
     public void open(GameProgress progress, boolean complete) { open(progress, complete, null); }
     /** Opens camp and optionally shows a reward message. */
     public void open(GameProgress progress, boolean complete, String reward) {
+        enter(progress, complete, reward, true);
+    }
+    /** Returns from a camp sub-screen without starting another camp round. */
+    public void resume(GameProgress progress, boolean complete) { enter(progress, complete, null, false); }
+    private void enter(GameProgress progress, boolean complete, String reward, boolean regenerate) {
+        int healed = 0;
+        healingAnimation.stop(); healingNumbers.clear();
+        if (regenerate) for (Student student : progress.getParty()) {
+            int studentHealed = 0;
+            for (int attempt = 0; attempt < 5; attempt++) studentHealed += game.model.HealthRegeneration.attempt(student, regenerationRandom);
+            if (studentHealed > 0) { healingNumbers.put(student.getId(), studentHealed); healed += studentHealed; }
+        }
+        if (!healingNumbers.isEmpty()) { healingStartedNanos = System.nanoTime(); healingAnimation.start(); }
         this.progress = progress; this.complete = complete; cursor = 0; allocating = false; exitPrompt = false;
         cameraTarget = focusOffset(campParty().get(cursor)); cameraOffset = cameraTarget; animation.stop();
         refresh(reward != null ? "Victory reward: " + reward + "! Press I to equip."
+                : healed > 0 ? "Camp regeneration restored " + healed + " HP."
                 : complete ? "The available encounters are complete." : "Choose a student to use a First-Aid Kit.");
     }
     /** Returns the current party state. */
@@ -124,6 +148,26 @@ public final class CampPanel extends JPanel {
         cameraOffset += (cameraTarget - cameraOffset) * 0.22;
         if (Math.abs(cameraTarget - cameraOffset) < 0.05) { cameraOffset = cameraTarget; animation.stop(); }
         repaint();
+    }
+    private void advanceHealing() {
+        if (System.nanoTime() - healingStartedNanos >= 2_000_000_000L) {
+            healingAnimation.stop(); healingNumbers.clear();
+        }
+        repaint();
+    }
+    private void drawHealingNumbers(Graphics2D g, int middleOffset) {
+        double elapsed = (System.nanoTime() - healingStartedNanos) / 1_000_000_000.0;
+        if (elapsed >= 2.0) { return; }
+        int alpha = (int) Math.round(255 * Math.min(1.0, (2.0 - elapsed) / 0.5));
+        g.setFont(ClassicUi.numbers(18));
+        for (var entry : healingNumbers.entrySet()) {
+            String text = "+" + entry.getValue() + " HP";
+            int x = POSITIONS[entry.getKey()] + middleOffset - g.getFontMetrics().stringWidth(text) / 2;
+            int y = 351 - (int) (elapsed * 18);
+            g.setColor(new Color(255, 255, 255, alpha));
+            for (int dx = -2; dx <= 2; dx += 2) for (int dy = -2; dy <= 2; dy += 2) g.drawString(text, x + dx, y + dy);
+            g.setColor(new Color(22, 153, 69, alpha)); g.drawString(text, x, y);
+        }
     }
     private void confirm() {
         if (progress == null) { return; }
@@ -215,6 +259,7 @@ public final class CampPanel extends JPanel {
                 for (Student student : campParty()) { drawCharacter(pixels, student, POSITIONS[student.getId()] + middleOffset); }
                 drawFire(pixels, middleOffset);
                 drawForeground(pixels, cameraOffset);
+                drawHealingNumbers(pixels, middleOffset);
             }
         } finally { pixels.dispose(); }
         output.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -277,8 +322,11 @@ public final class CampPanel extends JPanel {
             g.drawImage(image, left, 429 - height, width, height, null);
         }
     }
+    private static String formatStat(double value) {
+        return Long.toString((long) Math.ceil(value - 1e-9));
+    }
     private void drawStatus(Graphics2D g, Student student, int center) {
-        int x = Math.max(8, Math.min(WIDTH - 246, center - 123)), y = 57, w = 238, h = 154;
+        int x = Math.max(8, Math.min(WIDTH - 246, center - 123)), y = 57, w = 238, h = 174;
         g.setColor(new Color(8, 18, 54, 235)); g.fillRect(x, y, w, h);
         g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
         g.setFont(ClassicUi.numbers(15)); g.setColor(new Color(250, 218, 143));
@@ -293,7 +341,9 @@ public final class CampPanel extends JPanel {
         g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
         g.drawString("ATK " + student.getAttack(), x + 12, y + 131);
         g.drawString("DEF " + student.getDefense(), x + 87, y + 131);
-        g.drawString("SPD " + student.getSpeed(), x + 162, y + 131);
+        g.drawString("SPD " + formatStat(student.getEffectiveSpeed()), x + 162, y + 131);
+        g.drawString("AGI " + formatStat(student.getEffectiveAgility()), x + 12, y + 151);
+        g.drawString("ACC " + formatStat(student.getEffectiveAccuracy()), x + 87, y + 151);
     }
     private static void drawResourceBar(Graphics2D g, int x, int row, int width, String label,
             long value, long maximum, Color color) {
