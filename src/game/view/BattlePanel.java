@@ -24,6 +24,7 @@ public final class BattlePanel extends JPanel {
     private static final double AP_EPSILON = 0.0000001;
     private static final int EFFECT_MILLIS = 1600;
     private static final int SECOND_CAST_DELAY_MILLIS = 700;
+    private static final int LOOPER_HIT_DELAY_MILLIS = 300;
     private static final int AMBUSH_ALERT_MILLIS = 3000;
     private static final double AMBUSH_ENEMY_AP_FRACTION = 0.8;
     private static final int ANIMATION_FRAME_MILLIS = 50;
@@ -71,6 +72,7 @@ public final class BattlePanel extends JPanel {
     private final Timer ambushAlertTimer;
     private final Timer victoryTimer;
     private final Timer secondCastTimer;
+    private final Timer looperHitTimer;
     private long victoryStartedNanos;
     private boolean showAmbush;
     private boolean showEffects;
@@ -171,6 +173,7 @@ public final class BattlePanel extends JPanel {
         });
         secondCastTimer = new Timer(SECOND_CAST_DELAY_MILLIS, event -> completeSecondCast());
         secondCastTimer.setRepeats(false);
+        looperHitTimer = new Timer(LOOPER_HIT_DELAY_MILLIS, event -> advanceLooperHit());
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
@@ -206,9 +209,10 @@ public final class BattlePanel extends JPanel {
                 if (isShowing() && battle != null && !battle.isOver()) {
                     lastTickNanos = System.nanoTime();
                     apTimer.start();
-                    if (battle.hasPendingSecondCast()) secondCastTimer.restart();
+                    if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+                    else if (battle.hasPendingSecondCast()) secondCastTimer.restart();
                 }
-                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
+                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
             }
         });
     }
@@ -275,7 +279,7 @@ public final class BattlePanel extends JPanel {
         targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
         abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
-        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop();
+        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
         showAmbush = ambushed;
@@ -405,11 +409,15 @@ public final class BattlePanel extends JPanel {
     }
 
     private void performAction(Runnable action, boolean attacking) {
-        if (battle == null || battle.isOver() || battle.hasPendingSecondCast() || battle.getCurrent() == null
+        if (battle == null || battle.isOver() || battle.isActionAnimating() || battle.getCurrent() == null
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         Student actor = battle.getCurrent();
         action.run();
-        if (battle.hasPendingSecondCast()) {
+        if (battle.hasPendingLooperHits()) {
+            actionPoints.put(actor, 0.0);
+            showActionEffects(attacking ? actor : null);
+            looperHitTimer.restart();
+        } else if (battle.hasPendingSecondCast()) {
             actionPoints.put(actor, 0.0);
             showActionEffects(attacking ? actor : null);
             secondCastTimer.restart();
@@ -429,7 +437,22 @@ public final class BattlePanel extends JPanel {
         if (battle.completeSecondCast()) {
             announceAbility();
             showActionEffects(actor);
-            if (!battle.isOver()) selectReadyStudent();
+            if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+            else if (!battle.isOver()) selectReadyStudent();
+        }
+        if (battle.isOver()) apTimer.stop();
+        lastTickNanos = System.nanoTime();
+        refresh();
+    }
+
+    private void advanceLooperHit() {
+        if (battle == null || !battle.hasPendingLooperHits()) { looperHitTimer.stop(); return; }
+        battle.advanceLooperHit();
+        showActionEffects(null);
+        if (!battle.hasPendingLooperHits()) {
+            looperHitTimer.stop();
+            if (battle.hasPendingSecondCast() && !battle.isOver()) secondCastTimer.restart();
+            else if (!battle.isOver()) selectReadyStudent();
         }
         if (battle.isOver()) apTimer.stop();
         lastTickNanos = System.nanoTime();
@@ -437,7 +460,7 @@ public final class BattlePanel extends JPanel {
     }
 
     private void moveCursor(int direction) {
-        if (battle == null || battle.isOver() || battle.hasPendingSecondCast()) { return; }
+        if (battle == null || battle.isOver() || battle.isActionAnimating()) { return; }
         if (choosingItem) { itemChoice = Math.floorMod(itemChoice + direction, 2); refresh(); return; }
         if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
         commandIndex = Math.floorMod(commandIndex + direction, commands.length);
@@ -461,7 +484,7 @@ public final class BattlePanel extends JPanel {
     }
 
     private void beginTargeting(TargetAction action) {
-        if (battle == null || battle.isOver() || battle.hasPendingSecondCast() || battle.getCurrent() == null || targeting != TargetAction.NONE
+        if (battle == null || battle.isOver() || battle.isActionAnimating() || battle.getCurrent() == null || targeting != TargetAction.NONE
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         notice = null; targeting = action; targetIndex = 0;
         if (targetsParty()) {
@@ -491,7 +514,7 @@ public final class BattlePanel extends JPanel {
     }
 
     private void confirmCommand() {
-        if (battle == null || battle.hasPendingSecondCast()) { return; }
+        if (battle == null || battle.isActionAnimating()) { return; }
         if (battle.isOver()) { finish.doClick(); }
         else if (choosingItem) {
             choosingItem = false;
@@ -563,7 +586,7 @@ public final class BattlePanel extends JPanel {
         log.setCaretPosition(0);
         BattleControls.updateParty(battle, partyStatus);
         BattleControls.updateBars(battle, apBars, actionPoints);
-        boolean canChoose = !over && !battle.hasPendingSecondCast() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
+        boolean canChoose = !over && !battle.isActionAnimating() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
         attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
@@ -573,7 +596,7 @@ public final class BattlePanel extends JPanel {
 
     private void refreshStatus() {
         boolean over = battle.isOver();
-        String hint = battle.hasPendingSecondCast() ? "Second cast incoming..." : choosingItem ? "Up/Down Choose item  •  Enter Confirm  •  Esc Cancel" : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
+        String hint = battle.hasPendingLooperHits() ? "Looper Ring strikes..." : battle.hasPendingSecondCast() ? "Second cast incoming..." : choosingItem ? "Up/Down Choose item  •  Enter Confirm  •  Esc Cancel" : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
                 : targetsParty() ? "Left/Right Choose ally  •  Enter Confirm  •  Esc Cancel"
                 : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
         status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")

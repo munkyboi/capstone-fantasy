@@ -37,8 +37,8 @@ public final class MonsterLoot {
         return List.copyOf(drops);
     }
     private static void awardGoblinLoot(GameProgress progress, Random random, List<String> drops) {
-        if (random.nextDouble() >= 0.20) return;
-        int amount = random.nextDouble() < 0.05 ? 2 : 1;
+        if (random.nextDouble() >= 0.50) return;
+        int amount = random.nextDouble() < 0.25 ? 2 : 1;
         java.util.List<String> available = new ArrayList<>();
         for (CarbonMarket.Offer offer : CarbonMarket.offers()) {
             if ("first_aid_kit".equals(offer.id())) {

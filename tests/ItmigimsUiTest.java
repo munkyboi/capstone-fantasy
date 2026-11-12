@@ -24,6 +24,16 @@ public final class ItmigimsUiTest {
             check((int)field(panel,"victoryPetot")==0 && (int)field(panel,"victoryExperience")==0,"escaped enemy awards no currency or XP");
             check(p.getKits()==3 && p.getInventory().getWhiteFlowers()==1 && !p.getInventory().getEquipmentIds().contains("market_charm"),"escaped goblin awards no drops");
             for(String name:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","abilityAlertTimer")) ((javax.swing.Timer)field(panel,name)).stop();
+            for(boolean greed : new boolean[]{false,true}) {
+                GameSettings settings=new GameSettings();settings.setGreedIsGood(greed);
+                GameProgress win=new GameProgress(List.of(0,1,2,3));BattlePanel victory=new BattlePanel(()->{},x->{},settings,random);
+                victory.start(win,false,0);Battle winBattle=(Battle)field(victory,"battle");winBattle.getEnemies().get(0).takeDamage(999999);
+                Method refresh=BattlePanel.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(victory);
+                int expected=greed?50000:5000;
+                check(win.getPetot()==expected && (int)field(victory,"victoryPetot")==expected && (int)field(victory,"victoryExperience")==0,"defeated goblin awards Petot once and no XP");
+                refresh.invoke(victory);check(win.getPetot()==expected,"currency is not awarded twice");
+                for(String name:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","abilityAlertTimer")) ((javax.swing.Timer)field(victory,name)).stop();
+            }
         }catch(Exception ex){throw new RuntimeException(ex);}});
         System.out.println("Itmigims battle UI checks passed");
     }

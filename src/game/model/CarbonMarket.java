@@ -17,7 +17,7 @@ public final class CarbonMarket {
             new Offer("designer_leather_vest", "Designer Leather Vest", 2500, "+10% DEF, +20% SPD, +50 HP; 2x XP; +10% regen."),
             new Offer("ethereal_robe", "Ethereal Robe", 2500, "+15% DEF, +100 HP; +10% regen; damage empowers next attack."),
             new Offer("heroes_ring", "Hero’s Ring", 2500, "+10% HP/DEF/regen; -30% SPD; 50% auto defend."),
-            new Offer("looper_ring", "Looper Ring", 2500, "+10% ability cost; -20% DEF; +10% SPD; attacks leak SP; 50% chance of 5 extra hits."));
+            new Offer("looper_ring", "Looper Ring", 2500, "+10% ability cost; -20% DEF; +10% SPD; hits leak 5–10% max SP; 50% chance of 5 extra hits."));
     private CarbonMarket() { }
     /** Returns the items stocked at Carbon Market. */
     public static java.util.List<Offer> offers() { return OFFERS; }

@@ -124,7 +124,7 @@ public final class Enemy extends GameCharacter {
         this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         skillPoints = lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0;
-        petotDrop = lootGoblin ? 0 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
+        petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
         experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
         maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale));
         hp = maxHp;

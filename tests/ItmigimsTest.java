@@ -22,6 +22,7 @@ public final class ItmigimsTest {
         Enemy base=Enemy.itmigims(GameSettings.Difficulty.NORMAL,0,1);
         check(base.getMaxHp()==450 && base.getSp()==100 && base.getMaxSp()==100 && base.getAttack()==1
                 && base.getDefense()==18 && base.getAgility()==18 && base.getAccuracy()==18 && base.getSpeed()==15 && base.getActionThreshold()==30,"level-one stats");
+        check(base.getPetotDrop()==5000 && base.getExperienceDrop()==0,"goblin rewards 5000 Petot and no XP");
         check(base.getEscapeCountdown()==-1,"countdown hidden until hit");
         base.takeDamage(0);check(base.getEscapeCountdown()==-1,"zero damage does not start countdown");
         base.takeDamage(1);check(base.getEscapeCountdown()==13,"first damage starts countdown");
@@ -57,9 +58,9 @@ public final class ItmigimsTest {
         check(support.enemyAttack(healer)&&immune.getHp()==immuneHp&&healer.getSp()==healerSp,"sentinel does not waste a heal on Itmigims");
         check(MonsterLoot.award(List.of(goblin),p,new LootRolls(0,0)).isEmpty(),"escaped goblin awards no loot");
         Enemy defeated=Enemy.itmigims(GameSettings.Difficulty.NORMAL,0,1);defeated.takeDamage(99999);
-        LootRolls none=new LootRolls(.20);check(MonsterLoot.award(List.of(defeated),stage(0),none).isEmpty() && none.count==1,"20 percent boundary");
-        GameProgress one=stage(0);check(MonsterLoot.award(List.of(defeated),one,new LootRolls(.1999,.05)).equals(List.of("first_aid_kit")),"20 percent and 5 percent boundaries");
-        GameProgress two=stage(0);check(MonsterLoot.award(List.of(defeated),two,new LootRolls(0,.0499)).equals(List.of("first_aid_kit","market_charm")),"second item rolled separately");
+        LootRolls none=new LootRolls(.50);check(MonsterLoot.award(List.of(defeated),stage(0),none).isEmpty() && none.count==1,"50 percent boundary");
+        GameProgress one=stage(0);check(MonsterLoot.award(List.of(defeated),one,new LootRolls(.4999,.25)).equals(List.of("first_aid_kit")),"50 percent and 25 percent boundaries");
+        GameProgress two=stage(0);check(MonsterLoot.award(List.of(defeated),two,new LootRolls(0,.2499)).equals(List.of("first_aid_kit","market_charm")),"second item rolled separately");
         check(two.getKits()==4 && two.getInventory().getEquipmentIds().contains("market_charm"),"shop items credited");
         GameProgress all=stage(0);for(CarbonMarket.Offer o:CarbonMarket.offers())if(!o.id().equals("first_aid_kit"))all.getInventory().addEquipment(o.id());
         for(int i=0;i<10;i++)all.getInventory().addKit();

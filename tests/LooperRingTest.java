@@ -22,10 +22,11 @@ public final class LooperRingTest {
         Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
         check(b.selectStudent(s) && b.attack(e), "attack");
         long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null).count();
-        check(count==(chance < .5 ? 6 : 1), "proc boundary " + chance + ": " + count);
+        check(count==1 && b.hasPendingLooperHits()==(chance < .5), "proc boundary " + chance);
         if (chance < .5) {
             int bonus=(int)Math.ceil(s.getAttack()*(20+percent)/100.0);
-            check(b.getEffects().stream().skip(1).allMatch(x -> x.getAmount()==-bonus), "bonus damage range " + percent);
+            for(int i=0;i<5;i++) { check(b.advanceLooperHit(), "queued hit " + i); check(b.getEffects().stream().anyMatch(x -> x.getAmount()==-bonus), "bonus damage range " + percent); }
+            check(!b.hasPendingLooperHits(), "sequence finishes after five hits");
         }
     }
     public static void main(String[] args) throws Exception {
@@ -45,7 +46,8 @@ public final class LooperRingTest {
         GameProgress abilityParty=equipped(); Student attacker=abilityParty.getParty().get(0);
         Battle ability=new Battle(abilityParty,new Rolls(0,0)); Enemy target=ability.getEnemies().get(0);
         check(ability.selectStudent(attacker) && ability.ability(null,target),"ability with ring");
-        check(ability.getMessage().contains("Looper Ring activates!") && ability.getEffects().size()==6,"ring activates after damaging ability");
+        check(ability.getMessage().contains("Looper Ring activates!") && ability.hasPendingLooperHits(),"ring activates after damaging ability");
+        for(int i=0;i<5 && ability.hasPendingLooperHits();i++) check(ability.advanceLooperHit(),"ability extra hit");
         GameProgress healerParty=new GameProgress(List.of(Student.ANGEL)); Student healer=healerParty.getParty().get(0);
         healerParty.getInventory().addEquipment("looper_ring"); check(healerParty.equip(healer,Equipment.Slot.ACCESSORY,"looper_ring"),"healer equips");
         Battle healing=new Battle(healerParty,new Rolls(0,0));

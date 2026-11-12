@@ -29,6 +29,10 @@ public final class Battle {
     }
     private int turn = -1;
     private boolean pendingSecondCast;
+    private int pendingLooperHits;
+    private Student looperActor;
+    public boolean hasPendingLooperHits() { return pendingLooperHits > 0; }
+    public boolean isActionAnimating() { return pendingSecondCast || hasPendingLooperHits(); }
     public record AbilityAnnouncement(String caster, String skill) { }
     private AbilityAnnouncement lastAbility;
     public AbilityAnnouncement getLastAbility() { return lastAbility; }
@@ -243,7 +247,7 @@ public final class Battle {
      * @return whether the action was performed
      */
     public boolean attack(Enemy target) {
-        if (pendingSecondCast || isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
+        if (isActionAnimating() || isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
         effects.clear();
         Student actor = getCurrent();
         int attackPower = actor.getAttack() * (actor.consumeEtherealCharge() ? 4 : 1);
@@ -276,7 +280,7 @@ public final class Battle {
      * @return whether the action was performed
      */
     public boolean ability(Student ally, Enemy enemy) {
-        if (pendingSecondCast || isOver() || getCurrent() == null) { return false; }
+        if (isActionAnimating() || isOver() || getCurrent() == null) { return false; }
         Student actor = getCurrent();
         if (actor.getSp() < actor.getAbilitySpCost()) { return false; }
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS && !validAlly(ally)) { return false; }
@@ -330,23 +334,28 @@ public final class Battle {
     private String looperHits(Student actor, String message) {
         if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
                 || isVictory() || random.nextDouble() >= 0.50) return message;
-        StringBuilder text = new StringBuilder(message).append("\nLooper Ring activates!");
-        for (int i = 0; i < 5; i++) {
-            List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
-            if (living.isEmpty()) break;
-            Enemy target = living.get(random.nextInt(living.size()));
-            int damage = target.takeDamage((int) Math.ceil(actor.getAttack() * (20 + random.nextInt(21)) / 100.0));
-            effects.add(new BattleEffect(target, -damage));
-            applyManaLeak(true, target, damage);
-            text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
-        }
-        return text.toString();
+        pendingLooperHits = 5; looperActor = actor;
+        return message + "\nLooper Ring activates!";
+    }
+    /** Resolves one queued Looper Ring hit. The UI schedules these at 300 ms intervals. */
+    public boolean advanceLooperHit() {
+        if (!hasPendingLooperHits()) return false;
+        List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
+        if (living.isEmpty() || isOver()) { pendingLooperHits = 0; pendingSecondCast = false; finish(message); return false; }
+        Enemy target = living.get(random.nextInt(living.size()));
+        int damage = target.takeDamage((int) Math.ceil(looperActor.getAttack() * (20 + random.nextInt(21)) / 100.0));
+        effects.clear(); effects.add(new BattleEffect(target, -damage)); applyManaLeak(true, target, damage);
+        message = "Looper Ring hits " + target.getName() + " for " + damage + " damage." + defeated(target);
+        pendingLooperHits--;
+        if (isVictory()) { pendingLooperHits = 0; pendingSecondCast = false; finish(message); }
+        else if (pendingLooperHits == 0 && !pendingSecondCast) finish(message);
+        return true;
     }
     /** Whether the Great Sage Staff has a follow-up cast waiting to resolve. */
     public boolean hasPendingSecondCast() { return pendingSecondCast; }
     /** Applies the delayed follow-up without spending extra SP or an extra action. */
     public boolean completeSecondCast() {
-        if (!pendingSecondCast) return false;
+        if (!pendingSecondCast || hasPendingLooperHits()) return false;
         pendingSecondCast = false;
         if (isOver() || getCurrent() == null || !getCurrent().isAlive()) return false;
         lastAbility = new AbilityAnnouncement(getCurrent().getName(), "Arcane Burst");
@@ -358,7 +367,7 @@ public final class Battle {
      * @return whether an item was used
      */
     public boolean useKit(Student target) {
-        if (pendingSecondCast || isOver() || getCurrent() == null || !validAlly(target)) { return false; }
+        if (isActionAnimating() || isOver() || getCurrent() == null || !validAlly(target)) { return false; }
         int before = target.getHp();
         if (!progress.useKit(target)) { return false; }
         effects.clear();
@@ -370,7 +379,7 @@ public final class Battle {
     }
     /** Uses a White Flower on a fallen party member. */
     public boolean useWhiteFlower(Student target) {
-        if (pendingSecondCast || isOver() || getCurrent() == null || target == null || !party.contains(target) || target.isAlive()) return false;
+        if (isActionAnimating() || isOver() || getCurrent() == null || target == null || !party.contains(target) || target.isAlive()) return false;
         int restored = progress.getInventory().useWhiteFlower(target);
         if (restored <= 0) return false;
         effects.clear(); effects.add(new BattleEffect(target, restored));
@@ -384,7 +393,7 @@ public final class Battle {
     }
     /** Protects one ally until the defender is selected for their next action. */
     public boolean defend(Student target) {
-        if (pendingSecondCast || isOver() || !canDefend(target)) return false;
+        if (isActionAnimating() || isOver() || !canDefend(target)) return false;
         effects.clear(); Student actor = getCurrent(); actor.defend(); guards.put(actor, target);
         blockingStudent = null; protectedStudent = null;
         finish(actor.getName() + " protects " + target.getName() + ".");
@@ -604,7 +613,7 @@ public final class Battle {
     }
     private void applyManaLeak(boolean enabled, Enemy target, int damage) {
         if (!enabled || damage <= 0 || target.getSp() <= 0) return;
-        int amount = (int) Math.ceil(target.getSp() * (10 + random.nextInt(6)) / 100.0);
+        int amount = (int) Math.ceil(target.getMaxSp() * (5 + random.nextInt(6)) / 100.0);
         int drained = target.loseSp(amount);
         if (drained > 0) effects.add(BattleEffect.manaLeak(target, drained));
     }
@@ -615,6 +624,7 @@ public final class Battle {
     }
     private void finish(String action) {
         message = action;
+        if (hasPendingLooperHits()) return;
         if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); return; }
         turn = -1;
     }
