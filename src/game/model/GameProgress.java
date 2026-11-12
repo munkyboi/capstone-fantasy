@@ -119,7 +119,10 @@ public final class GameProgress implements java.io.Serializable {
         }
         if (itemId != null && !bag.removeEquipment(itemId)) { return false; }
         if (previous != null) { bag.addEquipment(previous); }
+        int oldMaxHp = student.getMaxHp();
+        int oldHp = student.getHp();
         student.setEquipmentId(slot, itemId);
+        student.adjustHpForEquipment(oldHp, oldMaxHp);
         if ("campus_vest".equals(previous)) { bag.setVestOwner(-1); }
         if ("campus_vest".equals(itemId)) { bag.setVestOwner(student.getId()); }
         return true;
@@ -243,9 +246,15 @@ public final class GameProgress implements java.io.Serializable {
     /** Reconstructs a saved party with progression settings per student. */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, int kits, int encounter) {
+        return restore(ids, hitPoints, experience, allocations, progression, null, kits, encounter);
+    }
+    /** Restores armor before HP validation for equipment that changes maximum HP. */
+    public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
+            List<int[]> allocations, List<int[]> progression, List<String> armorIds, int kits, int encounter) {
         if (ids == null || hitPoints == null || experience == null || ids.isEmpty() || ids.size() > 4 || hitPoints.size() != ids.size() || experience.size() != ids.size()
                 || (allocations != null && allocations.size() != ids.size())
                 || (progression != null && progression.size() != ids.size())
+                || (armorIds != null && armorIds.size() != ids.size())
                 || kits < 0 || kits > Inventory.MAX_KITS || encounter < 1 || encounter > 5) {
             throw new IllegalArgumentException("Invalid saved progress");
         }
@@ -263,6 +272,11 @@ public final class GameProgress implements java.io.Serializable {
                 int[] points = allocations.get(i);
                 if (points == null || points.length != 5) { throw new IllegalArgumentException("Invalid allocations"); }
                 student.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4]);
+            }
+            if (armorIds != null && armorIds.get(i) != null) {
+                Equipment armor = Equipment.fromId(armorIds.get(i));
+                if (armor.getSlot() != Equipment.Slot.ARMOR || !armor.canEquip(id)) throw new IllegalArgumentException("Invalid armor");
+                student.setEquipmentId(Equipment.Slot.ARMOR, armor.getId());
             }
             student.restoreHp(hitPoints.get(i));
         }

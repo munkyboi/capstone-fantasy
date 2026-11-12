@@ -18,6 +18,7 @@ public final class GameSettings {
     private XpBoost xpBoost = XpBoost.NORMAL;
     private Difficulty difficulty = Difficulty.NORMAL;
     private boolean ambushEnabled = true;
+    private boolean greedIsGood;
 
     /** Creates settings with the default action-point rate. */
     public GameSettings() { }
@@ -28,13 +29,15 @@ public final class GameSettings {
     public XpBoost getXpBoost() { return xpBoost; }
     public Difficulty getDifficulty() { return difficulty; }
     public boolean isAmbushEnabled() { return ambushEnabled; }
+    public boolean isGreedIsGood() { return greedIsGood; }
+    public void setGreedIsGood(boolean enabled) { greedIsGood = enabled; }
     public void setAmbushEnabled(boolean enabled) { ambushEnabled = enabled; }
     public void setXpBoost(XpBoost value) { xpBoost = java.util.Objects.requireNonNull(value); }
     public void setDifficulty(Difficulty value) { difficulty = java.util.Objects.requireNonNull(value); }
     /** Restores all user-facing options to their default values. */
     public void resetDefaults() {
         setBattleSpeed(BattleSpeed.NORMAL); growthFactor = 7; levelCap = 30; partySize = 3;
-        xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL; ambushEnabled = true;
+        xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL; ambushEnabled = true; greedIsGood = false;
     }
     /** Adjusts the elapsed-time AP rate without changing the rendering frame rate. */
     public void setBattleSpeed(BattleSpeed speed) {
@@ -60,6 +63,9 @@ public final class GameSettings {
             String ambush = props.getProperty("ambushEnabled", "true");
             if (!ambush.equals("true") && !ambush.equals("false")) throw new IllegalArgumentException("Invalid ambush setting");
             settings.setAmbushEnabled(Boolean.parseBoolean(ambush));
+            String greed = props.getProperty("greedIsGood", "false");
+            if (!greed.equals("true") && !greed.equals("false")) throw new IllegalArgumentException("Invalid greed setting");
+            settings.setGreedIsGood(Boolean.parseBoolean(greed));
             return settings;
         } catch (Exception invalid) { return new GameSettings(); }
     }
@@ -71,6 +77,7 @@ public final class GameSettings {
         props.setProperty("partySize", Integer.toString(partySize));
         props.setProperty("xpBoost", xpBoost.name()); props.setProperty("difficulty", difficulty.name());
         props.setProperty("ambushEnabled", Boolean.toString(ambushEnabled));
+        props.setProperty("greedIsGood", Boolean.toString(greedIsGood));
         var temp = java.nio.file.Files.createTempFile(parent, "settings-", ".tmp");
         try {
             try (var writer = java.nio.file.Files.newBufferedWriter(temp)) { props.store(writer, "Capstone Fantasy settings"); }

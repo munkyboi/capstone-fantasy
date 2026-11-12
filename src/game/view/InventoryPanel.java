@@ -269,17 +269,21 @@ public final class InventoryPanel extends JPanel {
             }
             String selected = options.get(choiceIndex);
             String old = current.getEquipmentId(slot());
-            int oldAttack = old == null ? 0 : Equipment.fromId(old).getAttackBonus();
-            int oldDefense = old == null ? 0 : Equipment.fromId(old).getDefenseBonus();
-            int newAttack = selected == null ? 0 : Equipment.fromId(selected).getAttackBonus();
-            int newDefense = selected == null ? 0 : Equipment.fromId(selected).getDefenseBonus();
-            choiceText.append(String.format("\nPreview: ATK %+d  DEF %+d\n", newAttack - oldAttack, newDefense - oldDefense));
+            int hpDelta = current.statWithEquipment(Student.Stat.HP, slot(), selected) - current.getMaxHp();
+            int attackDelta = current.statWithEquipment(Student.Stat.ATK, slot(), selected) - current.getAttack();
+            int defenseDelta = current.statWithEquipment(Student.Stat.DEF, slot(), selected) - current.getDefense();
+            int speedDelta = current.statWithEquipment(Student.Stat.SPD, slot(), selected) - current.getSpeed();
+            choiceText.append(String.format("\nPreview: HP %+d  ATK %+d  DEF %+d  SPD %+d\n", hpDelta, attackDelta, defenseDelta, speedDelta));
+            if (selected != null && !Equipment.fromId(selected).getSpecialDescription().isEmpty()) {
+                choiceText.append(Equipment.fromId(selected).getSpecialDescription()).append('\n');
+            }
         } else {
             String id = current.getEquipmentId(slot());
             choiceText.append(name(id)).append('\n');
             if (id != null) {
                 Equipment item = Equipment.fromId(id);
                 choiceText.append(String.format("ATK %+d   DEF %+d\n", item.getAttackBonus(), item.getDefenseBonus()));
+                if (!item.getSpecialDescription().isEmpty()) choiceText.append(item.getSpecialDescription()).append('\n');
             }
             choiceText.append("\nEnter to change this slot.");
         }

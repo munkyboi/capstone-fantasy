@@ -67,6 +67,7 @@ public class Student extends GameCharacter {
     private int skillPoints;
     private boolean skillPointsInitialized;
     private boolean defending;
+    private transient boolean etherealCharged;
     private boolean vestEquipped;
     private String weaponId;
     private String armorId;
@@ -94,17 +95,17 @@ public class Student extends GameCharacter {
      */ public int getHp() { return hp; }
     /** Returns maximum HP.
      * @return maximum HP
-    */ public int getMaxHp() { return maxHp + (getLevel() - 1) * 5 + allocatedHp * 5; }
+    */ public int getMaxHp() { return statWithEquipment(Stat.HP, null, null); }
     /** Returns attack value.
      * @return attack value
-     */ public int getAttack() { return getBaseAttack() + equipmentAttack(); }
+     */ public int getAttack() { return statWithEquipment(Stat.ATK, null, null); }
     /** Returns attack before equipment bonuses.
      * @return base attack
      */
     public int getBaseAttack() { return attack + (getLevel() - 1) * 2 + allocatedAttack; }
     /** Returns defense value.
      * @return defense value
-     */ public int getDefense() { return getBaseDefense() + equipmentDefense(); }
+     */ public int getDefense() { return statWithEquipment(Stat.DEF, null, null); }
     /** Returns defense before equipment bonuses.
      * @return base defense
      */
@@ -125,23 +126,52 @@ public class Student extends GameCharacter {
         switch (slot) { case WEAPON -> weaponId = item; case ARMOR -> { armorId = item; vestEquipped = "campus_vest".equals(item); }
             case ACCESSORY -> accessoryId = item; }
     }
-    private int equipmentAttack() {
-        int total = 0;
-        for (Equipment.Slot slot : Equipment.Slot.values()) {
-            String item = getEquipmentId(slot); if (item != null) { total += Equipment.fromId(item).getAttackBonus(); }
-        }
-        return total;
-    }
-    private int equipmentDefense() {
-        int total = armorId == null && vestEquipped ? Equipment.DEFENSE_BONUS : 0;
-        for (Equipment.Slot slot : Equipment.Slot.values()) {
-            String item = getEquipmentId(slot); if (item != null) { total += Equipment.fromId(item).getDefenseBonus(); }
-        }
-        return total;
-    }
     /** Returns speed value.
      * @return speed value
-    */ public int getSpeed() { return speed + allocatedSpeed + (getLevel() - 1) / 5; }
+    */ public int getSpeed() { return statWithEquipment(Stat.SPD, null, null); }
+    /** Previews a stat if a slot were changed; pass a null slot for current equipment. */
+    public int statWithEquipment(Stat stat, Equipment.Slot slotToReplace, String replacement) {
+        String weapon = slotToReplace == Equipment.Slot.WEAPON ? replacement : weaponId;
+        String armor = slotToReplace == Equipment.Slot.ARMOR ? replacement : armorId;
+        String accessory = slotToReplace == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        int value = switch (stat) {
+            case HP -> maxHp + (getLevel() - 1) * 5 + allocatedHp * 5;
+            case ATK -> getBaseAttack();
+            case DEF -> getBaseDefense() + (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped ? Equipment.DEFENSE_BONUS : 0);
+            case SPD -> speed + allocatedSpeed + (getLevel() - 1) / 5;
+            default -> throw new IllegalArgumentException("Unsupported equipment stat");
+        };
+        for (String id : new String[]{weapon, armor, accessory}) {
+            if (id != null) {
+                Equipment equipment = Equipment.fromId(id);
+                if (stat == Stat.ATK) value += equipment.getAttackBonus();
+                if (stat == Stat.DEF) value += equipment.getDefenseBonus();
+            }
+        }
+        double multiplier = stat != Stat.HP && "ring_of_power".equals(accessory) ? 1.5 : 1.0;
+        if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.0;
+        if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
+        if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
+        if (stat == Stat.DEF && ("blade_mail".equals(armor) || "ultra_instinct_shirt".equals(armor))) multiplier -= 0.2;
+        if (stat == Stat.DEF && "designer_leather_vest".equals(armor)) multiplier += 0.1;
+        if (stat == Stat.DEF && "ethereal_robe".equals(armor)) multiplier += 0.15;
+        if (stat == Stat.SPD && "blade_mail".equals(armor)) multiplier -= 0.2;
+        if (stat == Stat.SPD && "ultra_instinct_shirt".equals(armor)) multiplier += 0.1;
+        if (stat == Stat.SPD && "designer_leather_vest".equals(armor)) multiplier += 0.2;
+        if (stat == Stat.ATK && ("demon_hunter".equals(weapon) || "great_sage_staff".equals(weapon))) multiplier += 0.2;
+        if (stat == Stat.ATK && "giant_slayer_gloves".equals(weapon)) multiplier += 0.5;
+        if (stat == Stat.SPD && "light_saber".equals(weapon)) multiplier += 0.2;
+        if (stat == Stat.SPD && "demon_hunter".equals(weapon)) multiplier += 0.75;
+        if (stat == Stat.SPD && "giant_slayer_gloves".equals(weapon)) value += 15;
+        return (int) Math.round(value * multiplier);
+    }
+    /** Preserve health proportion when equipment changes maximum HP. */
+    void adjustHpForEquipment(int previousHp, int previousMax) {
+        if (previousHp <= 0) { hp = 0; return; }
+        hp = Math.max(1, Math.min(getMaxHp(), (int) Math.round((double) previousHp * getMaxHp() / previousMax)));
+    }
+    /** Speed before equipment, used to calculate equipment AP bonuses. */
+    public int getUnmodifiedSpeed() { return speed + allocatedSpeed + (getLevel() - 1) / 5; }
     /** Returns current level.
      * @return current level
     */ public int getLevel() {
@@ -221,7 +251,7 @@ public class Student extends GameCharacter {
     public boolean allocateStatPoint(Stat stat) {
         if (stat == null || getUnspentStatPoints() <= 0) { return false; }
         switch (stat) {
-            case HP -> { allocatedHp++; if (isAlive()) { hp += 5; } }
+            case HP -> { int previousMax = getMaxHp(); allocatedHp++; if (isAlive()) { hp += getMaxHp() - previousMax; } }
             case SP -> { int oldSp = getSp(); allocatedSp++; skillPoints = oldSp + 3; skillPointsInitialized = true; }
             case ATK -> allocatedAttack++;
             case DEF -> allocatedDefense++;
@@ -260,7 +290,10 @@ public class Student extends GameCharacter {
      * @return whether the student can act
      */ public boolean isAlive() { return hp > 0; }
     /** Protects against the next incoming attack. */ public void defend() { defending = true; }
-    /** Clears defense between encounters. */ public void clearDefense() { defending = false; }
+    /** Clears temporary combat state between encounters. */ public void clearDefense() { defending = false; etherealCharged = false; }
+    public boolean hasEtherealCharge() { return etherealCharged; }
+    void chargeEthereal() { etherealCharged = true; }
+    boolean consumeEtherealCharge() { boolean charged = etherealCharged; etherealCharged = false; return charged; }
     /** Restores validated HP from a saved game.
      * @param savedHp current HP to restore
      */

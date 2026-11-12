@@ -36,6 +36,7 @@ final class BattleScene extends JPanel {
         default int rewardPetot() { return 0; }
         default int rewardExperience() { return 0; }
         default java.util.List<String> leveledStudents() { return java.util.List.of(); }
+        default java.util.List<String> bonusXpStudents() { return java.util.List.of(); }
         boolean showEffects();
         boolean showAmbush();
         double victoryProgress();
@@ -151,7 +152,10 @@ final class BattleScene extends JPanel {
                         int slice = sprites.getWidth() / 4, id = student.getId();
                         int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
                         int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
+                        java.awt.Composite previousComposite = g.getComposite();
+                        if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.8f));
                         drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
+                        g.setComposite(previousComposite);
                     }
                     if (state.partyTarget(index)) {
                         int slice = sprites != null ? sprites.getWidth() / 4 : 0;
@@ -174,6 +178,14 @@ final class BattleScene extends JPanel {
                         int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
                         drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY,
                                 enemyWidth, enemyHeight);
+                        if (enemy.isBoss()) {
+                            int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
+                            int textX = x + slotWidth / 2 + 10;
+                            int textY = enemyFootY(h, slot) - drawnHeight - 5;
+                            g.setFont(ClassicUi.numbers(12));
+                            g.setColor(Color.BLACK); g.drawString(Integer.toString(enemy.getBossCountdown()), textX + 1, textY + 1);
+                            g.setColor(new Color(250, 218, 143)); g.drawString(Integer.toString(enemy.getBossCountdown()), textX, textY);
+                        }
                         if (state.enemyTarget(enemyIndex)) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
                             drawCursor(g, x + slotWidth / 2, enemyFootY(h, slot) - drawnHeight - 3);
@@ -238,7 +250,8 @@ final class BattleScene extends JPanel {
             int width = 360, x = (960 - width) / 2;
             int y = Math.max(18, hudHeight() / 5) + 52;
             int height = 43 + (items.size() + (state.rewardPetot() > 0 ? 1 : 0)
-                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)) * 24;
+                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
+                    + (state.bonusXpStudents().isEmpty() ? 0 : 1)) * 24;
             g.setColor(new Color(12, 25, 48, 224));
             g.fillRect(x, y, width, height);
             g.setColor(new Color(247, 204, 114));
@@ -252,6 +265,11 @@ final class BattleScene extends JPanel {
                 int cy = y + 48;
                 g.setColor(new Color(175, 133, 245)); g.fillPolygon(new int[] {x + 27, x + 35, x + 27, x + 19}, new int[] {cy - 10, cy - 2, cy + 6, cy - 2}, 4);
                 g.setColor(Color.WHITE); g.drawString(state.rewardExperience() + " XP each", x + 50, cy + 4);
+                offset++;
+            }
+            if (!state.bonusXpStudents().isEmpty()) {
+                int cy = y + 48 + offset * 24;
+                g.setColor(Color.WHITE); g.drawString("Bonus XP: " + String.join(", ", state.bonusXpStudents()), x + 16, cy + 4);
                 offset++;
             }
             if (state.rewardPetot() > 0) {
@@ -314,10 +332,12 @@ final class BattleScene extends JPanel {
         private void drawEffects(Graphics2D g, int w, int h) {
             Battle battle = state.battle();
             Map<Object, int[]> changes = new java.util.LinkedHashMap<>();
+            Map<Object, java.util.List<String>> labels = new java.util.LinkedHashMap<>();
             for (BattleEffect effect : battle.getEffects()) {
                 Object target = effect.getStudent() != null ? effect.getStudent() : effect.getEnemy();
                 int[] amounts = changes.computeIfAbsent(target, ignored -> new int[2]);
-                amounts[effect.getAmount() > 0 ? 0 : 1] += effect.getAmount();
+                if (effect.getLabel() != null) labels.computeIfAbsent(target, ignored -> new java.util.ArrayList<>()).add(effect.getLabel());
+                else amounts[effect.getAmount() > 0 ? 0 : 1] += effect.getAmount();
             }
             int slotWidth = Math.max(27, w / 7);
             int spriteHeight = Math.max(28, h * 3 / 8);
@@ -360,6 +380,15 @@ final class BattleScene extends JPanel {
                     }
                     g.setColor(amount > 0 ? new Color(92, 255, 133, alpha) : new Color(255, 100, 100, alpha));
                     g.drawString(text, px, py);
+                    py = Math.max(20, py - 22);
+                }
+                for (String label : labels.getOrDefault(entry.getKey(), java.util.List.of())) {
+                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(label) / 2;
+                    g.setColor(new Color(0, 0, 0, alpha)); g.drawString(label, px + 2, py + 2);
+                    g.setColor(new Color(255, 255, 255, alpha));
+                    for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
+                        if (dx != 0 || dy != 0) g.drawString(label, px + dx, py + dy);
+                    g.setColor(new Color(250, 218, 143, alpha)); g.drawString(label, px, py);
                     py = Math.max(20, py - 22);
                 }
             }
