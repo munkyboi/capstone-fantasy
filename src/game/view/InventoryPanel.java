@@ -261,6 +261,7 @@ public final class InventoryPanel extends JPanel {
             styleRow(slots[i], i == slotIndex);
         }
         StringBuilder bag = new StringBuilder("First-Aid Kits  × ").append(progress.getKits())
+                .append("\nWhite Flowers   × ").append(progress.getInventory().getWhiteFlowers())
                 .append("\nCampus Pass  [key]\n\nGEAR IN BAG\n");
         List<String> items = progress.getInventory().getEquipmentIds();
         if (items.isEmpty()) { bag.append("  (none)\n"); }

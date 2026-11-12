@@ -8,6 +8,8 @@ public final class Inventory implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
     /** Maximum number of first-aid kits in a save. */
     public static final int MAX_KITS = 9;
+    public static final int MAX_WHITE_FLOWERS = 9;
+    private int whiteFlowers;
     private int kits;
     private int vestOwner = -1;
     private ArrayList<String> equipment;
@@ -38,7 +40,7 @@ public final class Inventory implements java.io.Serializable {
      */
     public List<Item> getItems() {
         upgradeLegacy();
-        List<Item> items = new ArrayList<>(); items.add(new FirstAidKit()); items.add(new KeyItem());
+        List<Item> items = new ArrayList<>(); items.add(new FirstAidKit()); items.add(new WhiteFlower()); items.add(new KeyItem());
         for (String id : equipment) { items.add(Equipment.fromId(id)); }
         return List.copyOf(items);
     }
@@ -50,6 +52,18 @@ public final class Inventory implements java.io.Serializable {
      * @return kit count
      */
     public int getKits() { return kits; }
+    public int getWhiteFlowers() { return whiteFlowers; }
+    public boolean addWhiteFlower() { if (whiteFlowers >= MAX_WHITE_FLOWERS) return false; whiteFlowers++; return true; }
+    public void restoreWhiteFlowers(int count) {
+        if (count < 0 || count > MAX_WHITE_FLOWERS) throw new IllegalArgumentException("Invalid White Flower count");
+        whiteFlowers = count;
+    }
+    public int useWhiteFlower(Student student) {
+        if (whiteFlowers == 0 || student == null || student.isAlive()) return 0;
+        int restored = student.heal(Math.max(1, (int) ((3L * student.getMaxHp() + 9) / 10)));
+        if (restored > 0) whiteFlowers--;
+        return restored;
+    }
     /** Returns the vest owner's student ID, or -1 if unequipped.
      * @return owner ID
      */

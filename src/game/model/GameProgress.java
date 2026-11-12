@@ -10,6 +10,7 @@ public final class GameProgress implements java.io.Serializable {
     public static final int FINAL_BOSS_ENCOUNTER = 4;
     private static final long serialVersionUID = 1L;
     private static final int STARTING_KITS = 3;
+    private static final int STARTING_WHITE_FLOWERS = 1;
 
     private final List<Student> party = new ArrayList<>();
     private List<Student> reserve = new ArrayList<>();
@@ -27,6 +28,7 @@ public final class GameProgress implements java.io.Serializable {
         if (ids == null || ids.isEmpty() || ids.size() > 4 || ids.stream().distinct().count() != ids.size()) {
             throw new IllegalArgumentException("Choose one to four different students");
         }
+        inventory.restoreWhiteFlowers(STARTING_WHITE_FLOWERS);
         for (int id : ids) {
             Student student = Student.create(id);
             student.setEquipmentId(Equipment.Slot.WEAPON, Equipment.starterWeapon(id));

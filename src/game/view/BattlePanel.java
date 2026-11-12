@@ -47,9 +47,14 @@ public final class BattlePanel extends JPanel {
     private GameProgress progress;
     private int commandIndex;
     private final JButton[] commands = {attack, ability, item, defend};
-    private enum TargetAction { NONE, ATTACK, ABILITY, ITEM, DEFEND }
+    private enum TargetAction { NONE, ATTACK, ABILITY, ITEM, WHITE_FLOWER, DEFEND }
     private TargetAction targeting = TargetAction.NONE;
     private int targetIndex;
+    private boolean choosingItem;
+    private int itemChoice;
+    private Battle.AbilityAnnouncement abilityAnnouncement;
+    private final java.util.ArrayDeque<Battle.AbilityAnnouncement> abilityAlerts = new java.util.ArrayDeque<>();
+    private final Timer abilityAlertTimer;
     private String notice;
     private List<String> victoryRewardItems = List.of();
     private boolean rewardRecorded;
@@ -124,6 +129,11 @@ public final class BattlePanel extends JPanel {
             @Override public List<String> bonusXpStudents() { return bonusXpStudents; }
             @Override public boolean showEffects() { return showEffects; }
             @Override public boolean showAmbush() { return showAmbush; }
+            @Override public Battle.AbilityAnnouncement abilityAnnouncement() { return abilityAnnouncement; }
+            @Override public boolean choosingItem() { return choosingItem; }
+            @Override public int itemChoice() { return itemChoice; }
+            @Override public int kits() { return battle == null ? 0 : battle.getKits(); }
+            @Override public int flowers() { return progress == null ? 0 : progress.getInventory().getWhiteFlowers(); }
             @Override public double victoryProgress() {
                 return victoryStartedNanos == 0 ? 1.0 : Math.min(1.0,
                         (System.nanoTime() - victoryStartedNanos) / (VICTORY_ANIMATION_MILLIS * 1_000_000.0));
@@ -136,6 +146,12 @@ public final class BattlePanel extends JPanel {
                 return showEffects ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
             }
         });
+        abilityAlertTimer = new Timer(2000, event -> {
+            abilityAnnouncement = abilityAlerts.pollFirst();
+            if (abilityAnnouncement != null) ((Timer) event.getSource()).restart();
+            scene.repaint();
+        });
+        abilityAlertTimer.setRepeats(false);
         victoryTimer = new Timer(ANIMATION_FRAME_MILLIS, event -> {
             if ((System.nanoTime() - victoryStartedNanos) / 1_000_000.0 >= VICTORY_ANIMATION_MILLIS) {
                 ((Timer) event.getSource()).stop();
@@ -168,10 +184,12 @@ public final class BattlePanel extends JPanel {
             beginTargeting(TargetAction.ABILITY);
         });
         item.addActionListener(e -> {
-            if (battle.getKits() == 0) {
-                notice = "No First-Aid Kits remain."; refresh(); return;
-            }
-            beginTargeting(TargetAction.ITEM);
+            int kits = battle.getKits(), flowers = progress.getInventory().getWhiteFlowers();
+            if (kits == 0 && flowers == 0) { notice = "No usable items remain."; refresh(); return; }
+            boolean fallen = battle.getParty().stream().anyMatch(student -> !student.isAlive());
+            if (flowers == 0 || (kits > 0 && !fallen)) { beginTargeting(TargetAction.ITEM); return; }
+            if (kits == 0) { beginFlowerTargeting(); return; }
+            choosingItem = true; itemChoice = 0; notice = null; refresh();
         });
         finish.addActionListener(e -> { if (battle.isVictory()) { this.onVictory.accept(progress); } else { this.returnToMenu.run(); } });
         Keys.bind(this, "UP", "battle-up", () -> moveCursor(-1));
@@ -190,7 +208,7 @@ public final class BattlePanel extends JPanel {
                     apTimer.start();
                     if (battle.hasPendingSecondCast()) secondCastTimer.restart();
                 }
-                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); }
+                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
             }
         });
     }
@@ -206,6 +224,18 @@ public final class BattlePanel extends JPanel {
         }
     }
 
+    private void announceAbility() {
+        Battle.AbilityAnnouncement latest = battle.getLastAbility();
+        if (latest == null) return;
+        if (abilityAnnouncement != null) { abilityAlerts.addLast(latest); return; }
+        abilityAnnouncement = latest; abilityAlertTimer.restart(); scene.repaint();
+    }
+    private void beginFlowerTargeting() {
+        if (battle.getParty().stream().noneMatch(student -> !student.isAlive())) {
+            notice = "No fallen ally needs a White Flower."; refresh(); return;
+        }
+        beginTargeting(TargetAction.WHITE_FLOWER);
+    }
     private void scrollLog(int direction) {
         javax.swing.JScrollBar bar = logScroll.getVerticalScrollBar();
         bar.setValue(bar.getValue() + direction * bar.getBlockIncrement(direction));
@@ -238,7 +268,8 @@ public final class BattlePanel extends JPanel {
         ambushed = ambushed && settings.allowsAmbush(stage);
         this.progress = progress; encounterStage = stage;
         battle = new Battle(progress, battleRandom, ambushed, stage, settings.getDifficulty()); commandIndex = 0;
-        targeting = TargetAction.NONE; targetIndex = 0; notice = null;
+        targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
+        abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop();
         victoryStartedNanos = 0;
@@ -301,6 +332,7 @@ public final class BattlePanel extends JPanel {
                         }
                         if (!refilled.isEmpty()) battle.regenerate(refilled, true);
                         showActionEffects(enemy);
+                        announceAbility();
                         enemyActed = true;
                         changed = true;
                     }
@@ -380,6 +412,7 @@ public final class BattlePanel extends JPanel {
         if (battle == null || !battle.hasPendingSecondCast()) return;
         Student actor = battle.getCurrent();
         if (battle.completeSecondCast()) {
+            announceAbility();
             showActionEffects(actor);
             if (!battle.isOver()) selectReadyStudent();
         }
@@ -390,6 +423,7 @@ public final class BattlePanel extends JPanel {
 
     private void moveCursor(int direction) {
         if (battle == null || battle.isOver() || battle.hasPendingSecondCast()) { return; }
+        if (choosingItem) { itemChoice = Math.floorMod(itemChoice + direction, 2); refresh(); return; }
         if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
         commandIndex = Math.floorMod(commandIndex + direction, commands.length);
         updateCommandDisplay();
@@ -403,7 +437,7 @@ public final class BattlePanel extends JPanel {
     }
 
     private boolean targetsParty() {
-        return targeting == TargetAction.ITEM || targeting == TargetAction.DEFEND
+        return targeting == TargetAction.ITEM || targeting == TargetAction.WHITE_FLOWER || targeting == TargetAction.DEFEND
                 || (targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS);
     }
 
@@ -424,7 +458,8 @@ public final class BattlePanel extends JPanel {
     }
 
     private boolean validPartyTarget(Student target) {
-        return targeting == TargetAction.DEFEND ? battle.canDefend(target) : target.isAlive();
+        return targeting == TargetAction.DEFEND ? battle.canDefend(target)
+                : targeting == TargetAction.WHITE_FLOWER ? !target.isAlive() : target.isAlive();
     }
 
     private void moveTarget(int direction) {
@@ -436,12 +471,17 @@ public final class BattlePanel extends JPanel {
     }
 
     private void cancelTargeting() {
-        if (targeting != TargetAction.NONE) { targeting = TargetAction.NONE; notice = null; refresh(); }
+        if (choosingItem) { choosingItem = false; refresh(); }
+        else if (targeting != TargetAction.NONE) { targeting = TargetAction.NONE; notice = null; refresh(); }
     }
 
     private void confirmCommand() {
         if (battle == null || battle.hasPendingSecondCast()) { return; }
         if (battle.isOver()) { finish.doClick(); }
+        else if (choosingItem) {
+            choosingItem = false;
+            if (itemChoice == 0) beginTargeting(TargetAction.ITEM); else beginFlowerTargeting();
+        }
         else if (targeting != TargetAction.NONE) {
             Student target = targetsParty() ? battle.getParty().get(targetIndex) : null;
             Enemy enemy = !targetsParty() ? battle.getEnemies().get(targetIndex) : null;
@@ -452,8 +492,11 @@ public final class BattlePanel extends JPanel {
                     || (action == TargetAction.ABILITY && battle.getCurrent().getAbilityType() != Student.AbilityType.HEALING_KISS);
             performAction(() -> {
                 if (action == TargetAction.ATTACK) { battle.attack(enemy); }
-                else if (action == TargetAction.ABILITY) { battle.ability(target, enemy); }
+                else if (action == TargetAction.ABILITY) { if (battle.ability(target, enemy)) announceAbility(); }
                 else if (action == TargetAction.DEFEND) { battle.defend(target); }
+                else if (action == TargetAction.WHITE_FLOWER) {
+                    if (battle.useWhiteFlower(target)) actionPoints.put(target, 0.0);
+                }
                 else if (!battle.useKit(target)) { notice = target.getName() + " already has full HP."; }
             }, attacking);
         }
@@ -498,12 +541,13 @@ public final class BattlePanel extends JPanel {
                 ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
                 : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
                 ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
-        String message = targetMessage != null ? targetMessage : notice != null ? notice : battle.getMessage();
+        String message = choosingItem ? "Choose a consumable." : targetMessage != null ? targetMessage
+                : notice != null ? notice : battle.getMessage();
         log.setText(message);
         log.setCaretPosition(0);
         BattleControls.updateParty(battle, partyStatus);
         BattleControls.updateBars(battle, apBars, actionPoints);
-        boolean canChoose = !over && !battle.hasPendingSecondCast() && targeting == TargetAction.NONE && battle.getCurrent() != null;
+        boolean canChoose = !over && !battle.hasPendingSecondCast() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
         attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
@@ -513,12 +557,12 @@ public final class BattlePanel extends JPanel {
 
     private void refreshStatus() {
         boolean over = battle.isOver();
-        String hint = battle.hasPendingSecondCast() ? "Second cast incoming..." : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
+        String hint = battle.hasPendingSecondCast() ? "Second cast incoming..." : choosingItem ? "Up/Down Choose item  •  Enter Confirm  •  Esc Cancel" : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
                 : targetsParty() ? "Left/Right Choose ally  •  Enter Confirm  •  Esc Cancel"
                 : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
         status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")
                 : (battle.getCurrent() == null ? "Waiting for AP" : battle.getCurrent().getName() + " is ready")
-                + "  |  First-Aid Kits: " + battle.getKits() + "  |  " + hint);
+                + "  |  Kits: " + battle.getKits() + "  Flowers: " + progress.getInventory().getWhiteFlowers() + "  |  " + hint);
     }
 
 

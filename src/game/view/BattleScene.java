@@ -39,6 +39,11 @@ final class BattleScene extends JPanel {
         default java.util.List<String> bonusXpStudents() { return java.util.List.of(); }
         boolean showEffects();
         boolean showAmbush();
+        default Battle.AbilityAnnouncement abilityAnnouncement() { return null; }
+        default boolean choosingItem() { return false; }
+        default int itemChoice() { return 0; }
+        default int kits() { return 0; }
+        default int flowers() { return 0; }
         double victoryProgress();
         double enemyPoints(Enemy enemy);
         Object attackingSprite();
@@ -245,6 +250,8 @@ final class BattleScene extends JPanel {
                             enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
+                if (state.abilityAnnouncement() != null) drawAbilityAlert(output, state.abilityAnnouncement());
+                if (state.choosingItem()) drawItemPicker(output);
                 if (battle.isOver()) {
                     drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!");
                     if (battle.isVictory()) { drawRewards(output); }
@@ -298,7 +305,8 @@ final class BattleScene extends JPanel {
                 int rowY = y + 36 + (i + offset) * 24;
                 drawRewardIcon(g, id, x + 16, rowY, 24);
                 g.setColor(Color.WHITE);
-                String name = "first_aid_kit".equals(id) ? "First-Aid Kit" : Equipment.fromId(id).getName();
+                String name = "first_aid_kit".equals(id) ? "First-Aid Kit"
+                        : "white_flower".equals(id) ? "White Flower" : Equipment.fromId(id).getName();
                 g.drawString(counts.get(id) + "x " + name, x + 50, rowY + 18);
             }
             if (!state.leveledStudents().isEmpty()) {
@@ -313,6 +321,11 @@ final class BattleScene extends JPanel {
                 g.setColor(new Color(242, 239, 220)); g.fillRect(x + 3, y + 5, size - 6, size - 10);
                 g.setColor(new Color(202, 57, 65)); g.fillRect(x + size / 2 - 2, y + 7, 4, size - 14);
                 g.fillRect(x + 7, y + size / 2 - 2, size - 14, 4); return;
+            }
+            if ("white_flower".equals(id)) {
+                g.setColor(new Color(67, 142, 83)); g.fillRect(x + 11, y + 12, 3, 10); g.fillRect(x + 7, y + 16, 5, 3);
+                g.setColor(new Color(245, 245, 235)); g.fillRect(x + 9, y + 2, 6, 13); g.fillRect(x + 5, y + 6, 14, 5);
+                g.setColor(new Color(246, 207, 78)); g.fillRect(x + 10, y + 7, 4, 4); return;
             }
             if ("training_uniform".equals(id) && uniformIcon != null) {
                 drawFit(g, uniformIcon, 0, uniformIcon.getWidth(), x, y, size, size);
@@ -329,6 +342,32 @@ final class BattleScene extends JPanel {
             if (icon != null) { drawFit(g, icon, 0, icon.getWidth(), x, y, size, size); }
         }
 
+        private void drawItemPicker(Graphics2D g) {
+            int width = 320, height = 105, x = (960 - width) / 2, y = Math.max(60, hudHeight() / 4);
+            g.setColor(new Color(12, 25, 48, 240)); g.fillRect(x, y, width, height);
+            g.setColor(new Color(247, 204, 114)); g.drawRect(x, y, width - 1, height - 1); g.drawRect(x + 3, y + 3, width - 7, height - 7);
+            g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143)); g.drawString("Choose an item", x + 16, y + 24);
+            String[] labels = {"First-Aid Kit  × " + state.kits(), "White Flower   × " + state.flowers()};
+            for (int i = 0; i < labels.length; i++) {
+                int row = y + 50 + i * 28;
+                g.setColor(i == state.itemChoice() ? new Color(250, 218, 143) : Color.WHITE);
+                if (i == state.itemChoice()) g.drawImage(PixelPointer.ART, x + 12, row - 16, 25, 19, null);
+                g.drawString(labels[i], x + 42, row);
+            }
+        }
+        private void drawAbilityAlert(Graphics2D g, Battle.AbilityAnnouncement announcement) {
+            java.awt.Font plain = ClassicUi.body(17), bold = plain.deriveFont(java.awt.Font.BOLD);
+            g.setFont(bold); int casterWidth = g.getFontMetrics().stringWidth(announcement.caster());
+            int skillWidth = g.getFontMetrics().stringWidth(announcement.skill());
+            g.setFont(plain); int usedWidth = g.getFontMetrics().stringWidth(" used ");
+            int width = casterWidth + usedWidth + skillWidth + 28;
+            int x = (960 - width) / 2, y = Math.max(8, hudHeight() / 5 - 50);
+            g.setColor(new Color(12, 25, 48, 224)); g.fillRect(x, y, width, 40);
+            g.setColor(new Color(247, 204, 114)); g.drawRect(x, y, width - 1, 39); g.drawRect(x + 3, y + 3, width - 7, 33);
+            g.setColor(Color.WHITE); g.setFont(bold); g.drawString(announcement.caster(), x + 14, y + 26);
+            g.setFont(plain); g.drawString(" used ", x + 14 + casterWidth, y + 26);
+            g.setFont(bold); g.drawString(announcement.skill(), x + 14 + casterWidth + usedWidth, y + 26);
+        }
         private void drawBattleAlert(Graphics2D g, String text) {
             g.setFont(ClassicUi.body(17));
             int width = g.getFontMetrics().stringWidth(text) + 28;

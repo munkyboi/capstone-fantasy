@@ -68,12 +68,13 @@ public final class SaveStore {
             temp = Files.createTempFile(directory, "save-", ".tmp");
             if (format == Format.TEXT) {
                 Properties properties = new Properties();
-                properties.setProperty("version", "8");
+                properties.setProperty("version", "9");
                 properties.setProperty("party.count", Integer.toString(checked.getRoster().size()));
                 properties.setProperty("party.active", checked.getParty().stream().map(s -> Integer.toString(s.getId())).collect(java.util.stream.Collectors.joining(",")));
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
                 properties.setProperty("inventory.petot", Integer.toString(checked.getPetot()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
+                properties.setProperty("inventory.whiteFlowers", Integer.toString(checked.getInventory().getWhiteFlowers()));
                 properties.setProperty("inventory.campusPass", "true");
                 properties.setProperty("inventory.equipment", String.join(",", checked.getInventory().getEquipmentIds()));
                 for (int stage = 0; stage < 5; stage++) {
@@ -100,7 +101,7 @@ public final class SaveStore {
                     }
                 }
                 try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
-                    properties.store(writer, "Capstone Fantasy camp save v8");
+                    properties.store(writer, "Capstone Fantasy camp save v9");
                 }
             } else {
                 try (ObjectOutputStream stream = new ObjectOutputStream(Files.newOutputStream(temp))) {
@@ -178,7 +179,7 @@ public final class SaveStore {
                 int newMax = expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, armor.isEmpty() ? null : armor);
                 int savedMax = Integer.parseInt(properties.getProperty(prefix + "maxHp"));
                 int oldMax = legacyMaxHp(expected, armor);
-                boolean oldStats = !"8".equals(version) && savedMax == oldMax;
+                boolean oldStats = !currentStats(version) && savedMax == oldMax;
                 int savedHp = Integer.parseInt(properties.getProperty(prefix + "hp"));
                 if (!expected.getName().equals(properties.getProperty(prefix + "name"))
                         || (savedMax != newMax && !oldStats) || savedHp < 0 || savedHp > savedMax
@@ -186,13 +187,14 @@ public final class SaveStore {
                     throw new IOException("Invalid student information");
                 }
                 ids.add(id); hp.add(oldStats ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
-                oldMaxSps.add(!"8".equals(version) ? legacyMaxSp(expected) : expected.getMaxSp());
+                oldMaxSps.add(!currentStats(version) ? legacyMaxSp(expected) : expected.getMaxSp());
             }
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
                 throw new IOException("Invalid key item");
             }
             GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
+            restored.getInventory().restoreWhiteFlowers("9".equals(version) ? Integer.parseInt(properties.getProperty("inventory.whiteFlowers")) : 0);
             if ("3".equals(version) || "4".equals(version) || "5".equals(version) || "6".equals(version) || modern(version)) {
                 for (int i = 1; i <= count; i++) {
                     int id = Integer.parseInt(properties.getProperty("student." + i + ".id"));
@@ -200,7 +202,7 @@ public final class SaveStore {
                     Student student = restored.getParty().stream().filter(member -> member.getId() == id).findFirst().orElseThrow();
                     int oldMax = oldMaxSps.get(i - 1);
                     if (sp < 0 || sp > oldMax) throw new IOException("Invalid SP");
-                    student.restoreSp("8".equals(version) ? sp : scaleResource(sp, oldMax, student.getMaxSp()));
+                    student.restoreSp(currentStats(version) ? sp : scaleResource(sp, oldMax, student.getMaxSp()));
                 }
             }
             if ("4".equals(version) || "5".equals(version) || "6".equals(version) || modern(version)) {
@@ -245,7 +247,8 @@ public final class SaveStore {
             throw new SaveException("This save is damaged or cannot be read.", ex);
         }
     }
-    private static boolean modern(String version) { return "7".equals(version) || "8".equals(version); }
+    private static boolean currentStats(String version) { return "8".equals(version) || "9".equals(version); }
+    private static boolean modern(String version) { return "7".equals(version) || "8".equals(version) || "9".equals(version); }
     private static int scaleResource(int value, int oldMax, int newMax) {
         return value == 0 ? 0 : Math.max(1, Math.min(newMax, (int) Math.round((double) value * newMax / oldMax)));
     }
@@ -306,6 +309,7 @@ public final class SaveStore {
         }
         GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, progress.getKits(), progress.getEncounter());
         restored.restorePetot(progress.getPetot());
+        restored.getInventory().restoreWhiteFlowers(inventory.getWhiteFlowers());
         List<List<String>> slots = new ArrayList<>();
         for (Student student : restored.getParty()) {
             slots.add(slotsByStudent.get(student.getId()));

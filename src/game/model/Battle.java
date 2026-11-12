@@ -29,6 +29,9 @@ public final class Battle {
     }
     private int turn = -1;
     private boolean pendingSecondCast;
+    public record AbilityAnnouncement(String caster, String skill) { }
+    private AbilityAnnouncement lastAbility;
+    public AbilityAnnouncement getLastAbility() { return lastAbility; }
     private String message;
 
     /** Creates an encounter for exactly three different students.
@@ -235,6 +238,11 @@ public final class Battle {
         if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
                 && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && !validEnemy(enemy)) { return false; }
         if (!actor.spendAbilitySp()) { return false; }
+        String skillName = switch (actor.getAbilityType()) {
+            case ARCANE_BURST -> "Arcane Burst"; case CADET_STRIKE -> "Cadet Strike";
+            case TWIN_SHOT -> "Twin Shot"; case HEALING_KISS -> "Healing Kiss";
+        };
+        lastAbility = new AbilityAnnouncement(actor.getName(), skillName);
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
             if (!validAlly(ally)) { return false; }
             effects.clear();
@@ -279,6 +287,7 @@ public final class Battle {
         if (!pendingSecondCast) return false;
         pendingSecondCast = false;
         if (isOver() || getCurrent() == null || !getCurrent().isAlive()) return false;
+        lastAbility = new AbilityAnnouncement(getCurrent().getName(), "Arcane Burst");
         finish(arcaneBurst(getCurrent(), "The staff casts Arcane Burst again!"));
         return true;
     }
@@ -295,6 +304,15 @@ public final class Battle {
         effects.add(new BattleEffect(target, healed));
         finish(getCurrent().getName() + " uses a First-Aid Kit. " + target.getName()
                 + " recovers " + healed + " HP.");
+        return true;
+    }
+    /** Uses a White Flower on a fallen party member. */
+    public boolean useWhiteFlower(Student target) {
+        if (pendingSecondCast || isOver() || getCurrent() == null || target == null || !party.contains(target) || target.isAlive()) return false;
+        int restored = progress.getInventory().useWhiteFlower(target);
+        if (restored <= 0) return false;
+        effects.clear(); effects.add(new BattleEffect(target, restored));
+        finish(getCurrent().getName() + " uses White Flower. " + target.getName() + " returns with " + restored + " HP.");
         return true;
     }
     /** Whether a living party member can be protected by the current actor. */
@@ -330,7 +348,7 @@ public final class Battle {
      */
     public boolean enemyAttack(Enemy enemy) {
         if (isOver() || getCurrent() != null || !validEnemy(enemy)) { return false; }
-        effects.clear(); blockingStudent = null; protectedStudent = null;
+        effects.clear(); blockingStudent = null; protectedStudent = null; lastAbility = null;
         List<Student> living = party.stream().filter(Student::isAlive).toList();
         boolean skill = enemy.usesSkillNext();
         enemy.recordAction();
@@ -341,10 +359,12 @@ public final class Battle {
                     .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)
                 : null;
         if (healTarget != null && enemy.spendHealSp()) {
+            lastAbility = new AbilityAnnouncement(enemy.getName(), "Stone Mend");
             int healed = healTarget.heal(enemy.healingPower());
             effects.add(new BattleEffect(healTarget, healed));
-            message = enemy.getName() + " heals " + healTarget.getName() + " for " + healed + " HP.";
+            message = enemy.getName() + " uses Stone Mend and heals " + healTarget.getName() + " for " + healed + " HP.";
         } else if (skill && enemy.isSentinel()) {
+            lastAbility = new AbilityAnnouncement(enemy.getName(), enemy.isBoss() ? "Crystal Pulse" : "Stone Sweep");
             StringBuilder text = new StringBuilder(enemy.getName() + (enemy.isBoss() ? " uses Crystal Pulse!" : " uses Stone Sweep!"));
             for (Student target : living) {
                 if (!target.isAlive()) continue;
@@ -357,6 +377,7 @@ public final class Battle {
             }
             message = text.toString();
         } else {
+            if (skill) lastAbility = new AbilityAnnouncement(enemy.getName(), "Arcane Spark");
             Student target = living.get(random.nextInt(living.size()));
             int damage = enemyDamage(enemy, target, skill ? 4 : 0, 1);
             Student recipient = lastDamageRecipient;
@@ -399,6 +420,7 @@ public final class Battle {
         int damage = target.takeDamage(enemy.scaleDamage(Math.max(MINIMUM_DAMAGE,
                 enemy.getAttack() + bonus - target.getDefense() + random.nextInt(DAMAGE_VARIATION))) * multiplier);
         effects.add(new BattleEffect(target, -damage));
+        if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
         if (damage > 0 && "blade_mail".equals(armor)) {
             effects.add(BattleEffect.status(target, "Reflect"));
             int reflected = enemy.takeDamage((int) Math.round(damage * 0.5));

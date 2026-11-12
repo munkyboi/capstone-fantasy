@@ -101,6 +101,13 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "C", "camp-continue", this::continueGame);
         Keys.bind(this, "E", "camp-equip", this::toggleVest);
         Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null && !allocating && !exitPrompt) { this.inventory.accept(progress); } });
+        Keys.bind(this, "R", "camp-revive", () -> {
+            if (progress == null || allocating || exitPrompt) return;
+            Student target = campParty().get(cursor);
+            int restored = progress.getInventory().useWhiteFlower(target);
+            refresh(restored > 0 ? target.getName() + " was revived with " + restored + " HP."
+                    : target.isAlive() ? target.getName() + " is already standing." : "No White Flowers remain.");
+        });
         Keys.bind(this, "S", "camp-save", () -> { if (progress != null && !allocating && !exitPrompt) { this.save.accept(progress); } });
         Keys.bind(this, "L", "camp-allocate", () -> { if (progress != null && !exitPrompt) { allocating = !allocating; statCursor = 0; repaint(); } });
         Keys.bind(this, "ESCAPE", "camp-menu", this::escape);
@@ -222,11 +229,11 @@ public final class CampPanel extends JPanel {
                         285, 38, 28, null);
                 g.setColor(new Color(7, 17, 39, 225)); g.fillRect(0, 451, WIDTH, 89);
                 g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143));
-                drawCentered(g, "Kits: " + progress.getKits() + "    •    " + progress.getPetot() + " Petot", WIDTH / 2, 474);
+                drawCentered(g, "Kits: " + progress.getKits() + "  •  Flowers: " + progress.getInventory().getWhiteFlowers() + "  •  " + progress.getPetot() + " Petot", WIDTH / 2, 474);
                 g.setFont(ClassicUi.numbers(14)); g.setColor(Color.WHITE); drawCentered(g, message, WIDTH / 2, 496);
                 g.setFont(ClassicUi.body(14)); drawCentered(g, allocating
                         ? "← → Choose stat  •  Enter: Add point  •  Esc: Back"
-                        : "← → Select  •  Enter: Kit  •  L: Stats  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
+                        : "← → Select  •  Enter: Kit  •  R: Revive  •  L: Stats  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
                 if (allocating) { drawAllocation(g, selected); }
                 if (exitPrompt) { drawExitPrompt(g); }
             }

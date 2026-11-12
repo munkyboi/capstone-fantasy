@@ -45,7 +45,7 @@ public final class StatAllocationTest {
             GameProgress legacy = new GameProgress(List.of(0, 1, 2)); legacy.advance();
             legacy.getParty().get(0).gainExperience(300); store.save(2, SaveStore.Format.TEXT, legacy);
             Path path = directory.resolve("slot-2.txt");
-            String text = Files.readString(path).replace("version=8", "version=5").replaceAll("(?m)^(student\\.[123]\\.sp)=.*$", "$1=0"); Files.writeString(path, text);
+            String text = Files.readString(path).replace("version=9", "version=5").replaceAll("(?m)^(student\\.[123]\\.sp)=.*$", "$1=0"); Files.writeString(path, text);
             check(store.load(2, SaveStore.Format.TEXT).getParty().get(0).getUnspentStatPoints() == 3, "old saves receive earned points");
         } finally { try (var paths = Files.walk(directory)) { for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) Files.deleteIfExists(p); } }
         System.out.println("Stat allocation and save checks passed");

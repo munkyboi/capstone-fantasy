@@ -10,8 +10,8 @@ public final class MonsterLoot {
     /** One possible item and its probability for each defeated monster of a type. */
     public record Drop(String itemId, double chance) { }
     private static final Map<String, List<Drop>> TABLES = Map.of(
-            "wisp", List.of(new Drop("first_aid_kit", 0.30)),
-            "sentinel", List.of(new Drop("sentinel_band", 0.25)));
+            "wisp", List.of(new Drop("first_aid_kit", 0.30), new Drop("white_flower", 0.05)),
+            "sentinel", List.of(new Drop("sentinel_band", 0.25), new Drop("white_flower", 0.05)));
     private MonsterLoot() { }
     /** Returns the immutable drop table for an enemy. */
     public static List<Drop> tableFor(Enemy enemy) {
@@ -26,6 +26,8 @@ public final class MonsterLoot {
                 if (random.nextDouble() >= drop.chance()) { continue; }
                 if ("first_aid_kit".equals(drop.itemId())) {
                     if (progress.getInventory().addKit()) { drops.add(drop.itemId()); }
+                } else if ("white_flower".equals(drop.itemId())) {
+                    if (progress.getInventory().addWhiteFlower()) drops.add(drop.itemId());
                 } else if (!owns(progress, drop.itemId())) {
                     progress.getInventory().addEquipment(drop.itemId()); drops.add(drop.itemId());
                 }
