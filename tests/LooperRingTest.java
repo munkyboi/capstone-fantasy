@@ -22,8 +22,8 @@ public final class LooperRingTest {
         Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
         check(b.selectStudent(s) && b.attack(e), "attack");
         long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null).count();
-        check(count==(chance < .2 ? 6 : 1), "proc boundary " + chance + ": " + count);
-        if (chance < .2) {
+        check(count==(chance < .5 ? 6 : 1), "proc boundary " + chance + ": " + count);
+        if (chance < .5) {
             int bonus=(int)Math.ceil(s.getAttack()*(20+percent)/100.0);
             check(b.getEffects().stream().skip(1).allMatch(x -> x.getAmount()==-bonus), "bonus damage range " + percent);
         }
@@ -41,7 +41,7 @@ public final class LooperRingTest {
             check(loaded.getSp()==35 && loaded.getMaxSp()==70 && "looper_ring".equals(loaded.getEquipmentId(Equipment.Slot.ACCESSORY)),"save " + f);
         }} finally {try(var paths=Files.walk(path)){for(Path item:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(item);}}
         check(p.equip(s,Equipment.Slot.ACCESSORY,null) && s.getMaxSp()==35 && s.getSp()==18,"unequip proportion");
-        proc(0,0); proc(.199999,20); proc(.2,0);
+        proc(0,0); proc(.499999,20); proc(.5,0);
         GameProgress abilityParty=equipped(); Student attacker=abilityParty.getParty().get(0);
         Battle ability=new Battle(abilityParty,new Rolls(0,0)); Enemy target=ability.getEnemies().get(0);
         check(ability.selectStudent(attacker) && ability.ability(null,target),"ability with ring");

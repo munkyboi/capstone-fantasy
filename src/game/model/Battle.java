@@ -328,7 +328,7 @@ public final class Battle {
     /** Rolls once per damaging action or cast, then strikes up to five living random enemies. */
     private String looperHits(Student actor, String message) {
         if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
-                || isVictory() || random.nextDouble() >= 0.20) return message;
+                || isVictory() || random.nextDouble() >= 0.50) return message;
         StringBuilder text = new StringBuilder(message).append("\nLooper Ring activates!");
         for (int i = 0; i < 5; i++) {
             List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
