@@ -37,6 +37,8 @@ public final class CampPanel extends JPanel {
     private final Runnable menu;
     private final Consumer<GameProgress> save;
     private final Consumer<GameProgress> inventory;
+    private Consumer<GameProgress> shop = ignored -> { };
+    public void setShopAction(Consumer<GameProgress> action) { shop = java.util.Objects.requireNonNull(action); }
     private final java.util.Random regenerationRandom;
     private GameProgress progress;
     private int cursor;
@@ -101,6 +103,7 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "C", "camp-continue", this::continueGame);
         Keys.bind(this, "E", "camp-equip", this::toggleVest);
         Keys.bind(this, "I", "camp-inventory", () -> { if (progress != null && !allocating && !exitPrompt) { this.inventory.accept(progress); } });
+        Keys.bind(this, "M", "camp-market", () -> { if (progress != null && progress.isMerchantDefeated() && !allocating && !exitPrompt) shop.accept(progress); });
         Keys.bind(this, "R", "camp-revive", () -> {
             if (progress == null || allocating || exitPrompt) return;
             Student target = campParty().get(cursor);
@@ -233,7 +236,7 @@ public final class CampPanel extends JPanel {
                 g.setFont(ClassicUi.numbers(14)); g.setColor(Color.WHITE); drawCentered(g, message, WIDTH / 2, 496);
                 g.setFont(ClassicUi.body(14)); drawCentered(g, allocating
                         ? "← → Choose stat  •  Enter: Add point  •  Esc: Back"
-                        : "← → Select  •  Enter: Kit  •  R: Revive  •  L: Stats  •  I: Inventory  •  S: Save  •  C: Route  •  Esc: Menu", WIDTH / 2, 524);
+                        : "← → Select  •  Enter: Kit  •  R: Revive  •  L: Stats  •  I: Bag  •  S: Save  •  C: Route" + (progress.isMerchantDefeated() ? "  •  M: Market" : "") + "  •  Esc: Menu", WIDTH / 2, 524);
                 if (allocating) { drawAllocation(g, selected); }
                 if (exitPrompt) { drawExitPrompt(g); }
             }

@@ -48,6 +48,8 @@ public final class Main {
             WorldMapPanel[] mapHolder = new WorldMapPanel[1];
             boolean[] saving = {false};
             int[] activeStage = {0};
+            boolean[] merchantBattle = {false};
+            boolean[] shopFromCamp = {false};
             Random random = new Random();
             SaveSlotPanel slots = new SaveSlotPanel(new SaveStore(SaveStore.defaultDirectory()), () -> {
                 if (saving[0]) { layout.show(screens, "camp"); campHolder[0].requestFocusInWindow(); }
@@ -86,7 +88,8 @@ public final class Main {
             inventoryHolder[0] = inventory;
             BattlePanel battle = new BattlePanel(showMenu, progress -> {
                 boolean replay = activeStage[0] < progress.getEncounter();
-                if (!replay) { progress.advance(); }
+                if (!merchantBattle[0] && !replay) { progress.advance(); }
+                merchantBattle[0] = false;
                 boolean hasNext = progress.getEncounter() < 5;
                 for (game.model.Student student : progress.getParty()) { student.restoreAllSp(); }
                 camp.open(progress, !hasNext);
@@ -95,6 +98,7 @@ public final class Main {
             }, settings);
             battleHolder[0] = battle;
             WorldMapPanel map = new WorldMapPanel((progress, stage) -> {
+                merchantBattle[0] = false;
                 activeStage[0] = stage;
                 boolean ambushed = settings.rollAmbush(stage, random);
                 battle.start(progress, ambushed, stage);
@@ -107,11 +111,16 @@ public final class Main {
             }, showMenu);
             mapHolder[0] = map;
             ShopPanel shop = new ShopPanel(() -> {
-                map.open(campHolder[0].getProgress());
-                layout.show(screens, "map"); map.requestFocusInWindow();
+                if (shopFromCamp[0]) { camp.resume(camp.getProgress(), false); layout.show(screens, "camp"); camp.requestFocusInWindow(); }
+                else { map.open(campHolder[0].getProgress()); layout.show(screens, "map"); map.requestFocusInWindow(); }
             });
             map.setShopAction(progress -> {
+                shopFromCamp[0] = false;
                 shop.open(progress); layout.show(screens, "shop"); shop.requestFocusInWindow();
+            });
+            camp.setShopAction(progress -> { shopFromCamp[0] = true; shop.open(progress); layout.show(screens, "shop"); shop.requestFocusInWindow(); });
+            map.setMerchantAction(progress -> {
+                merchantBattle[0] = true; battle.startMerchant(progress); layout.show(screens, "battle"); battle.requestFocusInWindow();
             });
             SelectionPanel selection = new SelectionPanel(showMenu, party -> {
                 if (pendingParty[0] != null) {

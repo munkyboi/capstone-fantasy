@@ -41,10 +41,13 @@ public final class StageThreeTest {
                 int size = progress.getInventory().getEquipmentIds().size();
                 check(progress.claimStageRewardItems(2).isEmpty() && progress.getInventory().getEquipmentIds().size() == size,
                         "third stage reward is not duplicated on replay");
-                int[] visits = {0};
+                int[] visits = {0}, challenges = {0};
                 WorldMapPanel map = new WorldMapPanel((p, stage) -> {}, p -> {}, () -> {});
+                map.setMerchantAction(p -> challenges[0]++);
                 map.setShopAction(p -> visits[0]++); map.open(progress); key(map, "map-left"); key(map, "map-up"); key(map, "map-enter");
-                check(visits[0] == 1, "market accessible after stage three victory");
+                check(challenges[0] == 1 && visits[0] == 0, "merchant challenge accessible after stage three victory");
+                progress.unlockCarbonMarket(); map.open(progress); key(map, "map-left"); key(map, "map-up"); key(map, "map-enter");
+                check(visits[0] == 1, "market accessible after merchant victory");
                 Field timer = BattlePanel.class.getDeclaredField("victoryTimer"); timer.setAccessible(true); ((javax.swing.Timer) timer.get(panel)).stop();
             } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
         });

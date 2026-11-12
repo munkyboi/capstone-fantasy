@@ -22,7 +22,7 @@ public final class ShopPanel extends JPanel {
     private final JLabel[] offers = {new JLabel(), new JLabel(), new JLabel()};
     private int firstVisible;
     private final JLabel message = new JLabel("", SwingConstants.CENTER);
-    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-v1.png");
+    private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/carbon-market-battle-v2.png");
     private GameProgress progress;
     private int cursor;
 
@@ -43,7 +43,7 @@ public final class ShopPanel extends JPanel {
         add(rows, BorderLayout.CENTER);
         JPanel footer = new JPanel(new GridLayout(2, 1)); footer.setOpaque(false);
         message.setForeground(new Color(250, 218, 143)); message.setFont(ClassicUi.numbers(14));
-        JLabel help = new JLabel("Up/Down: Select   •   Enter: Buy   •   Esc: Route", SwingConstants.CENTER);
+        JLabel help = new JLabel("Up/Down: Select   •   Enter: Buy   •   Esc: Back", SwingConstants.CENTER);
         help.setForeground(Color.WHITE); help.setFont(ClassicUi.body(14));
         footer.add(message); footer.add(help); add(footer, BorderLayout.SOUTH);
         Keys.bind(this, "UP", "shop-up", () -> move(-1)); Keys.bind(this, "DOWN", "shop-down", () -> move(1));

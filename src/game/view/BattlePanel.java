@@ -265,9 +265,13 @@ public final class BattlePanel extends JPanel {
 
     /** Starts a specific unlocked stage, including a replay. */
     public void start(GameProgress progress, boolean ambushed, int stage) {
+        startEncounter(progress, ambushed, stage, false);
+    }
+    public void startMerchant(GameProgress progress) { startEncounter(progress, false, 2, true); }
+    private void startEncounter(GameProgress progress, boolean ambushed, int stage, boolean merchant) {
         ambushed = ambushed && settings.allowsAmbush(stage);
         this.progress = progress; encounterStage = stage;
-        battle = new Battle(progress, battleRandom, ambushed, stage, settings.getDifficulty()); commandIndex = 0;
+        battle = merchant ? Battle.merchantBattle(progress, battleRandom, settings.getDifficulty()) : new Battle(progress, battleRandom, ambushed, stage, settings.getDifficulty()); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
         abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
@@ -296,7 +300,12 @@ public final class BattlePanel extends JPanel {
         long now = System.nanoTime();
         double seconds = Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0);
         lastTickNanos = now;
+        Student previousActor = battle == null ? null : battle.getCurrent();
         if (battle != null && battle.advanceDamageOverTime(seconds)) {
+            if (previousActor != null && !previousActor.isAlive()) {
+                targeting = TargetAction.NONE; choosingItem = false; notice = null; secondCastTimer.stop();
+                if (battle.hasPendingSecondCast()) battle.completeSecondCast();
+            }
             if (battle.isOver()) {
                 targeting = TargetAction.NONE; secondCastTimer.stop();
                 if (battle.hasPendingSecondCast()) battle.completeSecondCast();
@@ -314,7 +323,10 @@ public final class BattlePanel extends JPanel {
     private void advanceActionPoints(double seconds) {
         if (battle == null || battle.isOver()) { apTimer.stop(); return; }
         // Wait mode: freeze clocks while a ready student chooses a command or target.
-        if (battle.getCurrent() != null) { return; }
+        if (battle.getCurrent() != null) {
+            if (battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
+            return;
+        }
         boolean changed = false;
         double remaining = Math.max(0.0, seconds);
         double rate = settings.getApPerSecond();
@@ -325,6 +337,7 @@ public final class BattlePanel extends JPanel {
                 if (enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
                     if (battle.enemyAttack(enemy)) {
                         enemyPoints.put(enemy, 0.0);
+                        for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
                         java.util.List<Student> refilled = new java.util.ArrayList<>();
                         for (Student student : battle.consumeApRefills()) {
                             if (actionPoints.get(student) + AP_EPSILON < student.getActionThreshold()) refilled.add(student);
@@ -332,7 +345,7 @@ public final class BattlePanel extends JPanel {
                         }
                         if (!refilled.isEmpty()) battle.regenerate(refilled, true);
                         Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
-                        boolean healing = enemyAbility != null && "Stone Mend".equals(enemyAbility.skill());
+                        boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
                         showActionEffects(healing ? null : enemy);
                         announceAbility();
                         enemyActed = true;
@@ -384,6 +397,9 @@ public final class BattlePanel extends JPanel {
         if (battle.isOver() || battle.getCurrent() != null) { return false; }
         for (Student student : battle.getParty()) {
             if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
+                if (battle.consumeStunTurn(student)) {
+                    actionPoints.put(student, 0.0); showActionEffects(null); refresh(); continue;
+                }
                 actionPoints.put(student, (double) student.getActionThreshold());
                 return battle.selectStudent(student);
             }
@@ -511,8 +527,9 @@ public final class BattlePanel extends JPanel {
             showAmbush = false;
             ambushAlertTimer.stop();
             if (battle.isVictory() && !rewardRecorded) {
-                java.util.List<String> rewards = new java.util.ArrayList<>(progress.claimStageRewardItems(encounterStage));
-                rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom));
+                java.util.List<String> rewards = new java.util.ArrayList<>();
+                if (battle.isMerchantEncounter()) progress.unlockCarbonMarket();
+                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom)); }
                 victoryRewardItems = List.copyOf(rewards);
                 int earned = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getPetotDrop).sum();
                 victoryPetot = progress.addPetot(earned * (settings.isGreedIsGood() ? 10 : 1));

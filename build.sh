@@ -18,6 +18,7 @@ assets/backgrounds/camp-parallax-base-v1.png
 assets/backgrounds/camp-sky-v1.png
 assets/backgrounds/campus-courtyard-v1.png
 assets/backgrounds/campus-route-v1.png
+assets/backgrounds/carbon-market-battle-v2.png
 assets/backgrounds/stage-1-campus-entrance-v2.png
 assets/backgrounds/stage-2-library-hall-v2.png
 assets/backgrounds/stage-3-training-ground-v3.png
@@ -35,13 +36,18 @@ assets/sprites/fallen-bogart-v1.png
 assets/sprites/fallen-charice-v1.png
 assets/sprites/fallen-angel-v1.png
 assets/sprites/itmigims-v1.png
+assets/sprites/mysterious-merchant-v1.png
 assets/sprites/library-wisp-v3.png
 assets/sprites/stone-sentinel-v1.png
 assets/sprites/student-party-idle-v1.png
 assets/ui/carbon-market-icon-v1.png
+assets/ui/carbon-market-locked-icons-v1.png
+assets/ui/carbon-market-open-icons-v1.png
+assets/ui/damage-over-time-icon-v1.png
 assets/ui/hand-pointer-reference.png
 assets/ui/reward-icons-v1.png
 assets/ui/reward-uniform-v1.png
+assets/ui/stunned-icon-v1.png
 assets/ui/title-logo-v1.png
 ASSETS
 jar --create --file build/capstone-fantasy.jar --main-class game.Main -C build/classes .

@@ -13,14 +13,14 @@ public final class StoneMendTargetTest {
         GameProgress party=progress();Battle battle=new Battle(party,fixed());
         Enemy sentinel=battle.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy wisp=battle.getEnemies().stream().filter(e->!e.isSentinel()).findFirst().orElseThrow();
-        sentinel.takeDamage(60); int before=sentinel.getHp(),sp=sentinel.getSp();
+        sentinel.takeDamage(61); int before=sentinel.getHp(),sp=sentinel.getSp();
         int[] hp=party.getParty().stream().mapToInt(Student::getHp).toArray();
         check(battle.enemyAttack(sentinel),"self heal action");
-        check(sentinel.getHp()==before+12 && sentinel.getSp()==sp-sentinel.getHealSpCost(),"heals itself for 20% of missing HP");
+        check(sentinel.getHp()==before+13 && sentinel.getSp()==sp-sentinel.getHealSpCost(),"heals itself for 20% of missing HP rounded up");
         check(battle.getLastAbility().skill().equals("Stone Mend") && battle.getMessage().contains("heals Stone Sentinel"),"self-heal log");
         check(battle.getEffects().size()==1 && battle.getEffects().get(0).getEnemy()==sentinel && battle.getEffects().get(0).getStudent()==null,"heal indicator targets monster");
         check(Arrays.equals(hp,party.getParty().stream().mapToInt(Student::getHp).toArray()),"healing never changes party HP");
-        wisp.takeDamage(50);before=wisp.getHp();check(battle.enemyAttack(sentinel) && wisp.getHp()==before+25,"prefers lowest health percentage");
+        wisp.takeDamage(50);before=wisp.getHp();check(battle.enemyAttack(sentinel) && wisp.getHp()==before+10,"heals the most injured monster for 20% of missing HP");
         check(battle.getEffects().get(0).getEnemy()==wisp,"other monster receives indicator");
         check(Arrays.equals(hp,party.getParty().stream().mapToInt(Student::getHp).toArray()),"other-monster heal never changes party HP");
         SwingUtilities.invokeAndWait(()->{try {

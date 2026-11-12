@@ -41,9 +41,9 @@ public final class SpecialCombatEquipmentTest {
         Battle sb = new Battle(support, fixed(), false, 1); Enemy sentinel = sb.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy ally = sb.getEnemies().stream().filter(e -> !e.isSentinel()).findFirst().orElseThrow();
         ally.takeDamage(40); int before = ally.getHp();
-        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 20 && sentinel.getSp() == 190,
-                "Sentinel heals half the ally's missing HP and spends SP");
-        check(sb.getEffects().get(0).getAmount() == 20 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
+        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 8 && sentinel.getSp() == 190,
+                "Sentinel heals 20 percent of the ally's missing HP and spends SP");
+        check(sb.getEffects().get(0).getAmount() == 8 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
         for (int i = 0; i < 19; i++) { ally.takeDamage(ally.getHp() - 25); check(sb.enemyAttack(sentinel), "Sentinel uses Stone Mend"); }
         check(sentinel.getSp() == 0, "Sentinel spends available SP");
         check(sb.enemyAttack(sentinel) && !sb.getMessage().contains("heals"), "Sentinel cannot heal without SP");
@@ -67,6 +67,7 @@ public final class SpecialCombatEquipmentTest {
         GameProgress fire = finalParty(); equip(fire, 1, "light_saber"); Battle burn = new Battle(fire, fixed(), false, 4, GameSettings.Difficulty.INSANE);
         Enemy big = burn.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow(); Student warrior = student(fire, 1);
         check(burn.selectStudent(warrior), "select warrior"); int initial = big.getHp(); burn.attack(big); int hit = initial - big.getHp();
+        check(burn.hasDamageOverTime(big), "Light Saber applies the shared DOT status");
         List<BattleEffect> hitEffects = burn.getEffects();
         check(!burn.advanceDamageOverTime(0.99) && burn.getEffects().equals(hitEffects), "direct hit indicator remains visible before first tick");
         check(burn.advanceDamageOverTime(0.01), "first tick at one second");
@@ -75,7 +76,7 @@ public final class SpecialCombatEquipmentTest {
         burn.advanceDamageOverTime(0.95);
         for (int i = 2; i < 5; i++) burn.advanceDamageOverTime(1.0);
         check(initial - big.getHp() == hit * 2, "five ticks deal 100 percent of hit over five seconds");
-        check(!burn.advanceDamageOverTime(1), "damage stops after five ticks");
+        check(!burn.hasDamageOverTime(big) && !burn.advanceDamageOverTime(1), "DOT status and damage stop after five ticks");
         GameProgress mageParty = new GameProgress(List.of(0, 1, 2)); equip(mageParty, 0, "great_sage_staff"); mageParty.advance();
         Battle casts = new Battle(mageParty, fixed(), false, 1); Student mage = student(mageParty, 0); int sp = mage.getSp();
         check(casts.selectStudent(mage) && casts.ability(null, null) && casts.hasPendingSecondCast()

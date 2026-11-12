@@ -72,6 +72,7 @@ public final class SaveStore {
                 properties.setProperty("party.count", Integer.toString(checked.getRoster().size()));
                 properties.setProperty("party.active", checked.getParty().stream().map(s -> Integer.toString(s.getId())).collect(java.util.stream.Collectors.joining(",")));
                 properties.setProperty("encounter", Integer.toString(checked.getEncounter()));
+                properties.setProperty("market.merchantDefeated", Boolean.toString(checked.isMerchantDefeated()));
                 properties.setProperty("inventory.petot", Integer.toString(checked.getPetot()));
                 properties.setProperty("inventory.firstAidKits", Integer.toString(checked.getKits()));
                 properties.setProperty("inventory.whiteFlowers", Integer.toString(checked.getInventory().getWhiteFlowers()));
@@ -199,6 +200,9 @@ public final class SaveStore {
             }
             GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, accessoryIds, Integer.parseInt(properties.getProperty("inventory.firstAidKits")),
                     Integer.parseInt(properties.getProperty("encounter")));
+            String marketState = properties.getProperty("market.merchantDefeated", "false");
+            if (!marketState.equals("true") && !marketState.equals("false")) throw new IOException("Invalid market state");
+            if (Boolean.parseBoolean(marketState)) restored.unlockCarbonMarket();
             restored.getInventory().restoreWhiteFlowers("9".equals(version) ? Integer.parseInt(properties.getProperty("inventory.whiteFlowers")) : 0);
             if ("3".equals(version) || "4".equals(version) || "5".equals(version) || "6".equals(version) || modern(version)) {
                 for (int i = 1; i <= count; i++) {
@@ -317,6 +321,7 @@ public final class SaveStore {
         }
         GameProgress restored = GameProgress.restore(ids, hp, xp, allocations, progression, armorIds, accessoryIds, progress.getKits(), progress.getEncounter());
         restored.restorePetot(progress.getPetot());
+        if (progress.isMerchantDefeated()) restored.unlockCarbonMarket();
         restored.getInventory().restoreWhiteFlowers(inventory.getWhiteFlowers());
         List<List<String>> slots = new ArrayList<>();
         for (Student student : restored.getParty()) {

@@ -18,6 +18,12 @@ public final class GameProgress implements java.io.Serializable {
     private Inventory inventory = new Inventory(STARTING_KITS);
     private int encounter;
     private int petot;
+    private boolean merchantDefeated;
+    public boolean isMerchantDefeated() { return merchantDefeated; }
+    public void unlockCarbonMarket() {
+        if (encounter < 3) throw new IllegalStateException("Complete stage 3 first");
+        merchantDefeated = true;
+    }
     /** Maximum supported balance. */
     public static final int MAX_PETOT = 999999;
 

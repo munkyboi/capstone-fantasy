@@ -18,11 +18,13 @@ public final class Battle {
     private final double accuracyScalingFactor;
     private final GameProgress progress;
     private final List<BattleEffect> effects = new ArrayList<>();
+    private final java.util.Map<Student, Integer> stuns = new java.util.HashMap<>();
+    private final boolean merchantEncounter;
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
     private final java.util.List<DamageOverTime> burns = new java.util.ArrayList<>();
     private static final class DamageOverTime {
-        final Enemy target; final int total; double elapsed; int ticks;
-        DamageOverTime(Enemy target, int damage) { this.target = target; total = damage; }
+        final GameCharacter target; final int total; double elapsed; int ticks;
+        DamageOverTime(GameCharacter target, int damage) { this.target = target; total = damage; }
     }
     private int turn = -1;
     private boolean pendingSecondCast;
@@ -61,10 +63,18 @@ public final class Battle {
     }
     /** Starts an encounter using the selected monster difficulty. */
     public Battle(GameProgress progress, Random random, boolean ambushed, int encounter, GameSettings.Difficulty difficulty) {
+        this(progress, random, ambushed, encounter, difficulty, false);
+    }
+    public static Battle merchantBattle(GameProgress progress, Random random, GameSettings.Difficulty difficulty) {
+        return new Battle(progress, random, false, 2, difficulty, true);
+    }
+    private Battle(GameProgress progress, Random random, boolean ambushed, int encounter, GameSettings.Difficulty difficulty, boolean merchantEncounter) {
         if (encounter < 0 || encounter > 4 || encounter > progress.getEncounter()) {
             throw new IllegalArgumentException("This encounter is not available yet");
         }
         this.progress = progress;
+        this.merchantEncounter = merchantEncounter;
+        if (merchantEncounter && (progress.getEncounter() < 3 || progress.isMerchantDefeated())) throw new IllegalArgumentException("Merchant challenge unavailable");
         this.random = random;
         party.addAll(progress.getParty());
         double partyMultiplier = switch (party.size()) {
@@ -78,6 +88,11 @@ public final class Battle {
             throw new IllegalArgumentException("At least one student must be able to battle");
         }
         double averageLevel = party.stream().mapToInt(Student::getLevel).average().orElse(1.0);
+        if (merchantEncounter) {
+            enemies.add(Enemy.merchant(difficulty, averageLevel));
+            message = "The Mysterious Merchant challenges the party!";
+            return;
+        }
         int count = EncounterRules.rollMonsterCount(encounter, random);
         boolean finalEncounter = encounter == GameProgress.FINAL_BOSS_ENCOUNTER;
         ambushed = ambushed && !finalEncounter;
@@ -108,6 +123,16 @@ public final class Battle {
     }
     /** The shared hit/dodge scaling factor, fixed from the party size at battle start. */
     public double getAccuracyScalingFactor() { return accuracyScalingFactor; }
+    public boolean isMerchantEncounter() { return merchantEncounter; }
+    public int getStunTurns(Student student) { return stuns.getOrDefault(student, 0); }
+    public boolean consumeStunTurn(Student student) {
+        int remaining = getStunTurns(student);
+        if (remaining <= 0) return false;
+        if (remaining == 1) stuns.remove(student); else stuns.put(student, remaining - 1);
+        effects.clear(); effects.add(BattleEffect.status(student, "Stunned"));
+        message = student.getName() + " is stunned and misses a turn.";
+        return true;
+    }
     /** Returns party in speed order.
      * @return party in speed order
      */ public List<Student> getParty() { return List.copyOf(party); }
@@ -130,30 +155,39 @@ public final class Battle {
     public java.util.Set<Student> consumeApRefills() {
         java.util.Set<Student> result = java.util.Set.copyOf(apRefills); apRefills.clear(); return result;
     }
-    /** Advances active Light Saber effects by elapsed battle time, including command selection. */
+    /** Whether a living participant has any active damage-over-time effect. */
+    public boolean hasDamageOverTime(GameCharacter target) {
+        return target != null && target.isAlive() && !isOver() && burns.stream().anyMatch(burn -> burn.target == target && burn.ticks < 5);
+    }
+    /** Advances damage-over-time effects by elapsed battle time, including command selection. */
     public boolean advanceDamageOverTime(double seconds) {
         if (seconds <= 0 || isOver() || burns.isEmpty()) return false;
         boolean changed = false;
         for (DamageOverTime burn : burns) {
-            Enemy enemy = burn.target;
-            if (!enemy.isAlive()) continue;
+            GameCharacter target = burn.target;
+            if (!target.isAlive()) continue;
             burn.elapsed += seconds;
             int due = Math.min(5, (int) Math.floor(burn.elapsed + 1e-9));
-            while (burn.ticks < due && enemy.isAlive()) {
+            while (burn.ticks < due && target.isAlive()) {
                 int before = (int) ((long) burn.total * burn.ticks / 5);
                 burn.ticks++;
                 int damage = (int) ((long) burn.total * burn.ticks / 5) - before;
-                int taken = enemy.takeDamage(damage);
+                int taken = target.takeDamage(damage);
                 if (taken > 0) {
                     if (!changed) effects.clear();
-                    effects.add(new BattleEffect(enemy, -taken)); changed = true;
+                    if (target instanceof Enemy enemy) effects.add(new BattleEffect(enemy, -taken));
+                    else if (target instanceof Student student) {
+                        effects.add(new BattleEffect(student, -taken));
+                        if (!student.isAlive()) { guards.remove(student); student.endDefend(); if (getCurrent() == student) turn = -1; }
+                    }
+                    changed = true;
                 }
             }
         }
         burns.removeIf(burn -> !burn.target.isAlive() || burn.ticks >= 5);
         if (changed) {
-            message = isVictory() ? "Light Saber damage defeats the last enemy! Victory!" : "Light Saber damage strikes!";
-            if (isVictory()) clearGuards();
+            message = isVictory() ? "Damage over time defeats the last enemy! Victory!" : isDefeat() ? "Damage over time defeats the party!" : "Damage over time strikes!";
+            if (isOver()) clearGuards();
         }
         return changed;
     }
@@ -197,7 +231,7 @@ public final class Battle {
      */ public boolean isOver() { return isVictory() || isDefeat(); }
     /** Returns whether all enemies are defeated.
      * @return whether all enemies are defeated
-     */ public boolean isVictory() { return enemies.stream().noneMatch(Enemy::isAlive); }
+     */ public boolean isVictory() { return merchantEncounter ? enemies.stream().filter(Enemy::isMerchant).noneMatch(Enemy::isAlive) : enemies.stream().noneMatch(Enemy::isAlive); }
     /** Returns whether all students are knocked out.
      * @return whether all students are knocked out
      */ public boolean isDefeat() {
@@ -378,6 +412,75 @@ public final class Battle {
         if (isOver() || getCurrent() != null || !validEnemy(enemy)) { return false; }
         effects.clear(); blockingStudent = null; protectedStudent = null; lastAbility = null;
         List<Student> living = party.stream().filter(Student::isAlive).toList();
+        if (enemy.isMerchant() || enemy.isMirror()) {
+            int skill = enemy.merchantSkill(enemies.stream().anyMatch(e -> e.isMirror() && e.isAlive()));
+            enemy.recordAction();
+            if (skill == 1) {
+                enemies.removeIf(Enemy::isMirror);
+                enemies.add(enemy.mirror(1)); enemies.add(enemy.mirror(2));
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Mirror Image");
+                message = enemy.getName() + " uses Mirror Image!";
+            } else if (skill == 5) {
+                List<Enemy> copies = enemies.stream().filter(e -> e.isMirror() && e.isAlive()).toList();
+                int hpTotal = copies.stream().mapToInt(Enemy::getHp).sum();
+                int spTotal = copies.stream().mapToInt(Enemy::getSp).sum();
+                int percent = 10 + random.nextInt(6);
+                int hpRestored = enemy.heal((int) Math.ceil(hpTotal * percent / 100.0));
+                int spRestored = enemy.absorbSp((int) Math.ceil(spTotal * percent / 100.0));
+                enemies.removeIf(Enemy::isMirror);
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Recall");
+                if (hpRestored > 0) effects.add(new BattleEffect(enemy, hpRestored));
+                if (spRestored > 0) effects.add(BattleEffect.status(enemy, "+" + spRestored + " SP"));
+                message = enemy.getName() + " uses Recall, absorbing " + hpRestored + " HP and " + spRestored + " SP.";
+            } else if (skill == 2) {
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Magic Missiles");
+                StringBuilder text = new StringBuilder(enemy.getName() + " uses Magic Missiles!");
+                List<Student> unselected = new ArrayList<>();
+                for (int i = 0; i < 3; i++) {
+                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
+                    unselected.removeIf(target -> !target.isAlive());
+                    if (unselected.isEmpty()) unselected.addAll(targets);
+                    Student target = unselected.remove(random.nextInt(unselected.size()));
+                    if (random.nextDouble() >= 0.6) { effects.add(BattleEffect.status(target, "Miss")); text.append("\nMissed ").append(target.getName()).append("."); continue; }
+                    int power = (int)Math.ceil(enemy.getAttack() * (100 + random.nextInt(41)) / 100.0);
+                    int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1, true);
+                    Student recipient = lastDamageRecipient;
+                    if (damage > 0 && recipient.isAlive()) { stuns.put(recipient, 2); effects.add(BattleEffect.status(recipient, "Stunned")); }
+                    text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
+                }
+                message = text.toString();
+            } else if (skill == 3) {
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Mana Burn");
+                StringBuilder text = new StringBuilder(enemy.getName() + " uses Mana Burn!");
+                for (int i = 0; i < 2; i++) {
+                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
+                    Student target = targets.get(random.nextInt(targets.size()));
+                    int damage = (int)Math.ceil((target.getMaxSp() - target.getSp()) * (60 + random.nextInt(21)) / 100.0);
+                    int taken = target.takeDamage(damage); effects.add(new BattleEffect(target, -taken));
+                    if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
+                    text.append("\n").append(target.getName()).append(" takes ").append(taken).append(" damage.");
+                }
+                message = text.toString();
+            } else if (skill == 4) {
+                lastAbility = new AbilityAnnouncement(enemy.getName(), "Heat Stroke");
+                StringBuilder text = new StringBuilder(enemy.getName() + " uses Heat Stroke!");
+                for (int i = 0; i < 2; i++) {
+                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
+                    Student target = targets.get(random.nextInt(targets.size()));
+                    int damage = enemy.scaleDamage((int)Math.ceil(enemy.getAttack() * (140 + random.nextInt(61)) / 100.0));
+                    burns.add(new DamageOverTime(target, damage));
+                    effects.add(BattleEffect.status(target, "Heat Stroke"));
+                    text.append("\n").append(target.getName()).append(" is afflicted with Heat Stroke.");
+                }
+                message = text.toString();
+            } else {
+                Student target = living.get(random.nextInt(living.size()));
+                int damage = enemyDamage(enemy, target, 0, 1);
+                message = enemy.getName() + " attacks " + lastDamageRecipient.getName() + " for " + damage + " damage.";
+            }
+            if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
+            return true;
+        }
         if (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0) {
             enemy.advanceEscapeCountdown();
             if (enemy.getEscapeCountdown() == 0 && enemy.escape()) {
@@ -389,7 +492,7 @@ public final class Battle {
                 return true;
             }
         }
-        boolean skill = !enemy.isLootGoblin() && enemy.usesSkillNext();
+        boolean skill = !enemy.isLootGoblin() && !enemy.isMirror() && enemy.usesSkillNext();
         enemy.recordAction();
         Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= enemy.getHealSpCost()
                 ? enemies.stream().filter(other -> other.isAlive()
@@ -441,6 +544,9 @@ public final class Battle {
         return random.nextDouble() < hitChance(defender.getEffectiveAgility(), attacker.getEffectiveAccuracy(), accuracyScalingFactor);
     }
     private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier) {
+        return enemyDamage(enemy, target, bonus, multiplier, false);
+    }
+    private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit) {
         Student intended = target;
         Student protector = party.stream().filter(candidate -> candidate != intended && candidate.isDefending()
                 && candidate.isAlive() && guards.get(candidate) == intended).findFirst().orElse(null);
@@ -454,14 +560,14 @@ public final class Battle {
             effects.add(BattleEffect.status(protector, "Guard"));
         }
         lastDamageRecipient = target;
-        if (!hits(enemy, target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
+        if (!guaranteedHit && !hits(enemy, target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         String armor = target.getEquipmentId(Equipment.Slot.ARMOR);
         if ("ultra_instinct_shirt".equals(armor) && random.nextDouble() < 0.5) {
             effects.add(BattleEffect.status(target, "Dodge"));
             return 0;
         }
         int damage = target.takeDamage(enemy.scaleDamage(Math.max(MINIMUM_DAMAGE,
-                enemy.getAttack() + bonus - target.getDefense() + random.nextInt(DAMAGE_VARIATION))) * multiplier);
+                enemy.getAttack() + bonus - target.getDefense() + (guaranteedHit ? 0 : random.nextInt(DAMAGE_VARIATION)))) * multiplier);
         effects.add(new BattleEffect(target, -damage));
         if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
         if (damage > 0 && "blade_mail".equals(armor)) {

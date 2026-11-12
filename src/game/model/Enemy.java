@@ -25,6 +25,7 @@ public final class Enemy extends GameCharacter {
     private final boolean sentinel;
     private final boolean boss;
     private final boolean lootGoblin;
+    private final boolean merchant, mirror;
     private boolean escaped;
     private int escapeCountdown = -1;
     private final int actionThreshold;
@@ -33,6 +34,37 @@ public final class Enemy extends GameCharacter {
     private final double difficultyMultiplier;
     private int actionsTaken;
     private int skillPoints;
+    private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown;
+
+    private Enemy(Enemy original, GameSettings.Difficulty difficulty, double partyLevel, boolean copy, int number) {
+        double levels = partyLevel - 1, p = levels / 99.0, curve = p * p * (3.0 - 2.0 * p);
+        difficultyMultiplier = copy ? original.difficultyMultiplier : difficulty.multiplier();
+        merchant = !copy; mirror = copy; sentinel = false; boss = false; lootGoblin = false;
+        name = copy ? "Mirror Image " + number : "Mysterious Merchant";
+        maxHp = copy ? Math.max(1, (int) Math.ceil(original.maxHp * 0.75)) : (int)Math.round(350 * difficultyMultiplier * (1 + 7.92 * curve));
+        attack = copy ? (int)Math.ceil(original.attack / 2.0) : (int)Math.round(40 * (1 + 3.96 * curve));
+        defense = copy ? (int)Math.ceil(original.defense / 2.0) : (int)Math.round(10 * (1 + 2.97 * curve));
+        agility = copy ? (int)Math.ceil(original.agility / 2.0) : (int)Math.round(10 + levels);
+        accuracy = copy ? (int)Math.ceil(original.accuracy / 2.0) : (int)Math.round(8 + levels);
+        speed = copy ? original.speed : Math.max(1,(int)Math.round(4 * difficultyMultiplier * (1 + curve)));
+        actionThreshold = copy ? original.actionThreshold : Math.max(1,(int)Math.round(40 / (difficultyMultiplier * (1 + curve))));
+        hp = maxHp; skillPoints = copy ? (int)Math.ceil(original.getMaxSp() * 0.75) : 800; petotDrop = 0; experienceDrop = 0;
+    }
+    public static Enemy merchant(GameSettings.Difficulty difficulty, double partyLevel) { return new Enemy(null, difficulty, partyLevel, false, 0); }
+    Enemy mirror(int number) { return new Enemy(this, GameSettings.Difficulty.NORMAL, 1, true, number); }
+    public boolean isMerchant() { return merchant; }
+    public boolean isMirror() { return mirror; }
+    int merchantSkill(boolean mirrorsActive) {
+        if (mirrorCooldown > 0) mirrorCooldown--; if (missileCooldown > 0) missileCooldown--; if (drainCooldown > 0) drainCooldown--; if (lifeDrainCooldown > 0) lifeDrainCooldown--; if (recallCooldown > 0) recallCooldown--;
+        if (merchant && !mirrorsActive && mirrorCooldown == 0 && skillPoints >= 90) { skillPoints -= 90; mirrorCooldown = 5; return 1; }
+        if (merchant && mirrorsActive && recallCooldown == 0 && skillPoints >= 30
+                && (hp * 2 <= maxHp || skillPoints * 4 <= getMaxSp())) { skillPoints -= 30; recallCooldown = 5; return 5; }
+        if (missileCooldown == 0 && skillPoints >= 55) { skillPoints -= 55; missileCooldown = 3; return 2; }
+        if (drainCooldown == 0 && skillPoints >= 15) { skillPoints -= 15; drainCooldown = 3; return 3; }
+        if (lifeDrainCooldown == 0 && skillPoints >= 20) { skillPoints -= 20; lifeDrainCooldown = 3; return 4; }
+        return 0;
+    }
+    int absorbSp(int amount) { int actual = Math.min(Math.max(0, amount), getMaxSp() - skillPoints); skillPoints += actual; return actual; }
 
     /** Creates one Wisp with its own name and battle stats.
      * @param name display name
@@ -88,6 +120,7 @@ public final class Enemy extends GameCharacter {
         this.sentinel = sentinel;
         this.boss = boss;
         this.lootGoblin = lootGoblin;
+        this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         skillPoints = lootGoblin ? 1 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0;
         petotDrop = lootGoblin ? 0 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
@@ -105,11 +138,11 @@ public final class Enemy extends GameCharacter {
     }
     /** Sentinel healing resources are renewed for each battle. */
     public int getSp() { return skillPoints; }
-    public int getMaxSp() { return lootGoblin ? 1 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0; }
+    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 1 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : 0; }
     /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
     public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }
     boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; return true; }
-    int healingPower(Enemy target) { return (int) Math.round((target.getMaxHp() - target.getHp()) * (target == this ? 0.2 : 0.5)); }
+    int healingPower(Enemy target) { return (target.getMaxHp() - target.getHp() + 4) / 5; }
     int heal(int amount) { int healed = Math.min(maxHp - hp, Math.max(0, amount)); hp += healed; return healed; }
     /** Returns whether the next action uses this monster's skill. */
     boolean usesSkillNext() { return (actionsTaken + 1) % (boss ? 4 : 3) == 0; }

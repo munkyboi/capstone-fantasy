@@ -35,15 +35,18 @@ public final class CarbonMarketTest {
             check(store.load(1, SaveStore.Format.TEXT).getPetot() == 0, "old saves start with zero Petot");
         } finally { try (var paths = Files.walk(dir)) { for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(path); } } }
         SwingUtilities.invokeAndWait(() -> {
-            int[] shops = {0};
+            int[] shops = {0}, challenges = {0};
             WorldMapPanel map = new WorldMapPanel((progress, stage) -> {}, progress -> {}, () -> {});
             map.setShopAction(progress -> shops[0]++);
+            map.setMerchantAction(progress -> challenges[0]++);
             GameProgress locked = new GameProgress(List.of(0, 1, 2)); map.open(locked);
             key(map, "map-up"); key(map, "map-enter"); check(shops[0] == 0, "shop locked before stage two");
             map.open(p); key(map, "map-up"); key(map, "map-enter"); check(shops[0] == 0, "shop remains locked after stage two");
-            check(p.advance(), "stage three completion unlocks the shop");
+            check(p.advance(), "stage three completion unlocks the challenge");
             map.open(p); key(map, "map-left"); key(map, "map-up"); key(map, "map-enter");
-            check(shops[0] == 1, "shop becomes accessible only after stage three");
+            check(shops[0] == 0 && challenges[0] == 1, "stage three reveals the merchant challenge");
+            p.unlockCarbonMarket(); map.open(p); key(map, "map-left"); key(map, "map-up"); key(map, "map-enter");
+            check(shops[0] == 1, "shop becomes accessible after the merchant is defeated");
             try {
                 BattlePanel panel = new BattlePanel(() -> {}); GameProgress reward = new GameProgress(List.of(0, 1, 2));
                 panel.start(reward, false);

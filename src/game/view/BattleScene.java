@@ -101,10 +101,14 @@ final class BattleScene extends JPanel {
             image("/assets/backgrounds/stage-5-crystal-chamber-v3.png")
         };
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
+        private final BufferedImage stunIcon = trimIcon(image("/assets/ui/stunned-icon-v1.png"));
+        private final BufferedImage dotIcon = trimIcon(image("/assets/ui/damage-over-time-icon-v1.png"));
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v3.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
         private final BufferedImage boss = image("/assets/sprites/crystal-guardian-v1.png");
         private final BufferedImage goblin = trimIcon(image("/assets/sprites/itmigims-v1.png"));
+        private final BufferedImage merchant = trimIcon(image("/assets/sprites/mysterious-merchant-v1.png"));
+        private final BufferedImage marketBackground = image("/assets/backgrounds/carbon-market-battle-v2.png");
         private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
         private final BufferedImage uniformIcon = trimIcon(image("/assets/ui/reward-uniform-v1.png"));
         private final BufferedImage[] rewardArt = rewardArt();
@@ -146,7 +150,7 @@ final class BattleScene extends JPanel {
                 g.setColor(new Color(30, 43, 71)); g.fillRect(0, 0, w, h);
                 g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 int stage = state.encounterStage();
-                BufferedImage background = stage >= 0 && stage < stageBackgrounds.length ? stageBackgrounds[stage] : null;
+                BufferedImage background = battle != null && battle.isMerchantEncounter() ? marketBackground : stage >= 0 && stage < stageBackgrounds.length ? stageBackgrounds[stage] : null;
                 if (background == null) { background = fallbackBackground; }
                 if (background != null) { drawCover(g, background, w, h); }
                 if (battle == null) { return; }
@@ -161,6 +165,8 @@ final class BattleScene extends JPanel {
                 for (Student student : drawParty) {
                     int index = battle.getParty().indexOf(student);
                     int x = partyX(index, slotWidth), y = partyFootY(h, index) - spriteHeight;
+                    int spriteCenter = x + slotWidth / 2;
+                    int spriteTop = y;
                     if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
                         drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index));
                     }
@@ -181,10 +187,27 @@ final class BattleScene extends JPanel {
                                 lift += (int) Math.round((partyFootY(h, targetIndex) - partyFootY(h, index)) * movement);
                             }
                         }
+                        spriteCenter = left + spriteWidth / 2;
+                        spriteTop = y + lift + spriteHeight - fittedHeight(sprites, slice, spriteWidth, spriteHeight);
                         java.awt.Composite previousComposite = g.getComposite();
                         if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.5f));
                         drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
                         g.setComposite(previousComposite);
+                    }
+                    if (student.isAlive() && !battle.isOver() && battle.getStunTurns(student) > 0 && stunIcon != null) {
+                        int centerX = Math.max(9, Math.min(w - 9, spriteCenter - (battle.hasDamageOverTime(student) ? 8 : 0)));
+                        int centerY = Math.max(9, spriteTop - 9);
+                        int frame = isShowing() ? (int) ((System.nanoTime() / 125_000_000L) % 16) : 0;
+                        Graphics2D iconGraphics = (Graphics2D) g.create();
+                        try {
+                            iconGraphics.rotate(frame * Math.PI / 8, centerX, centerY);
+                            drawFit(iconGraphics, stunIcon, 0, stunIcon.getWidth(), centerX - 8, centerY - 8, 16, 16);
+                        } finally { iconGraphics.dispose(); }
+                    }
+                    if (student.isAlive() && battle.hasDamageOverTime(student) && dotIcon != null) {
+                        int centerX = Math.max(8, Math.min(w - 8, spriteCenter + (battle.getStunTurns(student) > 0 ? 8 : 0)));
+                        int centerY = Math.max(8, spriteTop - 9);
+                        drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
                     }
                     if (state.partyTarget(index)) {
                         int slice = sprites != null ? sprites.getWidth() / 4 : 0;
@@ -195,21 +218,31 @@ final class BattleScene extends JPanel {
                 java.util.List<Integer> drawOrder = new java.util.ArrayList<>();
                 for (int index = 0; index < battle.getEnemies().size(); index++) { drawOrder.add(index); }
                 drawOrder.sort(java.util.Comparator.comparingInt(index -> enemyFootY(h, enemySlot(index, battle.getEnemies()))));
+                if (battle.isMerchantEncounter()) drawOrder.sort(java.util.Comparator.comparingInt(index -> battle.getEnemies().get(index).isMirror() ? 1 : 0));
                 for (int enemyIndex : drawOrder) {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int slot = enemySlot(enemyIndex, battle.getEnemies());
                     int x = enemyX(slot, slotWidth);
-                    BufferedImage enemyImage = enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
                     boolean escaping = enemy.hasEscaped() && state.attackingSprite() == enemy
                             && state.showEffects() && state.effectProgress() < 1.0;
-                    if (enemyImage != null && (enemy.isAlive() || escaping)) {
-                        int enemyWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                        int enemyHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
+                    if (enemyImage != null && (enemy.isAlive() || escaping) && !(enemy.isMirror() && battle.isVictory())) {
+                        int enemyWidth = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                        int enemyHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                         int enemyX = x + (slotWidth - enemyWidth) / 2 + (escaping
                                 ? (int) Math.ceil((w + enemyWidth - x) * state.effectProgress()) : attackOffset(enemy, -1));
                         int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
+                        java.awt.Composite previous = g.getComposite();
+                        if (enemy.isMirror()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.70f));
                         if (escaping) drawFlippedFit(g, enemyImage, enemyX, enemyY, enemyWidth, enemyHeight);
                         else drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY, enemyWidth, enemyHeight);
+                        g.setComposite(previous);
+                        if (enemy.isAlive() && battle.hasDamageOverTime(enemy) && dotIcon != null) {
+                            int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
+                            int centerX = Math.max(7, Math.min(w - 7, enemyX + enemyWidth / 2));
+                            int centerY = Math.max(7, enemyY + enemyHeight - drawnHeight - 8);
+                            drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
+                        }
                         if (enemy.isAlive() && (enemy.isBoss() || (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0))) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
                             int textX = x + slotWidth / 2 + 10;
@@ -259,7 +292,7 @@ final class BattleScene extends JPanel {
                         output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    output.drawString((enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " / "
+                    output.drawString((enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " / "
                             + enemy.getMaxHp() + " HP" + (enemy.hasEscaped() ? " ESCAPED" : enemy.isAlive() ? "" : " KO"), left + 7, y);
                     output.setColor(new Color(52, 68, 101));
                     output.fillRect(left + 7, y + 5, 122, 4);
@@ -430,9 +463,9 @@ final class BattleScene extends JPanel {
                     x = enemyX(slot, slotWidth) + slotWidth / 2;
                     ground = enemyFootY(h, slot);
                     Enemy enemy = (Enemy) entry.getKey();
-                    BufferedImage enemyImage = enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
-                    int boxWidth = enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                    int boxHeight = enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
+                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    int boxWidth = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
+                    int boxHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
                 }
                 double progress = state.effectProgress();
@@ -476,7 +509,7 @@ final class BattleScene extends JPanel {
         private int enemySlot(int index, java.util.List<Enemy> enemies) {
             int bossIndex = -1;
             for (int i = 0; i < enemies.size(); i++) {
-                if (enemies.get(i).isBoss()) { bossIndex = i; break; }
+                if (enemies.get(i).isBoss() || enemies.get(i).isMerchant()) { bossIndex = i; break; }
             }
             if (bossIndex < 0) {
                 for (int i = 0; i < enemies.size(); i++) {
@@ -490,6 +523,10 @@ final class BattleScene extends JPanel {
         }
 
         private int enemyX(int index, int slotWidth) {
+            if (state.battle() != null && state.battle().isMerchantEncounter()) {
+                int[] centers = {190, 265, 225, 200, 210, 185};
+                return centers[index] - slotWidth / 2;
+            }
             int[] centers = state.encounterStage() == 4 ? new int[]{294, 250, 294, 172, 185, 210} : ENEMY_CENTERS_X;
             return centers[index] - slotWidth / 2;
         }

@@ -19,11 +19,13 @@ public final class WorldMapPanel extends JPanel {
     private static final int[] X = {35, 94, 156, 218, 282};
     private static final int[] Y = {105, 82, 105, 82, 105};
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/campus-route-v1.png");
-    private final BufferedImage shopIcon = ScreenArt.load("/assets/ui/carbon-market-icon-v1.png");
+    private final BufferedImage lockedIcons = ScreenArt.load("/assets/ui/carbon-market-locked-icons-v1.png");
+    private final BufferedImage openIcons = ScreenArt.load("/assets/ui/carbon-market-open-icons-v1.png");
     private final java.util.function.BiConsumer<GameProgress, Integer> battle;
     private final Consumer<GameProgress> camp;
     private final Runnable menu;
     private Consumer<GameProgress> shop = ignored -> { };
+    private Consumer<GameProgress> merchant = ignored -> { };
     private boolean shopSelected;
     private GameProgress progress;
     private int cursor;
@@ -64,6 +66,7 @@ public final class WorldMapPanel extends JPanel {
 
     /** Supplies the action used to enter Carbon Market. */
     public void setShopAction(Consumer<GameProgress> action) { shop = java.util.Objects.requireNonNull(action); }
+    public void setMerchantAction(Consumer<GameProgress> action) { merchant = java.util.Objects.requireNonNull(action); }
 
     /** Displays the party's unlocked position on the route.
      * @param progress current party progress
@@ -80,7 +83,7 @@ public final class WorldMapPanel extends JPanel {
     }
     private void confirm() {
         if (progress == null) { return; }
-        if (shopSelected && !replayPrompt) { shop.accept(progress); return; }
+        if (shopSelected && !replayPrompt) { if (progress.isMerchantDefeated()) shop.accept(progress); else merchant.accept(progress); return; }
         if (replayPrompt) {
             replayPrompt = false;
             if (replayYes) { battle.accept(progress, cursor); return; }
@@ -129,9 +132,15 @@ public final class WorldMapPanel extends JPanel {
                             new int[] {Y[i] - 21, Y[i] - 21, Y[i] - 14}, 3);
                 }
             }
-            if (progress.getEncounter() >= 3) {
+            {
                 int sx = X[2], sy = Y[2] - 38;
-                if (shopIcon != null) { g.drawImage(shopIcon, sx - 14, sy - 14, 28, 28, null); }
+                BufferedImage icons = progress.isMerchantDefeated() ? openIcons : lockedIcons;
+                if (icons != null) {
+                    int half = icons.getWidth() / 2;
+                    int side = progress.getEncounter() >= 3 ? 1 : 0;
+                    g.drawImage(icons, sx - 21, sy - 14, sx + 21, sy + 14,
+                            side * half, 0, (side + 1) * half, icons.getHeight(), null);
+                }
                 if (shopSelected) {
                     g.setColor(Color.BLACK); g.fillPolygon(new int[] {sx - 5, sx + 5, sx}, new int[] {sy - 18, sy - 18, sy - 10}, 3);
                     g.setColor(new Color(255, 239, 190)); g.fillPolygon(new int[] {sx - 4, sx + 4, sx}, new int[] {sy - 17, sy - 17, sy - 11}, 3);
@@ -150,11 +159,11 @@ public final class WorldMapPanel extends JPanel {
             out.drawString("CAMPUS ROUTE", 30, 40);
             out.setColor(Color.WHITE); out.setFont(ClassicUi.numbers(17));
             String state = cursor < progress.getEncounter() ? "COMPLETED" : cursor > progress.getEncounter() ? "LOCKED" : "AVAILABLE";
-            out.drawString(shopSelected ? "Carbon Market   [SHOP]" : LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
+            out.drawString(shopSelected ? "Carbon Market   [" + (progress.isMerchantDefeated() ? "SHOP" : "LOCKED") + "]" : LOCATIONS[cursor] + "   [" + state + "]", 30, uiHeight - 75);
             String balance = progress.getPetot() + " Petot";
             out.drawString(balance, uiWidth - 30 - out.getFontMetrics().stringWidth(balance), uiHeight - 75);
             out.setFont(ClassicUi.body(14));
-            out.drawString(notice != null ? notice : shopSelected ? "Enter: Visit shop   •   Down: Route   •   Esc: Menu"
+            out.drawString(notice != null ? notice : shopSelected ? (progress.isMerchantDefeated() ? "Enter: Visit shop" : "Enter: Challenge the Mysterious Merchant") + "   •   Down: Route   •   Esc: Menu"
                     : cursor == 2 && progress.getEncounter() >= 3 ? "↑ Carbon Market   •   ← → Move   •   Enter: Select   •   C: Camp"
                     : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
             if (replayPrompt) {
