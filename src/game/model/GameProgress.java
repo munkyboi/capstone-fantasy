@@ -286,8 +286,8 @@ public final class GameProgress implements java.io.Serializable {
             student.restoreExperience(experience.get(i).longValue());
             if (allocations != null) {
                 int[] points = allocations.get(i);
-                if (points == null || points.length != 5) { throw new IllegalArgumentException("Invalid allocations"); }
-                student.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4]);
+                if (points == null || (points.length != 5 && points.length != 7)) { throw new IllegalArgumentException("Invalid allocations"); }
+                student.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4], points.length > 5 ? points[5] : 0, points.length > 6 ? points[6] : 0);
             }
             if (armorIds != null && armorIds.get(i) != null) {
                 Equipment armor = Equipment.fromId(armorIds.get(i));

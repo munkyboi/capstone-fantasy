@@ -298,11 +298,11 @@ public final class CampPanel extends JPanel {
         }
     }
     private void drawAllocation(Graphics2D g, Student student) {
-        int x = 306, y = 235, w = 348, h = 195;
+        int x = 306, y = 205, w = 348, h = 245;
         g.setColor(new Color(8, 18, 54, 245)); g.fillRect(x, y, w, h);
         g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
         g.setFont(ClassicUi.numbers(15)); g.drawString(student.getName() + "  •  Points: " + student.getUnspentStatPoints(), x + 15, y + 24);
-        String[] options = {"HP +5", "SP +3", "ATK +1", "DEF +1", "SPD +1"};
+        String[] options = {"HP +5", "SP +3", "ATK +1", "DEF +1", "SPD +1", "AGI +1", "ACC +1"};
         g.setFont(ClassicUi.numbers(14));
         for (int i = 0; i < options.length; i++) {
             int row = y + 45 + i * 25;

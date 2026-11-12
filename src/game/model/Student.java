@@ -18,7 +18,7 @@ public class Student extends GameCharacter {
         /** Monk ability. */ HEALING_KISS
     }
     /** Stats that can receive level-up points. */
-    public enum Stat { HP, SP, ATK, DEF, SPD }
+    public enum Stat { HP, SP, ATK, DEF, SPD, AGI, ACC }
     /** Creates the appropriate playable class for a selection index.
      * @param id character index
      * @return corresponding hero
@@ -61,7 +61,7 @@ public class Student extends GameCharacter {
     // Zero denotes the original fixed-100-XP curve in older saves.
     private int experienceGrowth;
     private int configuredLevelCap;
-    private int allocatedHp, allocatedSp, allocatedAttack, allocatedDefense, allocatedSpeed;
+    private int allocatedHp, allocatedSp, allocatedAttack, allocatedDefense, allocatedSpeed, allocatedAgility, allocatedAccuracy;
     /** Maximum experience: level 30. */
     public static final int MAX_EXPERIENCE = 2900;
     // False identifies a serialized save from before SP existed.
@@ -137,8 +137,8 @@ public class Student extends GameCharacter {
      * @return speed value
     */ public int getSpeed() { return (int) Math.round(effectiveSpeedWithEquipment(null, null)); }
     /** Agility and accuracy each increase by one per level. */
-    public int getAgility() { return STARTING_AGILITY[id] + getLevel() - 1; }
-    public int getAccuracy() { return STARTING_ACCURACY[id] + getLevel() - 1; }
+    public int getAgility() { return STARTING_AGILITY[id] + getLevel() - 1 + allocatedAgility; }
+    public int getAccuracy() { return STARTING_ACCURACY[id] + getLevel() - 1 + allocatedAccuracy; }
     /** Precise equipment-adjusted combat stats, including fractional percentage bonuses. */
     public double getEffectiveAgility() { return agilityWithEquipment(null, null); }
     public double getEffectiveAccuracy() { return accuracyWithEquipment(null, null); }
@@ -292,12 +292,12 @@ public class Student extends GameCharacter {
     }
     /** Returns points earned but not spent. */
     public int getUnspentStatPoints() {
-        return getLevel() - 1 - allocatedHp - allocatedSp - allocatedAttack - allocatedDefense - allocatedSpeed;
+        return getLevel() - 1 - allocatedHp - allocatedSp - allocatedAttack - allocatedDefense - allocatedSpeed - allocatedAgility - allocatedAccuracy;
     }
     /** Returns the number of points assigned to one stat. */
     public int getAllocatedStatPoints(Stat stat) {
         return switch (stat) { case HP -> allocatedHp; case SP -> allocatedSp; case ATK -> allocatedAttack;
-            case DEF -> allocatedDefense; case SPD -> allocatedSpeed; };
+            case DEF -> allocatedDefense; case SPD -> allocatedSpeed; case AGI -> allocatedAgility; case ACC -> allocatedAccuracy; };
     }
     /** Spends one point and applies the stat increase. KO students stay KO. */
     public boolean allocateStatPoint(Stat stat) {
@@ -308,17 +308,23 @@ public class Student extends GameCharacter {
             case ATK -> allocatedAttack++;
             case DEF -> allocatedDefense++;
             case SPD -> allocatedSpeed++;
+            case AGI -> allocatedAgility++;
+            case ACC -> allocatedAccuracy++;
         }
         return true;
     }
     /** Restores validated allocations without changing current HP or SP. */
     public void restoreStatAllocations(int hpPoints, int spPoints, int atkPoints, int defPoints, int spdPoints) {
+        restoreStatAllocations(hpPoints, spPoints, atkPoints, defPoints, spdPoints, 0, 0);
+    }
+    public void restoreStatAllocations(int hpPoints, int spPoints, int atkPoints, int defPoints, int spdPoints, int agiPoints, int accPoints) {
         if (hpPoints < 0 || spPoints < 0 || atkPoints < 0 || defPoints < 0 || spdPoints < 0
-                || (long) hpPoints + spPoints + atkPoints + defPoints + spdPoints > getLevel() - 1) {
+                || agiPoints < 0 || accPoints < 0
+                || (long) hpPoints + spPoints + atkPoints + defPoints + spdPoints + agiPoints + accPoints > getLevel() - 1) {
             throw new IllegalArgumentException("Invalid stat allocation");
         }
         allocatedHp = hpPoints; allocatedSp = spPoints; allocatedAttack = atkPoints;
-        allocatedDefense = defPoints; allocatedSpeed = spdPoints;
+        allocatedDefense = defPoints; allocatedSpeed = spdPoints; allocatedAgility = agiPoints; allocatedAccuracy = accPoints;
     }
     /** Returns the skill-point cost of the student's ability. */
     public int getAbilitySpCost() {

@@ -175,10 +175,12 @@ public final class SaveStore {
                 int[] points = new int[Student.Stat.values().length];
                 if ("6".equals(version) || modern(version)) {
                     for (Student.Stat stat : Student.Stat.values()) {
-                        points[stat.ordinal()] = Integer.parseInt(properties.getProperty(prefix + "allocated." + stat.name()));
+                        String value = properties.getProperty(prefix + "allocated." + stat.name());
+                        if (value == null && (stat == Student.Stat.AGI || stat == Student.Stat.ACC)) value = "0";
+                        points[stat.ordinal()] = Integer.parseInt(value);
                     }
                 }
-                expected.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4]);
+                expected.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4], points[5], points[6]);
                 allocations.add(points);
                 String armor = properties.getProperty(prefix + "armor", "");
                 armorIds.add(armor.isEmpty() ? null : armor);
@@ -294,7 +296,7 @@ public final class SaveStore {
             expected.restoreExperience(student.getExperience());
             int[] points = new int[Student.Stat.values().length];
             for (Student.Stat stat : Student.Stat.values()) { points[stat.ordinal()] = student.getAllocatedStatPoints(stat); }
-            expected.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4]);
+            expected.restoreStatAllocations(points[0], points[1], points[2], points[3], points[4], points[5], points[6]);
             allocations.add(points);
             boolean oldAttack = (student.getId() == Student.ZACK && student.getBaseAttack() == 18)
                     || (student.getId() == Student.ANGEL && (student.getBaseAttack() == 10 || student.getBaseAttack() == 39));

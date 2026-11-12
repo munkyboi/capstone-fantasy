@@ -496,10 +496,15 @@ public final class Battle {
                 return true;
             }
         }
+        if (enemy.isLootGoblin()) {
+            enemy.recordAction();
+            message = enemy.getName() + " watches the battle.";
+            return true;
+        }
         boolean skill = !enemy.isLootGoblin() && !enemy.isMirror() && enemy.usesSkillNext();
         enemy.recordAction();
         Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= enemy.getHealSpCost()
-                ? enemies.stream().filter(other -> other.isAlive()
+                ? enemies.stream().filter(other -> other.isAlive() && !other.isLootGoblin()
                         && other.getHp() * 4 <= other.getMaxHp() * 3)
                     .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)
                 : null;
