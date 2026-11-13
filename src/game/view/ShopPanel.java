@@ -16,17 +16,46 @@ import javax.swing.SwingConstants;
 
 /** Keyboard-operated Carbon Market. */
 public final class ShopPanel extends JPanel {
+    /** Serialized state: back.
+     * @serial
+     */
     private final Runnable back;
+    /** Serialized state: heading.
+     * @serial
+     */
     private final JLabel heading = new JLabel("CARBON MARKET", SwingConstants.CENTER);
+    /** Serialized state: balance.
+     * @serial
+     */
     private final JLabel balance = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: offers.
+     * @serial
+     */
     private final JLabel[] offers = {new JLabel(), new JLabel(), new JLabel()};
+    /** Serialized state: first visible.
+     * @serial
+     */
     private int firstVisible;
+    /** Serialized state: message.
+     * @serial
+     */
     private final JLabel message = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/carbon-market-battle-v2.png");
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
 
-    /** Creates a shop and a route return action. */
+    /** Creates a shop and a route return action.
+     * @param back the back
+     */
     public ShopPanel(Runnable back) {
         this.back = back; setPreferredSize(new Dimension(960, 540)); setFocusable(true);
         setLayout(new BorderLayout(12, 12)); setBorder(BorderFactory.createEmptyBorder(26, 135, 26, 135));
@@ -53,7 +82,9 @@ public final class ShopPanel extends JPanel {
         getInputMap(WHEN_FOCUSED).put(javax.swing.KeyStroke.getKeyStroke("ESCAPE"), "shop-back");
         getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(javax.swing.KeyStroke.getKeyStroke("ESCAPE"), "shop-back");
     }
-    /** Opens the market for the supplied party. */
+    /** Opens the market for the supplied party.
+     * @param progress current game progress
+     */
     public void open(GameProgress progress) { this.progress = progress; cursor = 0; firstVisible = 0; refresh("Welcome to Carbon Market!"); }
     private void move(int direction) { if (progress == null) { return; } cursor = Math.floorMod(cursor + direction, CarbonMarket.offers().size());
         if (cursor < firstVisible) firstVisible = cursor;

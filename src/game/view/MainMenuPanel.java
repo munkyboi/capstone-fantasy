@@ -23,8 +23,17 @@ public final class MainMenuPanel extends JPanel {
     private static final int HEIGHT = 540;
     private static final Color GOLD = new Color(250, 218, 143);
     private static final Color INK = new Color(24, 30, 58);
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/title-campus-v1.png");
+    /** Serialized state: logo.
+     * @serial
+     */
     private final BufferedImage logo = ScreenArt.load("/assets/ui/title-logo-v1.png");
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
 
     /** Creates the menu for the given game window.
@@ -43,7 +52,12 @@ public final class MainMenuPanel extends JPanel {
     public MainMenuPanel(Window window, Runnable startNewGame, Runnable openLoad) {
         this(window, startNewGame, openLoad, null);
     }
-    /** Creates a main menu including an optional settings action. */
+    /** Creates a main menu including an optional settings action.
+     * @param window the window
+     * @param startNewGame the start new game
+     * @param openLoad the open load
+     * @param openSettings the open settings
+     */
     public MainMenuPanel(Window window, Runnable startNewGame, Runnable openLoad, Runnable openSettings) {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setFocusable(true);

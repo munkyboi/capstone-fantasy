@@ -28,26 +28,89 @@ public final class InventoryPanel extends JPanel {
     private static final Color INK = new Color(12, 25, 48);
     private static final Color SELECTED = new Color(50, 78, 169);
     private static final Color LINE = new Color(134, 162, 192);
+    /** Serialized state: back.
+     * @serial
+     */
     private final Runnable back;
+    /** Serialized state: portraits.
+     * @serial
+     */
     private final ImageIcon[] portraits = CharacterPortraits.load();
+    /** Serialized state: heading.
+     * @serial
+     */
     private final JLabel heading = new JLabel("INVENTORY & EQUIPMENT", SwingConstants.CENTER);
+    /** Serialized state: help.
+     * @serial
+     */
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: message label.
+     * @serial
+     */
     private final JLabel messageLabel = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: party rows.
+     * @serial
+     */
     private final JLabel[] partyRows = {new JLabel(), new JLabel(), new JLabel(), new JLabel()};
+    /** Serialized state: profile.
+     * @serial
+     */
     private final JLabel profile = new JLabel();
+    /** Serialized state: stats.
+     * @serial
+     */
     private final JLabel stats = new JLabel();
+    /** Serialized state: slots.
+     * @serial
+     */
     private final JLabel[] slots = {new JLabel(), new JLabel(), new JLabel()};
+    /** Serialized state: bag contents.
+     * @serial
+     */
     private final JTextArea bagContents = textArea();
+    /** Serialized state: details.
+     * @serial
+     */
     private final JTextArea details = choiceArea();
+    /** Serialized state: choice cursor.
+     * @serial
+     */
     private int choiceCursor = -1;
+    /** Serialized state: bag scroll.
+     * @serial
+     */
     private final JScrollPane bagScroll;
+    /** Serialized state: choice heading.
+     * @serial
+     */
     private final JLabel choiceHeading = new JLabel("EQUIPMENT DETAILS");
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-v1.png");
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: student index.
+     * @serial
+     */
     private int studentIndex;
+    /** Serialized state: slot index.
+     * @serial
+     */
     private int slotIndex;
+    /** Serialized state: choice index.
+     * @serial
+     */
     private int choiceIndex;
+    /** Serialized state: choosing.
+     * @serial
+     */
     private boolean choosing;
+    /** Serialized state: message.
+     * @serial
+     */
     private String message;
 
     /** Creates the equipment screen.

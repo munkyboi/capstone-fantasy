@@ -20,13 +20,31 @@ public final class BattleEffect {
     private BattleEffect(Student student, String label) { this.student = student; this.enemy = null; this.amount = 0; this.label = label; this.manaLeak = false; }
     private BattleEffect(Enemy enemy, String label) { this.student = null; this.enemy = enemy; this.amount = 0; this.label = label; this.manaLeak = false; }
     private BattleEffect(Enemy enemy, int amount, boolean manaLeak) { this.student = null; this.enemy = enemy; this.amount = amount; this.label = null; this.manaLeak = manaLeak; }
-    /** Creates a distinct SP-loss indicator for Mana Leak. */
+    /** Creates a distinct SP-loss indicator for Mana Leak.
+     * @param enemy enemy involved in the action
+     * @param amount amount to apply
+     * @return the result of mana leak
+     */
     public static BattleEffect manaLeak(Enemy enemy, int amount) { return new BattleEffect(enemy, -amount, true); }
+    /** Returns whether this indicator represents Mana Leak.
+     * @return whether this indicator represents Mana Leak
+     */
     public boolean isManaLeak() { return manaLeak; }
-    /** Creates a textual combat indicator for a monster. */
+    /** Creates a textual combat indicator for a monster.
+     * @param enemy enemy involved in the action
+     * @param label the label
+     * @return the result of status
+     */
     public static BattleEffect status(Enemy enemy, String label) { return new BattleEffect(enemy, label); }
-    /** Creates a textual combat indicator for a character. */
+    /** Creates a textual combat indicator for a character.
+     * @param student student involved in the action
+     * @param label the label
+     * @return the result of status
+     */
     public static BattleEffect status(Student student, String label) { return new BattleEffect(student, label); }
+    /** Returns the optional text displayed for this effect.
+     * @return the optional text displayed for this effect
+     */
     public String getLabel() { return label; }
     /** Returns affected student, or null.
      * @return affected student, or null

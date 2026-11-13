@@ -7,10 +7,25 @@ public final class Equipment extends Item {
     public enum Slot { /** Class weapon. */ WEAPON, /** Shared defensive gear. */ ARMOR, /** Shared charm. */ ACCESSORY }
     /** Defense provided by the original campus vest. */
     public static final int DEFENSE_BONUS = 4;
+    /** Serialized state: id.
+     * @serial
+     */
     private final String id;
+    /** Serialized state: slot.
+     * @serial
+     */
     private final Slot slot;
+    /** Serialized state: attack bonus.
+     * @serial
+     */
     private final int attackBonus;
+    /** Serialized state: defense bonus.
+     * @serial
+     */
     private final int defenseBonus;
+    /** Serialized state: allowed student.
+     * @serial
+     */
     private final int allowedStudent;
 
     /** Creates the original campus vest. */
@@ -83,7 +98,7 @@ public final class Equipment extends Item {
             default -> throw new IllegalArgumentException("Unknown student");
         };
     }
-    @Override public String getCategory() { return "Equipment"; }
+    /** {@inheritDoc} */    @Override public String getCategory() { return "Equipment"; }
     /** Returns the persistent ID.
      * @return equipment ID
      */
@@ -100,7 +115,9 @@ public final class Equipment extends Item {
      * @return defense bonus
      */
     public int getDefenseBonus() { return defenseBonus; }
-    /** Percentage of maximum SP recovered on a successful accessory regeneration roll. */
+    /** Percentage of maximum SP recovered on a successful accessory regeneration roll.
+     * @return the sp regen percent
+     */
     public int getSpRegenPercent() {
         return switch (id) {
             case "market_charm" -> 3;
@@ -111,7 +128,9 @@ public final class Equipment extends Item {
             default -> 0;
         };
     }
-    /** Describes special legendary effects in the equipment screen. */
+    /** Describes special legendary effects in the equipment screen.
+     * @return the special description
+     */
     public String getSpecialDescription() {
         String description = switch (id) {
             case "campus_vest" -> "+5% HP; +10% HP regeneration";

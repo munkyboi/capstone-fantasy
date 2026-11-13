@@ -16,17 +16,53 @@ import javax.swing.SwingConstants;
 
 /** Keyboard-operated save and load slot screen. */
 public final class SaveSlotPanel extends JPanel {
+    /** Serialized state: store.
+     * @serial
+     */
     private final SaveStore store;
+    /** Serialized state: back.
+     * @serial
+     */
     private final Runnable back;
+    /** Serialized state: loaded.
+     * @serial
+     */
     private final Consumer<GameProgress> loaded;
+    /** Serialized state: heading.
+     * @serial
+     */
     private final JLabel heading = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: slots.
+     * @serial
+     */
     private final JLabel[] slots = {new JLabel(), new JLabel(), new JLabel()};
+    /** Serialized state: info.
+     * @serial
+     */
     private final JLabel info = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: help.
+     * @serial
+     */
     private final JLabel help = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: slot.
+     * @serial
+     */
     private int slot;
+    /** Serialized state: format.
+     * @serial
+     */
     private SaveStore.Format format = SaveStore.Format.TEXT;
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: saving.
+     * @serial
+     */
     private boolean saving;
+    /** Serialized state: overwrite pending.
+     * @serial
+     */
     private boolean overwritePending;
 
     /** Creates the slot screen.

@@ -18,7 +18,15 @@ public class Student extends GameCharacter {
         /** Monk ability. */ HEALING_KISS
     }
     /** Stats that can receive level-up points. */
-    public enum Stat { HP, SP, ATK, DEF, SPD, AGI, ACC }
+    public enum Stat {
+        /** Maximum hit points. */ HP,
+        /** Maximum skill points. */ SP,
+        /** Attack power. */ ATK,
+        /** Defense. */ DEF,
+        /** Action-bar speed. */ SPD,
+        /** Evasion. */ AGI,
+        /** Accuracy. */ ACC
+    }
     /** Creates the appropriate playable class for a selection index.
      * @param id character index
      * @return corresponding hero
@@ -48,33 +56,98 @@ public class Student extends GameCharacter {
     private static final int[] STARTING_ACCURACY = {8, 9, 12, 10};
     private static final int[] ABILITY_SP_COST = {15, 5, 5, 10};
     private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 50};
+    /** Serialized state: id.
+     * @serial
+     */
     private final int id;
+    /** Serialized state: name.
+     * @serial
+     */
     private final String name;
+    /** Serialized state: max hp.
+     * @serial
+     */
     private final int maxHp;
+    /** Serialized state: attack.
+     * @serial
+     */
     private final int attack;
+    /** Serialized state: defense.
+     * @serial
+     */
     private final int defense;
+    /** Serialized state: speed.
+     * @serial
+     */
     private final int speed;
+    /** Serialized state: level.
+     * @serial
+     */
     private final int level = STARTING_LEVEL;
+    /** Serialized state: hp.
+     * @serial
+     */
     private int hp;
+    /** Serialized state: experience.
+     * @serial
+     */
     private int experience;
+    /** Serialized state: experience overflow.
+     * @serial
+     */
     private long experienceOverflow; // Additional XP beyond the legacy serialized int field.
     // Zero denotes the original fixed-100-XP curve in older saves.
+    /** Serialized state: experience growth.
+     * @serial
+     */
     private int experienceGrowth;
+    /** Serialized state: configured level cap.
+     * @serial
+     */
     private int configuredLevelCap;
+    /** Serialized state: allocated accuracy, allocated agility, allocated attack, allocated defense, allocated hp, allocated sp, allocated speed.
+     * @serial
+     */
     private int allocatedHp, allocatedSp, allocatedAttack, allocatedDefense, allocatedSpeed, allocatedAgility, allocatedAccuracy;
     /** Maximum experience: level 30. */
     public static final int MAX_EXPERIENCE = 2900;
     // False identifies a serialized save from before SP existed.
+    /** Serialized state: skill points.
+     * @serial
+     */
     private int skillPoints;
+    /** Serialized state: skill points initialized.
+     * @serial
+     */
     private boolean skillPointsInitialized;
+    /** Serialized state: looper mana leak version.
+     * @serial
+     */
     private boolean looperManaLeakVersion = true;
-    /** Identifies saves created after Looper Ring stopped increasing maximum SP. */
+    /** Identifies saves created after Looper Ring stopped increasing maximum SP.
+     * @return whether looper mana leak version is present
+     */
     public boolean hasLooperManaLeakVersion() { return looperManaLeakVersion; }
+    /** Serialized state: defending.
+     * @serial
+     */
     private boolean defending;
     private transient boolean etherealCharged;
+    /** Serialized state: vest equipped.
+     * @serial
+     */
     private boolean vestEquipped;
+    /** Serialized state: weapon id.
+     * @serial
+     */
     private String weaponId;
+    /** Serialized state: armor id.
+     * @serial
+     */
     private String armorId;
+    /** Serialized state: accessory id.
+     * @serial
+     */
     private String accessoryId;
 
     /** Creates a student from the character-selection index.
@@ -136,13 +209,31 @@ public class Student extends GameCharacter {
     /** Returns speed value.
      * @return speed value
     */ public int getSpeed() { return (int) Math.round(effectiveSpeedWithEquipment(null, null)); }
-    /** Agility and accuracy each increase by one per level. */
+    /** Agility and accuracy each increase by one per level.
+     * @return the agility
+     */
     public int getAgility() { return STARTING_AGILITY[id] + getLevel() - 1 + allocatedAgility; }
+    /** Returns the student’s base accuracy.
+     * @return the student\u2019s base accuracy
+     */
     public int getAccuracy() { return STARTING_ACCURACY[id] + getLevel() - 1 + allocatedAccuracy; }
-    /** Precise equipment-adjusted combat stats, including fractional percentage bonuses. */
+    /** Precise equipment-adjusted combat stats, including fractional percentage bonuses.
+     * @return the effective agility
+     */
     public double getEffectiveAgility() { return agilityWithEquipment(null, null); }
+    /** Returns accuracy including equipment bonuses.
+     * @return accuracy including equipment bonuses
+     */
     public double getEffectiveAccuracy() { return accuracyWithEquipment(null, null); }
+    /** Returns speed including equipment bonuses.
+     * @return speed including equipment bonuses
+     */
     public double getEffectiveSpeed() { return effectiveSpeedWithEquipment(null, null); }
+    /** Calculates agility for a proposed equipment change.
+     * @param slot selected slot
+     * @param replacement replacement equipment ID, or null
+     * @return the result of agility with equipment
+     */
     public double agilityWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
@@ -150,6 +241,11 @@ public class Student extends GameCharacter {
         return getAgility() * (1.0 + ("hunter_crossbows".equals(weapon) ? 0.10 : 0)
                 + ("training_uniform".equals(armor) ? 0.10 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
     }
+    /** Calculates accuracy for a proposed equipment change.
+     * @param slot selected slot
+     * @param replacement replacement equipment ID, or null
+     * @return the result of accuracy with equipment
+     */
     public double accuracyWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
@@ -157,19 +253,33 @@ public class Student extends GameCharacter {
         return getAccuracy() * (1.0 + ("training_uniform".equals(armor) ? 0.10 : 0) + ("scholar_staff".equals(weapon) ? 0.10 : 0)
                 + ("focus_charm".equals(accessory) ? 0.05 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
     }
+    /** Calculates speed for a proposed equipment change.
+     * @param slot selected slot
+     * @param replacement replacement equipment ID, or null
+     * @return the result of effective speed with equipment
+     */
     public double effectiveSpeedWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         return statWithEquipment(Stat.SPD, slot, replacement)
                 + ("champion_wraps".equals(weapon) ? getUnmodifiedSpeed() * 0.10 : 0);
     }
-    /** Previews a stat if a slot were changed; pass a null slot for current equipment. */
+    /** Previews a stat if a slot were changed; pass a null slot for current equipment.
+     * @param stat the stat
+     * @param slotToReplace the slot to replace
+     * @param replacement replacement equipment ID, or null
+     * @return the result of stat with equipment
+     */
     public int statWithEquipment(Stat stat, Equipment.Slot slotToReplace, String replacement) {
         String weapon = slotToReplace == Equipment.Slot.WEAPON ? replacement : weaponId;
         String armor = slotToReplace == Equipment.Slot.ARMOR ? replacement : armorId;
         String accessory = slotToReplace == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
         return calculateStat(stat, weapon, armor, accessory, slotToReplace);
     }
-    /** Calculates maximum HP with the specified armor and accessory for save validation. */
+    /** Calculates maximum HP with the specified armor and accessory for save validation.
+     * @param armor the armor
+     * @param accessory the accessory
+     * @return the result of max hp with equipment
+     */
     public int maxHpWithEquipment(String armor, String accessory) {
         return calculateStat(Stat.HP, weaponId, armor, accessory, Equipment.Slot.ARMOR);
     }
@@ -220,9 +330,13 @@ public class Student extends GameCharacter {
         if (previousHp <= 0) { hp = 0; return; }
         hp = Math.max(1, Math.min(getMaxHp(), (int) Math.round((double) previousHp * getMaxHp() / previousMax)));
     }
-    /** Speed before equipment, used to calculate equipment AP bonuses. */
+    /** Speed before equipment, used to calculate equipment AP bonuses.
+     * @return the unmodified speed
+     */
     public int getUnmodifiedSpeed() { return speed + allocatedSpeed + (getLevel() - 1) / 5; }
-    /** Starting class speed, used as the baseline for action-point charging. */
+    /** Starting class speed, used as the baseline for action-point charging.
+     * @return the starting speed
+     */
     public int getStartingSpeed() { return STARTING_SPEED[id]; }
     /** Returns current level.
      * @return current level
@@ -238,23 +352,38 @@ public class Student extends GameCharacter {
         }
         return total;
     }
-    /** XP needed to advance from this level; zero at or above the current cap. */
+    /** XP needed to advance from this level; zero at or above the current cap.
+     * @return the xp required
+     */
     public long getXpRequired() {
         int level = getLevel();
         return level >= getLevelCap() || level >= 100 ? 0
                 : experienceForLevel(level + 1, experienceGrowth) - experienceForLevel(level, experienceGrowth);
     }
-    /** XP earned toward the next level. */
+    /** XP earned toward the next level.
+     * @return the xp progress
+     */
     public long getXpProgress() { return getXpRequired() == 0 ? 0 : getExperience() - experienceForLevel(getLevel(), experienceGrowth); }
-    /** Loses up to ten percent of the next level's XP requirement without losing a level. */
+    /** Loses up to ten percent of the next level's XP requirement without losing a level.
+     * @return the result of apply escape xp penalty
+     */
     public long applyEscapeXpPenalty() {
         long loss = Math.min(getXpProgress(), (getXpRequired() + 9) / 10);
         setExperience(getExperience() - loss);
         return loss;
     }
+    /** Returns the configured experience growth factor.
+     * @return the configured experience growth factor
+     */
     public int getExperienceGrowth() { return experienceGrowth; }
+    /** Returns the configured maximum level.
+     * @return the configured maximum level
+     */
     public int getLevelCap() { return configuredLevelCap == 0 ? 30 : configuredLevelCap; }
-    /** Change progression while preserving level and fraction of progress toward the next level. */
+    /** Change progression while preserving level and fraction of progress toward the next level.
+     * @param growth the growth
+     * @param cap the cap
+     */
     public void configureProgression(int growth, int cap) {
         if (growth < 0 || growth > 30 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
         int level = getLevel();
@@ -266,23 +395,33 @@ public class Student extends GameCharacter {
         setExperience(newStart + Math.min(Math.max(0, newNext - newStart - 1), Math.round(fraction * (newNext - newStart))));
         experienceGrowth = growth; configuredLevelCap = cap;
     }
-    /** Restores the progression rules before restoring experience. */
+    /** Restores the progression rules before restoring experience.
+     * @param growth the growth
+     * @param cap the cap
+     */
     public void restoreProgression(int growth, int cap) {
         if (growth < 0 || growth > 30 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
         experienceGrowth = growth; configuredLevelCap = cap;
     }
-    /** Returns total earned experience. */
+    /** Returns total earned experience.
+     * @return total earned experience
+     */
     public long getExperience() { return (long) experience + experienceOverflow; }
     private void setExperience(long value) {
         experience = (int) Math.min(Integer.MAX_VALUE, value);
         experienceOverflow = value - experience;
     }
-    /** Restores validated experience without applying healing. */
+    /** Restores validated experience without applying healing.
+     * @param value new value
+     */
     public void restoreExperience(long value) {
         if (value < 0 || value > experienceForLevel(100, experienceGrowth)) { throw new IllegalArgumentException("Invalid experience"); }
         setExperience(value);
     }
-    /** Grants XP and fully restores HP and SP when at least one level is gained. */
+    /** Grants XP and fully restores HP and SP when at least one level is gained.
+     * @param amount amount to apply
+     * @return the result of gain experience
+     */
     public int gainExperience(long amount) {
         if (amount < 0) { throw new IllegalArgumentException("Invalid experience"); }
         int oldLevel = getLevel();
@@ -292,25 +431,44 @@ public class Student extends GameCharacter {
         if (gained > 0) { hp = getMaxHp(); skillPoints = getMaxSp(); skillPointsInitialized = true; }
         return gained;
     }
-    /** Returns current and maximum skill points and the ability cost. */
+    /** Returns current and maximum skill points and the ability cost.
+     * @return current and maximum skill points and the ability cost
+     */
     public int getSp() { return skillPointsInitialized ? skillPoints : getMaxSp(); }
-    /** Whether a serialized student has an explicit SP balance. */
+    /** Whether a serialized student has an explicit SP balance.
+     * @return whether a serialized student has an explicit SP balance
+     */
     public boolean hasInitializedSkillPoints() { return skillPointsInitialized; }
-    /** Returns the student's maximum skill points. */
+    /** Returns the student's maximum skill points.
+     * @return the student's maximum skill points
+     */
     public int getMaxSp() { return maxSpWithEquipment(null, null); }
+    /** Returns maximum skill points for a proposed equipment change.
+     * @param slot selected slot
+     * @param replacement replacement equipment ID, or null
+     * @return maximum skill points for a proposed equipment change
+     */
     public int maxSpWithEquipment(Equipment.Slot slot, String replacement) {
         return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
     }
-    /** Returns points earned but not spent. */
+    /** Returns points earned but not spent.
+     * @return points earned but not spent
+     */
     public int getUnspentStatPoints() {
         return getLevel() - 1 - allocatedHp - allocatedSp - allocatedAttack - allocatedDefense - allocatedSpeed - allocatedAgility - allocatedAccuracy;
     }
-    /** Returns the number of points assigned to one stat. */
+    /** Returns the number of points assigned to one stat.
+     * @param stat the stat
+     * @return the number of points assigned to one stat
+     */
     public int getAllocatedStatPoints(Stat stat) {
         return switch (stat) { case HP -> allocatedHp; case SP -> allocatedSp; case ATK -> allocatedAttack;
             case DEF -> allocatedDefense; case SPD -> allocatedSpeed; case AGI -> allocatedAgility; case ACC -> allocatedAccuracy; };
     }
-    /** Spends one point and applies the stat increase. KO students stay KO. */
+    /** Spends one point and applies the stat increase. KO students stay KO.
+     * @param stat the stat
+     * @return the result of allocate stat point
+     */
     public boolean allocateStatPoint(Stat stat) {
         if (stat == null || getUnspentStatPoints() <= 0) { return false; }
         switch (stat) {
@@ -324,10 +482,25 @@ public class Student extends GameCharacter {
         }
         return true;
     }
-    /** Restores validated allocations without changing current HP or SP. */
+    /** Restores validated allocations without changing current HP or SP.
+     * @param hpPoints the hp points
+     * @param spPoints the sp points
+     * @param atkPoints the atk points
+     * @param defPoints the def points
+     * @param spdPoints the spd points
+     */
     public void restoreStatAllocations(int hpPoints, int spPoints, int atkPoints, int defPoints, int spdPoints) {
         restoreStatAllocations(hpPoints, spPoints, atkPoints, defPoints, spdPoints, 0, 0);
     }
+    /** Restores all allocated level-up points from a validated save.
+     * @param hpPoints the hp points
+     * @param spPoints the sp points
+     * @param atkPoints the atk points
+     * @param defPoints the def points
+     * @param spdPoints the spd points
+     * @param agiPoints the agi points
+     * @param accPoints the acc points
+     */
     public void restoreStatAllocations(int hpPoints, int spPoints, int atkPoints, int defPoints, int spdPoints, int agiPoints, int accPoints) {
         if (hpPoints < 0 || spPoints < 0 || atkPoints < 0 || defPoints < 0 || spdPoints < 0
                 || agiPoints < 0 || accPoints < 0
@@ -337,17 +510,23 @@ public class Student extends GameCharacter {
         allocatedHp = hpPoints; allocatedSp = spPoints; allocatedAttack = atkPoints;
         allocatedDefense = defPoints; allocatedSpeed = spdPoints; allocatedAgility = agiPoints; allocatedAccuracy = accPoints;
     }
-    /** Returns the skill-point cost of the student's ability. */
+    /** Returns the skill-point cost of the student's ability.
+     * @return the skill-point cost of the student's ability
+     */
     public int getAbilitySpCost() {
         int cost = ABILITY_SP_COST[id] + getLevel() - 1;
         return "looper_ring".equals(accessoryId) ? (int) Math.ceil(cost * 1.1 - 1e-9) : cost;
     }
-    /** Uses skill points if enough are available. */
+    /** Uses skill points if enough are available.
+     * @return the result of spend ability sp
+     */
     public boolean spendAbilitySp() {
         if (getSp() < getAbilitySpCost()) { return false; }
         skillPoints = getSp() - getAbilitySpCost(); skillPointsInitialized = true; return true;
     }
-    /** Restores validated skill points from a save. */
+    /** Restores validated skill points from a save.
+     * @param value new value
+     */
     public void restoreSp(int value) {
         if (value < 0 || value > getMaxSp()) { throw new IllegalArgumentException("Invalid SP"); }
         skillPoints = value; skillPointsInitialized = true;
@@ -362,9 +541,16 @@ public class Student extends GameCharacter {
      * @return whether the student can act
      */ public boolean isAlive() { return hp > 0; }
     /** Activates defensive bonuses for a guard action. */ public void defend() { defending = true; }
+    /** Returns whether this student is defending an ally.
+     * @return whether this student is defending an ally
+     */
     public boolean isDefending() { return defending; }
+    /** Ends this student’s active defense. */
     public void endDefend() { defending = false; }
     /** Clears temporary combat state between encounters. */ public void clearDefense() { defending = false; etherealCharged = false; }
+    /** Returns whether Ethereal Robe has charged the next attack.
+     * @return whether Ethereal Robe has charged the next attack
+     */
     public boolean hasEtherealCharge() { return etherealCharged; }
     void chargeEthereal() { etherealCharged = true; }
     boolean consumeEtherealCharge() { boolean charged = etherealCharged; etherealCharged = false; return charged; }

@@ -31,68 +31,266 @@ public final class BattlePanel extends JPanel {
     private static final double AMBUSH_ENEMY_AP_FRACTION = 0.8;
     private static final int ANIMATION_FRAME_MILLIS = 16;
     private static final int VICTORY_ANIMATION_MILLIS = 1800;
+    /** Serialized state: return to menu.
+     * @serial
+     */
     private final Runnable returnToMenu;
+    /** Serialized state: on victory.
+     * @serial
+     */
     private final Consumer<GameProgress> onVictory;
+    /** Serialized state: on escape.
+     * @serial
+     */
     private Consumer<GameProgress> onEscape;
+    /** Serialized state: on explore.
+     * @serial
+     */
     private java.util.function.BiConsumer<GameProgress, Integer> onExplore;
+    /** Serialized state: victory choice.
+     * @serial
+     */
     private int victoryChoice;
+    /** Serialized state: settings.
+     * @serial
+     */
     private final GameSettings settings;
+    /** Serialized state: battle random.
+     * @serial
+     */
     private final Random battleRandom;
+    /** Serialized state: status.
+     * @serial
+     */
     private final JLabel status = new JLabel();
+    /** Serialized state: party status.
+     * @serial
+     */
     private final JLabel[] partyStatus = {new JLabel(), new JLabel(), new JLabel(), new JLabel()};
+    /** Serialized state: ap bars.
+     * @serial
+     */
     private final JProgressBar[] apBars = {new JProgressBar(), new JProgressBar(), new JProgressBar(), new JProgressBar()};
+    /** Serialized state: log.
+     * @serial
+     */
     private final JTextArea log = new JTextArea();
+    /** Serialized state: log scroll.
+     * @serial
+     */
     private final JScrollPane logScroll = new JScrollPane(log);
+    /** Serialized state: attack.
+     * @serial
+     */
     private final JButton attack = new JButton("Attack");
+    /** Serialized state: ability.
+     * @serial
+     */
     private final JButton ability = new JButton("Ability");
+    /** Serialized state: item.
+     * @serial
+     */
     private final JButton item = new JButton("Item");
+    /** Serialized state: defend.
+     * @serial
+     */
     private final JButton defend = new JButton("Defend");
+    /** Serialized state: escape.
+     * @serial
+     */
     private final JButton escape = new JButton("Escape");
+    /** Serialized state: finish.
+     * @serial
+     */
     private final JButton finish = new JButton("Return to Menu");
+    /** Serialized state: scene.
+     * @serial
+     */
     private final BattleScene scene;
+    /** Serialized state: battle.
+     * @serial
+     */
     private Battle battle;
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: command index.
+     * @serial
+     */
     private int commandIndex;
+    /** Serialized state: commands.
+     * @serial
+     */
     private final JButton[] commands = {attack, ability, item, defend, escape};
-    private enum TargetAction { NONE, ATTACK, ABILITY, ITEM, WHITE_FLOWER, DEFEND }
+    enum TargetAction { NONE, ATTACK, ABILITY, ITEM, WHITE_FLOWER, DEFEND }
+    /** Serialized state: targeting.
+     * @serial
+     */
     private TargetAction targeting = TargetAction.NONE;
+    /** Serialized state: target index.
+     * @serial
+     */
     private int targetIndex;
+    /** Serialized state: choosing item.
+     * @serial
+     */
     private boolean choosingItem;
+    /** Serialized state: item choice.
+     * @serial
+     */
     private int itemChoice;
+    /** Serialized state: ability announcement.
+     * @serial
+     */
     private Battle.AbilityAnnouncement abilityAnnouncement;
+    /** Serialized state: ability alerts.
+     * @serial
+     */
     private final java.util.ArrayDeque<Battle.AbilityAnnouncement> abilityAlerts = new java.util.ArrayDeque<>();
+    /** Serialized state: ability alert timer.
+     * @serial
+     */
     private final Timer abilityAlertTimer;
+    /** Serialized state: notice.
+     * @serial
+     */
     private String notice;
+    /** Serialized state: victory reward items.
+     * @serial
+     */
     private List<String> victoryRewardItems = List.of();
+    /** Serialized state: reward recorded.
+     * @serial
+     */
     private boolean rewardRecorded;
+    /** Serialized state: victory petot.
+     * @serial
+     */
     private int victoryPetot;
+    /** Serialized state: victory experience.
+     * @serial
+     */
     private int victoryExperience;
+    /** Serialized state: leveled students.
+     * @serial
+     */
     private List<String> leveledStudents = List.of();
+    /** Serialized state: bonus xp students.
+     * @serial
+     */
     private List<String> bonusXpStudents = List.of();
+    /** Serialized state: encounter stage.
+     * @serial
+     */
     private int encounterStage;
+    /** Serialized state: action points.
+     * @serial
+     */
     private final Map<Student, Double> actionPoints = new HashMap<>();
+    /** Serialized state: enemy points.
+     * @serial
+     */
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
+    /** Serialized state: ap timer.
+     * @serial
+     */
     private final Timer apTimer = new Timer(AP_FRAME_MILLIS, event -> tickActionPoints());
+    /** Serialized state: last tick nanos.
+     * @serial
+     */
     private long lastTickNanos;
+    /** Serialized state: last dot nanos.
+     * @serial
+     */
     private long lastDotNanos;
+    /** Serialized state: effect timer.
+     * @serial
+     */
     private final Timer effectTimer;
+    /** Serialized state: ambush alert timer.
+     * @serial
+     */
     private final Timer ambushAlertTimer;
+    /** Serialized state: victory timer.
+     * @serial
+     */
     private final Timer victoryTimer;
+    /** Serialized state: second cast timer.
+     * @serial
+     */
     private final Timer secondCastTimer;
+    /** Serialized state: looper hit timer.
+     * @serial
+     */
     private final Timer looperHitTimer;
+    /** Serialized state: angel attack timer.
+     * @serial
+     */
     private final Timer angelAttackTimer;
+    /** Serialized state: twin shot timer.
+     * @serial
+     */
     private final Timer twinShotTimer;
+    /** Serialized state: spark explosion timer.
+     * @serial
+     */
     private final Timer sparkExplosionTimer;
+    /** Serialized state: monster turn timer.
+     * @serial
+     */
     private final Timer monsterTurnTimer;
+    /** Serialized state: clock.
+     * @serial
+     */
+    private final BattleInput input = new BattleInput(this);
+    /** Battle action-bar scheduler.
+     * @serial
+     */
+    private final BattleClock clock;
+    /** Coordinates delayed actions.
+     * @serial
+     */
+    private final BattleActionFlow actionFlow = new BattleActionFlow(this);
+    /** Serialized state: victory started nanos.
+     * @serial
+     */
     private long victoryStartedNanos;
+    /** Serialized state: show ambush.
+     * @serial
+     */
     private boolean showAmbush;
+    /** Serialized state: show effects.
+     * @serial
+     */
     private boolean showEffects;
+    /** Serialized state: effect batches.
+     * @serial
+     */
     private final java.util.List<BattleScene.EffectBatch> effectBatches = new java.util.ArrayList<>();
+    /** Serialized state: effect sequence.
+     * @serial
+     */
     private int effectSequence;
+    /** Serialized state: effect started nanos.
+     * @serial
+     */
     private long effectStartedNanos;
+    /** Serialized state: attacking sprite.
+     * @serial
+     */
     private Object attackingSprite;
+    /** Serialized state: rain shooter.
+     * @serial
+     */
     private Student rainShooter;
+    /** Serialized state: rain targets.
+     * @serial
+     */
     private List<Enemy> rainTargets = List.of();
+    /** Serialized state: rain started nanos.
+     * @serial
+     */
     private long rainStartedNanos;
 
     /** Creates the battle screen.
@@ -131,51 +329,7 @@ public final class BattlePanel extends JPanel {
         this.onEscape = ignored -> returnToMenu.run();
         this.settings = settings;
         this.battleRandom = random;
-        scene = new BattleScene(new BattleScene.State() {
-            @Override public Battle battle() { return battle; }
-            @Override public int encounterStage() { return encounterStage; }
-            @Override public boolean partyTarget(int index) {
-                return targeting != TargetAction.NONE && targetsParty() && index == targetIndex;
-            }
-            @Override public boolean enemyTarget(int index) {
-                return targeting != TargetAction.NONE && !targetsParty()
-                        && (targetsAllEnemies() || index == targetIndex);
-            }
-            @Override public List<String> rewardItems() { return victoryRewardItems; }
-            @Override public int rewardPetot() { return victoryPetot; }
-            @Override public int rewardExperience() { return victoryExperience; }
-            @Override public int victoryChoice() { return victoryChoice; }
-            @Override public boolean canExplore() { return !battle.isMerchantEncounter() && onExplore != null; }
-            @Override public void chooseVictory(int choice) {
-                victoryChoice = choice;
-                confirmCommand();
-            }
-            @Override public List<String> leveledStudents() { return leveledStudents; }
-            @Override public List<String> bonusXpStudents() { return bonusXpStudents; }
-            @Override public boolean showEffects() { return showEffects; }
-            @Override public List<BattleScene.EffectBatch> effectBatches() { return List.copyOf(effectBatches); }
-            @Override public boolean escaping() { return battle != null && battle.isEscaping(); }
-            @Override public boolean showAmbush() { return showAmbush; }
-            @Override public Battle.AbilityAnnouncement abilityAnnouncement() { return abilityAnnouncement; }
-            @Override public boolean choosingItem() { return choosingItem; }
-            @Override public int itemChoice() { return itemChoice; }
-            @Override public int kits() { return battle == null ? 0 : battle.getKits(); }
-            @Override public int flowers() { return progress == null ? 0 : progress.getInventory().getWhiteFlowers(); }
-            @Override public double victoryProgress() {
-                return victoryStartedNanos == 0 ? 1.0 : Math.min(1.0,
-                        (System.nanoTime() - victoryStartedNanos) / (VICTORY_ANIMATION_MILLIS * 1_000_000.0));
-            }
-            @Override public double enemyPoints(Enemy enemy) { return enemyPoints.getOrDefault(enemy, 0.0); }
-            @Override public Object attackingSprite() { return attackingSprite; }
-            @Override public Student rainShooter() { return rainShooter; }
-            @Override public List<Enemy> rainTargets() { return rainTargets; }
-            @Override public double rainElapsedMillis() { return (System.nanoTime() - rainStartedNanos) / 1_000_000.0; }
-            @Override public Student blockingStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getBlockingStudent(); }
-            @Override public Student protectedStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getProtectedStudent(); }
-            @Override public double effectProgress() {
-                return attackingSprite != null ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
-            }
-        });
+        scene = new BattleScene(new BattleViewState(this));
         abilityAlertTimer = new Timer(2000, event -> {
             abilityAnnouncement = abilityAlerts.pollFirst();
             if (abilityAnnouncement != null) ((Timer) event.getSource()).restart();
@@ -213,43 +367,10 @@ public final class BattlePanel extends JPanel {
         sparkExplosionTimer.setRepeats(false);
         monsterTurnTimer = new Timer(MONSTER_TURN_DELAY_MILLIS, event -> { });
         monsterTurnTimer.setRepeats(false);
+        clock = new BattleClock(this, settings, actionPoints, enemyPoints, apBars, apTimer, monsterTurnTimer, sparkExplosionTimer, scene);
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, escape, finish);
-        attack.addActionListener(e -> {
-            Student actor = battle.getCurrent();
-            if (actor != null && actor.getId() == Student.CHARICE && actor.getSp() < 2) {
-                notice = "Not enough SP. Twin Shot needs 2 SP."; refresh(); return;
-            }
-            beginTargeting(TargetAction.ATTACK);
-        });
-        escape.addActionListener(e -> performAction(() -> battle.beginEscape(), false));
-        defend.addActionListener(e -> beginTargeting(TargetAction.DEFEND));
-        ability.addActionListener(e -> {
-            Student actor = battle.getCurrent();
-            if (actor != null && actor.getSp() < actor.getAbilitySpCost()) {
-                notice = "Not enough SP. " + actor.getName() + " needs " + actor.getAbilitySpCost() + " SP.";
-                refresh(); return;
-            }
-            beginTargeting(TargetAction.ABILITY);
-        });
-        item.addActionListener(e -> {
-            int kits = battle.getKits(), flowers = progress.getInventory().getWhiteFlowers();
-            if (kits == 0 && flowers == 0) { notice = "No usable items remain."; refresh(); return; }
-            boolean fallen = battle.getParty().stream().anyMatch(student -> !student.isAlive());
-            if (flowers == 0 || (kits > 0 && !fallen)) { beginTargeting(TargetAction.ITEM); return; }
-            if (kits == 0) { beginFlowerTargeting(); return; }
-            choosingItem = true; itemChoice = 0; notice = null; refresh();
-        });
-        finish.addActionListener(e -> { if (battle.isVictory()) { this.onVictory.accept(progress); } else { this.returnToMenu.run(); } });
-        Keys.bind(this, "UP", "battle-up", () -> moveCursor(-1));
-        Keys.bind(this, "DOWN", "battle-down", () -> moveCursor(1));
-        Keys.bind(this, "LEFT", "battle-left", () -> moveTarget(-1));
-        Keys.bind(this, "RIGHT", "battle-right", () -> moveTarget(1));
-        Keys.bind(this, "ENTER", "battle-confirm", this::confirmCommand);
-        Keys.bind(this, "SPACE", "battle-confirm-space", this::confirmCommand);
-        Keys.bind(this, "ESCAPE", "battle-cancel", this::cancelTargeting);
-        Keys.bind(this, "PAGE_DOWN", "log-down", () -> scrollLog(1));
-        Keys.bind(this, "PAGE_UP", "log-up", () -> scrollLog(-1));
+        input.bind();
         addHierarchyListener(event -> {
             if ((event.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0) {
                 if (isShowing() && battle != null && !battle.isOver()) {
@@ -265,12 +386,14 @@ public final class BattlePanel extends JPanel {
             }
         });
     }
-    /** Sets the destination for a successful party escape. */
+    /** Sets the destination for a successful party escape.
+     * @param action the action
+     */
     public void setEscapeAction(Consumer<GameProgress> action) { onEscape = java.util.Objects.requireNonNull(action); }
 
     private void effectTimerStop() { effectTimer.stop(); }
 
-    private void showActionEffects(Object attacker) {
+    void showActionEffects(Object attacker) {
         long now = System.nanoTime();
         if (!battle.getEffects().isEmpty()) {
             int[] lanes = {0, -20, 20, -36, 36};
@@ -285,13 +408,13 @@ public final class BattlePanel extends JPanel {
         }
     }
 
-    private void announceAbility() {
+    void announceAbility() {
         Battle.AbilityAnnouncement latest = battle.getLastAbility();
         if (latest == null) return;
         if (abilityAnnouncement != null) { abilityAlerts.addLast(latest); return; }
         abilityAnnouncement = latest; abilityAlertTimer.restart(); scene.repaint();
     }
-    private void beginFlowerTargeting() {
+    void beginFlowerTargeting() {
         if (battle.getParty().stream().noneMatch(student -> !student.isAlive())) {
             notice = "No fallen ally needs a White Flower."; refresh(); return;
         }
@@ -324,12 +447,21 @@ public final class BattlePanel extends JPanel {
         start(progress, ambushed, progress.getEncounter());
     }
 
-    /** Starts a specific unlocked stage, including a replay. */
+    /** Starts a specific unlocked stage, including a replay.
+     * @param progress current game progress
+     * @param ambushed the ambushed
+     * @param stage stage index
+     */
     public void start(GameProgress progress, boolean ambushed, int stage) {
         startEncounter(progress, ambushed, stage, false);
     }
+    /** Starts the merchant encounter using the current party.
+     * @param progress current game progress
+     */
     public void startMerchant(GameProgress progress) { startEncounter(progress, false, 2, true); }
-    /** Sets the action used to replay the current stage after victory. */
+    /** Sets the action used to replay the current stage after victory.
+     * @param action the action
+     */
     public void setExploreAction(java.util.function.BiConsumer<GameProgress, Integer> action) { onExplore = action; }
     private void startEncounter(GameProgress progress, boolean ambushed, int stage, boolean merchant) {
         ambushed = ambushed && settings.allowsAmbush(stage);
@@ -349,388 +481,90 @@ public final class BattlePanel extends JPanel {
         refresh();
     }
 
-    private void resetActionPoints(boolean ambushed) {
-        actionPoints.clear(); enemyPoints.clear();
-        for (Student student : battle.getParty()) {
-            actionPoints.put(student, ambushed || !student.isAlive() ? 0.0 : (double) student.getActionThreshold());
-        }
-        for (Enemy enemy : battle.getEnemies()) {
-            enemyPoints.put(enemy, ambushed ? enemy.getActionThreshold() * AMBUSH_ENEMY_AP_FRACTION : 0.0);
-        }
-    }
+    private void resetActionPoints(boolean ambushed) { clock.reset(ambushed); }
 
-    private void resetStudentAp(Student student) { actionPoints.put(student, 0.0); }
-    private void resetEnemyAp(Enemy enemy) { enemyPoints.put(enemy, 0.0); }
-    private void applyApRefills() {
-        java.util.List<game.model.BattleEffect> combined = new java.util.ArrayList<>(battle.getEffects());
-        java.util.List<Student> refilled = new java.util.ArrayList<>();
-        for (Student student : battle.consumeApRefills()) {
-            if (!student.isAlive()) continue;
-            if (actionPoints.get(student) + AP_EPSILON < student.getActionThreshold()) {
-                if (student.isAlive()) refilled.add(student);
-            }
-            if (student.isAlive()) actionPoints.put(student, (double) student.getActionThreshold());
-            else resetStudentAp(student);
-        }
-        battle.replaceEffects(combined);
-        battle.cancelEscapeIfKnockedOut();
-        if (!refilled.isEmpty() && !battle.isOver()) battle.regenerate(refilled, true);
-    }
+    void resetStudentAp(Student student) { actionPoints.put(student, 0.0); }
+    void resetEnemyAp(Enemy enemy) { enemyPoints.put(enemy, 0.0); }
+    void applyApRefills() { clock.applyApRefills(); }
 
-    private void tickActionPoints() {
-        long now = System.nanoTime();
-        double seconds = Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0);
-        double dotSeconds = Math.max(0.0, (now - lastDotNanos) / 1_000_000_000.0);
-        lastTickNanos = now; lastDotNanos = now;
-        Student selected = battle == null ? null : battle.getCurrent();
-        if (battle != null && battle.advanceDamageOverTime(dotSeconds)) {
-            battle.cancelEscapeIfKnockedOut();
-            if (selected != null && !selected.isAlive()) { resetStudentAp(selected); targeting = TargetAction.NONE; choosingItem = false; }
-            showActionEffects(null);
-            refresh();
-        }
-        advanceActionPoints(seconds);
+    private void tickActionPoints() { clock.tick(); }
+    double[] clockElapsed(long now) {
+        double[] elapsed = {Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0), Math.max(0.0, (now - lastDotNanos) / 1_000_000_000.0)};
+        lastTickNanos = now; lastDotNanos = now; return elapsed;
     }
+    void clockClearTarget() { targeting = TargetAction.NONE; choosingItem = false; }
 
-    private void advanceActionPoints(double seconds) {
-        if (battle == null || battle.isOver()) { apTimer.stop(); return; }
-        if (battle.cancelEscapeIfKnockedOut()) refresh();
-        if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) return;
-        // Wait mode: freeze clocks while a ready student chooses a command or target.
-        if (battle.getCurrent() != null) {
-            if (battle.isEscaping() || battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
-            return;
-        }
-        boolean changed = false;
-        double remaining = Math.max(0.0, seconds);
-        double rate = settings.getApPerSecond();
-        while (!battle.isOver()) {
-            if (selectReadyStudent()) { changed = true; break; }
-            boolean enemyActed = false;
-            for (Enemy enemy : battle.getEnemies()) {
-                if (!monsterTurnTimer.isRunning() && enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
-                    if (battle.enemyAttack(enemy)) {
-                        battle.cancelEscapeIfKnockedOut();
-                        resetEnemyAp(enemy);
-                        enemyPoints.keySet().retainAll(battle.getEnemies());
-                        for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
-                        applyApRefills();
-                        Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
-                        boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Stone Skin".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
-                        showActionEffects(healing ? null : enemy);
-                        announceAbility();
-                        if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) sparkExplosionTimer.restart();
-                        if (!battle.isOver()) monsterTurnTimer.restart();
-                        enemyActed = true;
-                        changed = true;
-                    }
-                    break;
-                }
-            }
-            if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) break;
-            if (enemyActed) { break; }
-            if (remaining <= 0.0) { break; }
-            double untilReady = Double.POSITIVE_INFINITY;
-            for (Student student : battle.getParty()) {
-                if (student.isAlive() && (!battle.isEscaping() || actionPoints.get(student) + AP_EPSILON < student.getActionThreshold())) {
-                    untilReady = Math.min(untilReady, (student.getActionThreshold() - actionPoints.get(student)) / studentRate(student, rate));
-                }
-            }
-            for (Enemy enemy : battle.getEnemies()) {
-                if (enemy.isAlive() && (!monsterTurnTimer.isRunning() || enemyPoints.get(enemy) + AP_EPSILON < enemy.getActionThreshold())) {
-                    untilReady = Math.min(untilReady, (enemy.getActionThreshold() - enemyPoints.get(enemy)) / rate);
-                }
-            }
-            double step = Math.min(remaining, untilReady);
-            if (step <= 0.0 || !Double.isFinite(step)) { break; }
-            java.util.List<Student> newlyReady = new java.util.ArrayList<>();
-            for (Student student : battle.getParty()) {
-                if (student.isAlive()) {
-                    double before = actionPoints.get(student);
-                    double after = Math.min(student.getActionThreshold(), before + studentRate(student, rate) * step);
-                    actionPoints.put(student, after);
-                    if (before + AP_EPSILON < student.getActionThreshold() && after + AP_EPSILON >= student.getActionThreshold()) newlyReady.add(student);
-                }
-            }
-            for (Enemy enemy : battle.getEnemies()) {
-                if (enemy.isAlive()) {
-                    double before = enemyPoints.get(enemy);
-                    double after = Math.min(enemy.getActionThreshold(), before + rate * step);
-                    enemyPoints.put(enemy, after);
-                }
-            }
-            battle.cancelEscapeIfKnockedOut();
-            newlyReady.removeIf(student -> !student.isAlive());
-            if (!newlyReady.isEmpty() && !battle.isOver() && battle.regenerate(newlyReady, false)) {
-                showActionEffects(null); changed = true;
-            }
-            remaining = Math.max(0.0, remaining - step);
-        }
-        if (battle.isOver()) { apTimer.stop(); }
-        if (changed) { refresh(); }
-        else { BattleControls.updateBars(battle, apBars, actionPoints); scene.repaint(); }
-    }
+    private void advanceActionPoints(double seconds) { clock.advance(seconds); }
+    private double studentRate(Student student, double baseRate) { return BattleClock.studentRate(student, baseRate); }
+    Battle battleForClock() { return battle; }
 
-    private double studentRate(Student student, double baseRate) {
-        // A fixed 5% per SPD avoids disproportionately large gains for low-SPD classes.
-        double speedBonus = (student.getEffectiveSpeed() - student.getStartingSpeed()) * 0.05;
-        return baseRate * Math.max(0.1, 1.0 + speedBonus);
-    }
+    boolean selectReadyStudent() { return clock.selectReadyStudent(); }
+    void escapeComplete() { onEscape.accept(progress); }
 
-    private boolean selectReadyStudent() {
-        if (battle.isOver() || battle.getCurrent() != null) { return false; }
-        for (Student student : battle.getParty()) {
-            if (battle.isOver()) return false;
-            if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
-                if (battle.isEscaping() && student != battle.getEscapeInitiator()) {
-                    resetStudentAp(student); continue;
-                }
-                if (battle.consumeStunTurn(student)) {
-                    resetStudentAp(student); showActionEffects(null); refresh(); continue;
-                }
-                if (student == battle.getEscapeInitiator()) {
-                    resetStudentAp(student);
-                    if (battle.advanceEscape(student)) { apTimer.stop(); onEscape.accept(progress); return true; }
-                    refresh(); continue;
-                }
-                actionPoints.put(student, (double) student.getActionThreshold());
-                return battle.selectStudent(student);
-            }
-        }
-        return false;
-    }
-
-    private void performAction(Runnable action, boolean attacking) {
-        if (battle == null || battle.isOver() || battle.isActionAnimating() || battle.getCurrent() == null
-                || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
-        Student actor = battle.getCurrent();
-        action.run();
-        if (attacking && actor.getId() == Student.CHARICE && battle.getLastAbility() != null
-                && "Rain of Arrows".equals(battle.getLastAbility().skill())) {
-            rainShooter = actor; rainTargets = battle.getRainArrowTargets(); rainStartedNanos = System.nanoTime();
-        }
-        if (battle.hasPendingTwinShot()) {
-            resetStudentAp(actor);
-            showActionEffects(attacking ? actor : null);
-            scheduleTwinShot();
-        } else if (battle.hasPendingAngelAttack()) {
-            resetStudentAp(actor);
-            showActionEffects(attacking ? actor : null);
-            scheduleAngelAttack();
-        } else if (battle.hasPendingLooperHits()) {
-            resetStudentAp(actor);
-            showActionEffects(attacking ? actor : null);
-            looperHitTimer.restart();
-        } else if (battle.hasPendingSecondCast()) {
-            resetStudentAp(actor);
-            showActionEffects(attacking ? actor : null);
-            secondCastTimer.restart();
-        } else if (battle.getCurrent() != actor || battle.isOver()) {
-            resetStudentAp(actor);
-            showActionEffects(attacking ? actor : null);
-            if (!battle.isOver()) { selectReadyStudent(); }
-        }
-        if (battle.isOver()) { apTimer.stop(); }
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-
-    private void completeSecondCast() {
-        if (battle == null || !battle.hasPendingSecondCast()) return;
-        Student actor = battle.getCurrent();
-        if (battle.completeSecondCast()) {
-            announceAbility();
-            showActionEffects(actor);
-            if (battle.hasPendingLooperHits()) looperHitTimer.restart();
-            else if (!battle.isOver()) selectReadyStudent();
-        }
-        if (battle.isOver()) apTimer.stop();
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-
-    private void advanceLooperHit() {
-        if (battle == null || !battle.hasPendingLooperHits()) { looperHitTimer.stop(); return; }
-        battle.advanceLooperHit();
-        showActionEffects(null);
-        if (!battle.hasPendingLooperHits()) {
-            looperHitTimer.stop();
-            if (battle.hasPendingAngelAttack() && !battle.isOver()) scheduleAngelAttack();
-            else if (battle.hasPendingSecondCast() && !battle.isOver()) secondCastTimer.restart();
-            else if (!battle.isOver()) selectReadyStudent();
-        }
-        if (battle.isOver()) apTimer.stop();
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-
-    private void scheduleTwinShot() {
-        twinShotTimer.setInitialDelay(battle.twinShotDelayMillis());
-        twinShotTimer.restart();
-    }
-    private void advanceTwinShot() {
-        if (battle == null || !battle.hasPendingTwinShot()) return;
-        Student actor = battle.getCurrent();
-        battle.advanceTwinShot();
-        showActionEffects(actor);
-        if (battle.hasPendingTwinShot()) scheduleTwinShot();
-        else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
-        else if (!battle.isOver()) selectReadyStudent();
-        if (battle.isOver()) apTimer.stop();
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-    private void scheduleAngelAttack() {
-        angelAttackTimer.setInitialDelay(300);
-        angelAttackTimer.restart();
-    }
-    private void resolveSparkExplosion() {
-        if (battle == null) return;
-        boolean resolved = battle.hasPendingGuardianLoop() ? battle.resolveGuardianLoop() : battle.resolveSparkExplosion();
-        if (!resolved) return;
-        battle.cancelEscapeIfKnockedOut();
-        applyApRefills();
-        showActionEffects(null);
-        if (battle.hasPendingGuardianLoop() && !battle.isOver()) sparkExplosionTimer.restart();
-        if (battle.isOver()) apTimer.stop();
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-    private void advanceAngelAttack() {
-        if (battle == null || !battle.hasPendingAngelAttack()) return;
-        Student actor = battle.getCurrent();
-        battle.advanceAngelAttack();
-        showActionEffects(actor);
-        if (battle.hasPendingLooperHits()) looperHitTimer.restart();
-        else if (battle.hasPendingAngelAttack()) scheduleAngelAttack();
-        else if (!battle.isOver()) selectReadyStudent();
-        if (battle.isOver()) apTimer.stop();
-        lastTickNanos = System.nanoTime();
-        refresh();
-    }
-
-    private void moveCursor(int direction) {
-        if (battle == null || battle.isOver() || battle.isActionAnimating()) { return; }
-        if (choosingItem) { itemChoice = Math.floorMod(itemChoice + direction, 2); refresh(); return; }
-        if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
-        if (java.util.Arrays.stream(commands).noneMatch(JButton::isEnabled)) return;
-        do { commandIndex = Math.floorMod(commandIndex + direction, commands.length); }
-        while (!commands[commandIndex].isEnabled());
-        updateCommandDisplay();
-    }
-
-    private void updateCommandDisplay() {
-        BattleControls.updateCommands(commands, commandIndex);
-        if (battle != null && battle.getCurrent() != null && !battle.isOver()) {
-            if (battle.getCurrent().getId() == Student.CHARICE) attack.setText("Twin Shot 2 SP");
-            ability.setText("Ability " + battle.getCurrent().getAbilitySpCost() + " SP");
-        }
-    }
-
-    private boolean targetsParty() {
-        return targeting == TargetAction.ITEM || targeting == TargetAction.WHITE_FLOWER || targeting == TargetAction.DEFEND
-                || (targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS);
-    }
-
-    private boolean targetsAllEnemies() {
-        return targeting == TargetAction.ABILITY && (battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
-                || battle.getCurrent().getAbilityType() == Student.AbilityType.RAIN_OF_ARROWS);
-    }
-
-    private void beginTargeting(TargetAction action) {
-        if (battle == null || battle.isOver() || battle.isActionAnimating() || battle.getCurrent() == null || targeting != TargetAction.NONE
-                || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
-        notice = null; targeting = action; targetIndex = 0;
-        if (targetsParty()) {
-            while (!validPartyTarget(battle.getParty().get(targetIndex))) { targetIndex++; }
-        } else {
-            while (!battle.getEnemies().get(targetIndex).isAlive()) { targetIndex++; }
-        }
-        refresh();
-    }
-
-    private boolean validPartyTarget(Student target) {
-        return targeting == TargetAction.DEFEND ? battle.canDefend(target)
-                : targeting == TargetAction.WHITE_FLOWER ? !target.isAlive()
-                : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.HEALING_KISS || target.isAlive();
-    }
-
-    private void moveTarget(int direction) {
-        if (battle != null && battle.isVictory() && !battle.isMerchantEncounter() && onExplore != null) {
-            victoryChoice = Math.floorMod(victoryChoice + direction, 2); scene.repaint(); return;
-        }
-        if (battle == null || battle.isOver() || targeting == TargetAction.NONE || targetsAllEnemies()) { return; }
-        int size = targetsParty() ? battle.getParty().size() : battle.getEnemies().size();
-        do { targetIndex = Math.floorMod(targetIndex + direction, size); }
-        while (targetsParty() ? !validPartyTarget(battle.getParty().get(targetIndex)) : !battle.getEnemies().get(targetIndex).isAlive());
-        refresh();
-    }
-
-    private void cancelTargeting() {
-        if (choosingItem) { choosingItem = false; refresh(); }
-        else if (targeting != TargetAction.NONE) { targeting = TargetAction.NONE; notice = null; refresh(); }
-    }
-
-    private void confirmCommand() {
-        if (battle == null || battle.isActionAnimating()) { return; }
-        if (battle.isOver()) {
-            if (battle.isVictory() && victoryChoice == 0 && !battle.isMerchantEncounter() && onExplore != null) onExplore.accept(progress, encounterStage);
-            else finish.doClick();
-        }
-        else if (choosingItem) {
-            choosingItem = false;
-            if (itemChoice == 0) beginTargeting(TargetAction.ITEM); else beginFlowerTargeting();
-        }
-        else if (targeting != TargetAction.NONE) {
-            Student target = targetsParty() ? battle.getParty().get(targetIndex) : null;
-            Enemy enemy = !targetsParty() ? battle.getEnemies().get(targetIndex) : null;
-            TargetAction action = targeting;
-            targeting = TargetAction.NONE;
-            notice = null;
-            boolean attacking = action == TargetAction.ATTACK
-                    || (action == TargetAction.ABILITY && battle.getCurrent().getAbilityType() != Student.AbilityType.HEALING_KISS);
-            performAction(() -> {
-                if (action == TargetAction.ATTACK) { battle.attack(enemy); }
-                else if (action == TargetAction.ABILITY) {
-                    boolean fallen = target != null && !target.isAlive();
-                    if (battle.ability(target, enemy)) { if (fallen) resetStudentAp(target); announceAbility(); }
-                }
-                else if (action == TargetAction.DEFEND) { battle.defend(target); }
-                else if (action == TargetAction.WHITE_FLOWER) {
-                    if (battle.useWhiteFlower(target)) resetStudentAp(target);
-                }
-                else if (!battle.useKit(target)) { notice = target.getName() + " already has full HP."; }
-            }, attacking);
-        }
-        else if (battle.getCurrent() != null) { commands[commandIndex].doClick(); }
-    }
-
-    private void refresh() {
+    void performAction(Runnable action, boolean attacking) { actionFlow.performAction(action, attacking); }
+    private void completeSecondCast() { actionFlow.completeSecondCast(); }
+    private void advanceLooperHit() { actionFlow.advanceLooperHit(); }
+    private void scheduleTwinShot() { actionFlow.scheduleTwinShot(); }
+    private void advanceTwinShot() { actionFlow.advanceTwinShot(); }
+    private void scheduleAngelAttack() { actionFlow.scheduleAngelAttack(); }
+    private void resolveSparkExplosion() { actionFlow.resolveSparkExplosion(); }
+    private void advanceAngelAttack() { actionFlow.advanceAngelAttack(); }
+    Battle actionBattle() { return battle; }
+    Map<Student, Double> actionPoints() { return actionPoints; }
+    Timer actionApTimer() { return apTimer; }
+    Timer actionLooperTimer() { return looperHitTimer; }
+    Timer actionSecondCastTimer() { return secondCastTimer; }
+    Timer actionTwinTimer() { return twinShotTimer; }
+    Timer actionAngelTimer() { return angelAttackTimer; }
+    Timer actionSparkTimer() { return sparkExplosionTimer; }
+    void actionTickNow() { lastTickNanos = System.nanoTime(); }
+    void actionRain(Student actor) { rainShooter = actor; rainTargets = battle.getRainArrowTargets(); rainStartedNanos = System.nanoTime(); }
+    private void moveCursor(int direction) { input.moveCursor(direction); }
+    private void updateCommandDisplay() { input.updateCommandDisplay(); }
+    private boolean targetsParty() { return input.targetsParty(); }
+    private boolean targetsAllEnemies() { return input.targetsAllEnemies(); }
+    private void beginTargeting(TargetAction action) { input.beginTargeting(action); }
+    private void moveTarget(int direction) { input.moveTarget(direction); }
+    private void cancelTargeting() { input.cancelTargeting(); }
+    private void confirmCommand() { input.confirmCommand(); }
+    void inputConfirm() { confirmCommand(); }
+    boolean inputTargetsParty() { return targetsParty(); } boolean inputTargetsAllEnemies() { return targetsAllEnemies(); }
+    int viewStage() { return encounterStage; } int viewPetot() { return victoryPetot; } int viewExperience() { return victoryExperience; }
+    java.util.function.BiConsumer<GameProgress, Integer> viewExplore() { return onExplore; }
+    List<String> viewRewards() { return victoryRewardItems; } List<String> viewLeveled() { return leveledStudents; } List<String> viewBonus() { return bonusXpStudents; }
+    boolean viewShowEffects() { return showEffects; } boolean viewAmbush() { return showAmbush; }
+    List<BattleScene.EffectBatch> viewBatches() { return effectBatches; } Battle.AbilityAnnouncement viewAnnouncement() { return abilityAnnouncement; }
+    long viewVictoryStarted() { return victoryStartedNanos; } long viewRainStarted() { return rainStartedNanos; } long viewEffectStarted() { return effectStartedNanos; }
+    Map<Enemy, Double> viewEnemyPoints() { return enemyPoints; } Object viewAttacker() { return attackingSprite; }
+    Student viewRainShooter() { return rainShooter; } List<Enemy> viewRainTargets() { return rainTargets; }
+    int inputCommand() { return commandIndex; } void inputCommand(int v) { commandIndex = v; }
+    int inputTargetIndex() { return targetIndex; } void inputTargetIndex(int v) { targetIndex = v; }
+    int inputItemChoice() { return itemChoice; } void inputItemChoice(int v) { itemChoice = v; }
+    int inputVictoryChoice() { return victoryChoice; } void inputVictoryChoice(int v) { victoryChoice = v; }
+    TargetAction inputTargeting() { return targeting; } void inputTargeting(TargetAction v) { targeting = v; }
+    boolean inputChoosingItem() { return choosingItem; } void inputChoosingItem(boolean v) { choosingItem = v; }
+    void inputNotice(String v) { notice = v; }
+    JButton[] inputCommands() { return commands; }
+    JButton inputItem() { return item; } JButton inputDefend() { return defend; } JButton inputEscape() { return escape; }
+    GameProgress inputProgress() { return progress; }
+    void inputFinishAction() { if (battle.isVictory()) onVictory.accept(progress); else returnToMenu.run(); }
+    void inputScroll(int direction) { scrollLog(direction); }
+    JButton inputAttack() { return attack; } JButton inputAbility() { return ability; } JButton inputFinish() { return finish; }
+    BattleScene inputScene() { return scene; }
+    boolean inputCanExplore() { return onExplore != null; }
+    void inputExplore() { onExplore.accept(progress, encounterStage); }
+    void refresh() {
         boolean over = battle.isOver();
         if (over) {
             showAmbush = false;
             ambushAlertTimer.stop();
             if (battle.isVictory() && !rewardRecorded) {
-                java.util.List<String> rewards = new java.util.ArrayList<>();
-                if (battle.isMerchantEncounter()) progress.unlockCarbonMarket();
-                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getRewardEnemies(), progress, battleRandom, settings.getDifficulty())); }
-                victoryRewardItems = List.copyOf(rewards);
-                victoryPetot = progress.addPetot(battle.victoryPetot(settings.isGreedIsGood()));
-                int baseExperience = battle.getRewardEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getExperienceDrop).sum();
-                double multiplier = switch (progress.getParty().size()) {
-                    case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
-                    default -> throw new IllegalStateException("Invalid party size");
-                };
-                victoryExperience = (int) Math.round(baseExperience * multiplier * settings.getXpBoost().multiplier());
-                java.util.List<String> leveled = new java.util.ArrayList<>();
-                java.util.List<String> bonus = new java.util.ArrayList<>();
-                for (Student student : progress.getParty()) {
-                    boolean boosted = "designer_leather_vest".equals(student.getEquipmentId(game.model.Equipment.Slot.ARMOR));
-                    if (boosted) bonus.add(student.getName() + " +" + victoryExperience);
-                    if (student.gainExperience((long) victoryExperience * (boosted ? 2 : 1)) > 0) { leveled.add(student.getName()); }
-                }
-                bonusXpStudents = List.copyOf(bonus);
-                leveledStudents = List.copyOf(leveled);
+                BattleVictoryRewards.Result rewards = BattleVictoryRewards.award(battle, progress, encounterStage, battleRandom, settings);
+                victoryRewardItems = rewards.items();
+                victoryPetot = rewards.petot();
+                victoryExperience = rewards.experience();
+                leveledStudents = rewards.leveledStudents();
+                bonusXpStudents = rewards.bonusXpStudents();
                 rewardRecorded = true;
             }
             if (battle.isVictory() && victoryStartedNanos == 0) {
@@ -738,39 +572,12 @@ public final class BattlePanel extends JPanel {
                 victoryTimer.start();
             }
         }
-        refreshStatus();
-        String targetMessage = targeting == TargetAction.NONE ? null : targetsParty()
-                ? "Choose " + battle.getParty().get(targetIndex).getName() + " as the target."
-                : targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
-                ? "Arcane Burst targets all enemies." : "Choose " + battle.getEnemies().get(targetIndex).getName() + " as the target.";
-        String message = choosingItem ? "Choose a consumable." : targetMessage != null ? targetMessage
-                : notice != null ? notice : battle.getMessage();
-        log.setText(message);
-        log.setCaretPosition(0);
-        BattleControls.updateParty(battle, partyStatus);
-        BattleControls.updateBars(battle, apBars, actionPoints);
-        boolean canChoose = !over && !battle.isActionAnimating() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
-        attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose);
-        defend.setEnabled(canChoose && battle.canUseDefendOrEscape());
-        escape.setEnabled(canChoose && !battle.isEscaping() && battle.canUseDefendOrEscape());
-        if (canChoose && !commands[commandIndex].isEnabled()) commandIndex = 0;
-        finish.setVisible(over && !battle.isVictory());
-        finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
-        updateCommandDisplay();
-        scene.repaint();
+        BattleHudController.update(this);
     }
-
-    private void refreshStatus() {
-        boolean over = battle.isOver();
-        String hint = battle.hasPendingLooperHits() ? "Looper Ring strikes..." : battle.hasPendingSecondCast() ? "Second cast incoming..." : choosingItem ? "Up/Down Choose item  •  Enter Confirm  •  Esc Cancel" : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
-                : targetsParty() ? "Left/Right Choose ally  •  Enter Confirm  •  Esc Cancel"
-                : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
-        status.setText(over ? (battle.isVictory() ? (battle.isMerchantEncounter() || onExplore == null
-                ? "VICTORY  •  Enter: Camp" : "VICTORY  •  Left/Right: Choose  •  Enter: Confirm") : "GAME OVER  •  Enter: Return to Menu")
-                : (battle.getCurrent() == null ? "Waiting for AP" : battle.getCurrent().getName() + " is ready")
-                + (battle.isEscaping() ? "  |  Escaping: " + battle.getEscapeInitiator().getName() + " (" + battle.getEscapeTurnsRemaining() + ")"
-                    : "  |  Kits: " + battle.getKits() + "  Flowers: " + progress.getInventory().getWhiteFlowers()) + "  |  " + hint);
-    }
+    String inputNoticeValue() { return notice; }
+    JTextArea hudLog() { return log; } JLabel hudStatus() { return status; }
+    JLabel[] hudPartyStatus() { return partyStatus; } JProgressBar[] hudBars() { return apBars; }
+    void inputUpdateCommands() { updateCommandDisplay(); }
 
 
 

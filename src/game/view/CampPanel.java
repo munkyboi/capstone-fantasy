@@ -16,37 +16,121 @@ import javax.swing.JPanel;
 public final class CampPanel extends JPanel {
     private static final int WIDTH = 960, HEIGHT = 540;
     private static final int[] POSITIONS = {230, 365, 595, 735};
-    private static final Color HP_COLOR = new Color(224, 73, 79);
-    private static final Color SP_COLOR = new Color(76, 155, 245);
-    private static final Color XP_COLOR = new Color(250, 218, 75);
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/camp-parallax-base-v1.png");
+    /** Serialized state: sky.
+     * @serial
+     */
     private final BufferedImage sky = ScreenArt.prepareBackground("/assets/backgrounds/camp-sky-v1.png");
+    /** Serialized state: distance.
+     * @serial
+     */
     private final BufferedImage distance = ScreenArt.prepareBackground("/assets/backgrounds/camp-distant-v1.png");
+    /** Serialized state: courtyard.
+     * @serial
+     */
     private final BufferedImage courtyard = ScreenArt.prepareBackground("/assets/backgrounds/camp-courtyard-layer-v2.png");
+    /** Serialized state: fire.
+     * @serial
+     */
     private final BufferedImage fire = trimTransparent(ScreenArt.load("/assets/sprites/camp-fire-v1.png"));
+    /** Serialized state: foreground.
+     * @serial
+     */
     private final BufferedImage foreground = ScreenArt.load("/assets/backgrounds/camp-near-layer-v1.png");
+    /** Serialized state: characters.
+     * @serial
+     */
     private final BufferedImage[] characters = loadCharacters();
+    /** Serialized state: scene pixels.
+     * @serial
+     */
     private final BufferedImage scenePixels = new BufferedImage(480, 270, BufferedImage.TYPE_INT_ARGB);
+    /** Serialized state: camera offset.
+     * @serial
+     */
     private double cameraOffset;
+    /** Serialized state: camera target.
+     * @serial
+     */
     private double cameraTarget;
+    /** Serialized state: healing numbers.
+     * @serial
+     */
     private final java.util.Map<Integer, Integer> healingNumbers = new java.util.HashMap<>();
+    /** Serialized state: healing started nanos.
+     * @serial
+     */
     private long healingStartedNanos;
+    /** Serialized state: healing animation.
+     * @serial
+     */
     private final javax.swing.Timer healingAnimation = new javax.swing.Timer(33, event -> advanceHealing());
+    /** Serialized state: animation.
+     * @serial
+     */
     private final javax.swing.Timer animation = new javax.swing.Timer(16, event -> advanceCamera());
+    /** Serialized state: next battle.
+     * @serial
+     */
     private final Consumer<GameProgress> nextBattle;
+    /** Serialized state: menu.
+     * @serial
+     */
     private final Runnable menu;
+    /** Serialized state: save.
+     * @serial
+     */
     private final Consumer<GameProgress> save;
+    /** Serialized state: inventory.
+     * @serial
+     */
     private final Consumer<GameProgress> inventory;
+    /** Serialized state: shop.
+     * @serial
+     */
     private Consumer<GameProgress> shop = ignored -> { };
+    /** Sets the action used to open the unlocked market from camp.
+     * @param action the action
+     */
     public void setShopAction(Consumer<GameProgress> action) { shop = java.util.Objects.requireNonNull(action); }
+    /** Serialized state: regeneration random.
+     * @serial
+     */
     private final java.util.Random regenerationRandom;
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
+    /** Serialized state: complete.
+     * @serial
+     */
     private boolean complete;
+    /** Serialized state: allocating.
+     * @serial
+     */
     private boolean allocating;
+    /** Serialized state: exit prompt.
+     * @serial
+     */
     private boolean exitPrompt;
+    /** Serialized state: exit yes.
+     * @serial
+     */
     private boolean exitYes;
+    /** Serialized state: stat cursor.
+     * @serial
+     */
     private int statCursor;
+    /** Serialized state: message.
+     * @serial
+     */
     private String message = "";
 
     private static BufferedImage[] loadCharacters() {
@@ -72,18 +156,36 @@ public final class CampPanel extends JPanel {
         return right < left ? null : image.getSubimage(left, top, right - left + 1, bottom - top + 1);
     }
 
-    /** Creates a camp screen. */
+    /** Creates a camp screen.
+     * @param nextBattle the next battle
+     * @param menu the menu
+     */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu) { this(nextBattle, menu, ignored -> { }); }
-    /** Creates a camp screen with save support. */
+    /** Creates a camp screen with save support.
+     * @param nextBattle the next battle
+     * @param menu the menu
+     * @param save the save
+     */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save) {
         this(nextBattle, menu, save, ignored -> { });
     }
-    /** Creates a camp screen with save and inventory actions. */
+    /** Creates a camp screen with save and inventory actions.
+     * @param nextBattle the next battle
+     * @param menu the menu
+     * @param save the save
+     * @param inventory the inventory
+     */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save,
             Consumer<GameProgress> inventory) {
         this(nextBattle, menu, save, inventory, new java.util.Random());
     }
-    /** Creates a camp with an injectable random source for regeneration. */
+    /** Creates a camp with an injectable random source for regeneration.
+     * @param nextBattle the next battle
+     * @param menu the menu
+     * @param save the save
+     * @param inventory the inventory
+     * @param regenerationRandom the regeneration random
+     */
     public CampPanel(Consumer<GameProgress> nextBattle, Runnable menu, Consumer<GameProgress> save,
             Consumer<GameProgress> inventory, java.util.Random regenerationRandom) {
         this.nextBattle = nextBattle; this.menu = menu; this.save = save; this.inventory = inventory;
@@ -116,13 +218,23 @@ public final class CampPanel extends JPanel {
         Keys.bind(this, "ESCAPE", "camp-menu", this::escape);
     }
 
-    /** Opens camp with the current party. */
+    /** Opens camp with the current party.
+     * @param progress current game progress
+     * @param complete the complete
+     */
     public void open(GameProgress progress, boolean complete) { open(progress, complete, null); }
-    /** Opens camp and optionally shows a reward message. */
+    /** Opens camp and optionally shows a reward message.
+     * @param progress current game progress
+     * @param complete the complete
+     * @param reward the reward
+     */
     public void open(GameProgress progress, boolean complete, String reward) {
         enter(progress, complete, reward, true);
     }
-    /** Returns from a camp sub-screen without starting another camp round. */
+    /** Returns from a camp sub-screen without starting another camp round.
+     * @param progress current game progress
+     * @param complete the complete
+     */
     public void resume(GameProgress progress, boolean complete) { enter(progress, complete, null, false); }
     private void enter(GameProgress progress, boolean complete, String reward, boolean regenerate) {
         int healed = 0;
@@ -140,7 +252,9 @@ public final class CampPanel extends JPanel {
                 : healed > 0 ? "Camp regeneration restored " + healed + " HP."
                 : complete ? "The available encounters are complete." : "Choose a student to use a First-Aid Kit.");
     }
-    /** Returns the current party state. */
+    /** Returns the current party state.
+     * @return the current party state
+     */
     public GameProgress getProgress() { return progress; }
     private java.util.List<Student> campParty() {
         return progress.getParty().stream().sorted(java.util.Comparator.comparingInt(Student::getId)).toList();
@@ -228,7 +342,7 @@ public final class CampPanel extends JPanel {
                 int middleOffset = (int) Math.round(cameraOffset * 0.65);
                 Student selected = campParty().get(cursor);
                 int position = POSITIONS[selected.getId()] + middleOffset;
-                drawStatus(g, selected, position);
+                CampStatusRenderer.drawStatus(g, selected, position);
                 g.drawImage(PixelPointer.ART, position - (selected.getId() == Student.ANGEL ? 115 : 97),
                         285, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
                 g.setColor(new Color(7, 17, 39, 225)); g.fillRect(0, 451, WIDTH, 89);
@@ -238,7 +352,7 @@ public final class CampPanel extends JPanel {
                 g.setFont(ClassicUi.body(14)); drawCentered(g, allocating
                         ? "← → Choose stat  •  Enter: Add point  •  Esc: Back"
                         : "← → Select  •  Enter: Kit  •  R: Revive  •  L: Stats  •  I: Bag  •  S: Save  •  C: Route" + (progress.isMerchantDefeated() ? "  •  M: Market" : "") + "  •  Esc: Menu", WIDTH / 2, 524);
-                if (allocating) { drawAllocation(g, selected); }
+                if (allocating) { CampStatusRenderer.drawAllocation(g, selected, statCursor); }
                 if (exitPrompt) { drawExitPrompt(g); }
             }
         } finally { g.dispose(); }
@@ -298,20 +412,6 @@ public final class CampPanel extends JPanel {
             drawDepthLayer(g, foreground, focus, -65);
         }
     }
-    private void drawAllocation(Graphics2D g, Student student) {
-        int x = 306, y = 205, w = 348, h = 245;
-        g.setColor(new Color(8, 18, 54, 245)); g.fillRect(x, y, w, h);
-        g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
-        g.setFont(ClassicUi.numbers(15)); g.drawString(student.getName() + "  •  Points: " + student.getUnspentStatPoints(), x + 15, y + 24);
-        String[] options = {"HP +5", "SP +3", "ATK +1", "DEF +1", "SPD +1", "AGI +1", "ACC +1"};
-        g.setFont(ClassicUi.numbers(14));
-        for (int i = 0; i < options.length; i++) {
-            int row = y + 45 + i * 25;
-            g.setColor(i == statCursor ? new Color(250, 218, 143) : Color.WHITE);
-            if (i == statCursor) { g.drawImage(PixelPointer.ART, x + 18, row - 12, PixelPointer.WIDTH, PixelPointer.HEIGHT, null); }
-            g.drawString(options[i], x + 52, row + 2);
-        }
-    }
     private void drawCharacter(Graphics2D g, Student student, int center) {
         BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
         if (fallen != null) {
@@ -349,48 +449,6 @@ public final class CampPanel extends JPanel {
         if (image == null) return 0;
         boolean angel = student.getId() == Student.ANGEL;
         return image.getWidth() * Math.min((angel ? 150.0 : 125.0) / image.getWidth(), (angel ? 190.0 : 160.0) / image.getHeight());
-    }
-    private static String formatStat(double value) {
-        return Long.toString((long) Math.ceil(value - 1e-9));
-    }
-    private void drawStatus(Graphics2D g, Student student, int center) {
-        int x = Math.max(8, Math.min(WIDTH - 246, center - 123)), y = 57, w = 238, h = 174;
-        g.setColor(new Color(8, 18, 54, 235)); g.fillRect(x, y, w, h);
-        g.setColor(new Color(241, 213, 143)); g.drawRect(x, y, w, h); g.drawRect(x + 3, y + 3, w - 6, h - 6);
-        g.setFont(ClassicUi.numbers(15)); g.setColor(new Color(250, 218, 143));
-        g.drawString(student.getName() + " L" + student.getLevel() + " P:" + student.getUnspentStatPoints()
-                + (student.isAlive() ? "" : " KO"), x + 12, y + 23);
-        drawResourceBar(g, x, y + 39, w, "HP", student.getHp(), student.getMaxHp(), HP_COLOR);
-        drawResourceBar(g, x, y + 63, w, "SP", student.getSp(), student.getMaxSp(), SP_COLOR);
-        long requiredXp = student.getXpRequired();
-        drawResourceBar(g, x, y + 87, w, "XP", requiredXp == 0 ? 1 : student.getXpProgress(),
-                requiredXp == 0 ? 1 : requiredXp, XP_COLOR);
-        g.setColor(new Color(120, 149, 182)); g.drawLine(x + 12, y + 109, x + w - 12, y + 109);
-        g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
-        g.drawString("ATK " + student.getAttack(), x + 12, y + 131);
-        g.drawString("DEF " + student.getDefense(), x + 87, y + 131);
-        g.drawString("SPD " + formatStat(student.getEffectiveSpeed()), x + 162, y + 131);
-        g.drawString("AGI " + formatStat(student.getEffectiveAgility()), x + 12, y + 151);
-        g.drawString("ACC " + formatStat(student.getEffectiveAccuracy()), x + 87, y + 151);
-    }
-    private static void drawResourceBar(Graphics2D g, int x, int row, int width, String label,
-            long value, long maximum, Color color) {
-        g.setFont(ClassicUi.numbers(12)); g.setColor(Color.WHITE); g.drawString(label, x + 12, row + 9);
-        g.setColor(new Color(38, 49, 76)); g.fillRect(x + 48, row, 113, 9);
-        g.setColor(color); g.fillRect(x + 48, row, (int) (113L * value / Math.max(1, maximum)), 9);
-        String text = label.equals("XP") && maximum == 1 ? "MAX" : value + "/" + maximum;
-        if (label.equals("XP") && g.getFontMetrics().stringWidth(text) > width - 173) {
-            text = compactXp(value) + "/" + compactXp(maximum);
-        }
-        g.setFont(ClassicUi.numbers(10)); g.setColor(Color.WHITE);
-        if (g.getFontMetrics().stringWidth(text) > width - 173) { g.setFont(ClassicUi.numbers(8)); }
-        g.drawString(text, x + width - 10 - g.getFontMetrics().stringWidth(text), row + 9);
-    }
-    private static String compactXp(long value) {
-        if (value >= 1_000_000_000) return String.format(java.util.Locale.ROOT, "%.1fB", value / 1_000_000_000.0);
-        if (value >= 1_000_000) return String.format(java.util.Locale.ROOT, "%.1fM", value / 1_000_000.0);
-        if (value >= 10_000) return String.format(java.util.Locale.ROOT, "%.1fK", value / 1_000.0);
-        return Long.toString(value);
     }
     private static void drawCentered(Graphics2D g, String text, int center, int y) {
         g.drawString(text, center - g.getFontMetrics().stringWidth(text) / 2, y);

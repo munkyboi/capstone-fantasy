@@ -11,12 +11,35 @@ import javax.swing.JPanel;
 /** Keyboard-operated gameplay settings. */
 public final class SettingsPanel extends JPanel {
     private static final int[] CAPS = {20, 30, 40, 50, 60, 70, 80, 90, 100};
+    /** Serialized state: settings.
+     * @serial
+     */
     private final GameSettings settings;
+    /** Serialized state: file.
+     * @serial
+     */
     private final Path file;
+    /** Serialized state: back.
+     * @serial
+     */
     private final Runnable back;
+    /** Serialized state: background.
+     * @serial
+     */
     private final java.awt.image.BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/title-campus-v1.png");
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
+    /** Serialized state: notice.
+     * @serial
+     */
     private String notice = "Changes apply when starting or loading a game.";
+    /** Creates a settings screen with its storage path and return action.
+     * @param settings game settings
+     * @param file file path
+     * @param back the back
+     */
     public SettingsPanel(GameSettings settings, Path file, Runnable back) {
         this.settings = settings; this.file = file; this.back = back;
         setPreferredSize(new Dimension(960, 540)); setFocusable(true);

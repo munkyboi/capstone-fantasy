@@ -23,6 +23,9 @@ import javax.swing.SwingConstants;
 
 /** Lets the player choose three distinct students. */
 public final class SelectionPanel extends JPanel {
+    /** Serialized state: party size.
+     * @serial
+     */
     private int partySize = 3;
     private static final Color GOLD = new Color(246, 213, 139);
     private static final Color LIGHT = new Color(238, 242, 255);
@@ -41,13 +44,37 @@ public final class SelectionPanel extends JPanel {
     private static final String[] EFFECTS = {
         "Damages all enemies", "Strong sword attack", "12 arrows; may apply DOT", "Heals or revives an ally"
     };
+    /** Serialized state: selected.
+     * @serial
+     */
     private final Set<Integer> selected = new LinkedHashSet<>();
+    /** Serialized state: choices.
+     * @serial
+     */
     private final JButton[] choices = new JButton[NAMES.length];
+    /** Serialized state: count.
+     * @serial
+     */
     private final JLabel count = new JLabel("", SwingConstants.CENTER);
+    /** Serialized state: continue button.
+     * @serial
+     */
     private final JButton continueButton = new JButton("Continue");
+    /** Serialized state: back button.
+     * @serial
+     */
     private final JButton backButton = new JButton("Back");
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = loadImage("/assets/backgrounds/campus-courtyard-v1.png");
+    /** Serialized state: sprites.
+     * @serial
+     */
     private final BufferedImage sprites = loadImage("/assets/sprites/student-party-idle-v1.png");
 
     /** Creates the selection screen.
@@ -119,7 +146,10 @@ public final class SelectionPanel extends JPanel {
         cursor = 0;
         refresh();
     }
-    /** Configures how many students must be selected, optionally starting with an existing party. */
+    /** Configures how many students must be selected, optionally starting with an existing party.
+     * @param size the size
+     * @param initial the initial
+     */
     public void configure(int size, java.util.List<Integer> initial) {
         if (size < 1 || size > 4) throw new IllegalArgumentException("Invalid party size");
         partySize = size; selected.clear(); selected.addAll(initial); cursor = 0; refresh();

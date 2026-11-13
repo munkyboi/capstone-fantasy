@@ -2,7 +2,12 @@ package game.model;
 
 /** Shared shop catalog and purchase rules. */
 public final class CarbonMarket {
-    /** An item offered at the market. */
+    /** An item offered at the market.
+     * @param id stable item identifier
+     * @param name item display name
+     * @param price price in Petot
+     * @param description description of the item
+     */
     public record Offer(String id, String name, int price, String description) { }
     private static final java.util.List<Offer> OFFERS = java.util.List.of(
             new Offer("first_aid_kit", "First-Aid Kit", 20, "Restores HP to one student."),
@@ -20,9 +25,15 @@ public final class CarbonMarket {
             new Offer("looper_ring", "Looper Ring", 2500, "+10% ability cost; -20% DEF; +10% SPD; hits leak 5–10% max SP; up to 5 damage loops, 70% chance each."),
             new Offer("scholars_ward", "Scholar’s Ward", 2500, "Zack only: +30% HP, +20% DEF; 25% chance to restore 10% max SP when AP fills."));
     private CarbonMarket() { }
-    /** Returns the items stocked at Carbon Market. */
+    /** Returns the items stocked at Carbon Market.
+     * @return the items stocked at Carbon Market
+     */
     public static java.util.List<Offer> offers() { return OFFERS; }
-    /** Purchases an offer, preserving balance if the purchase cannot be completed. */
+    /** Purchases an offer, preserving balance if the purchase cannot be completed.
+     * @param progress current game progress
+     * @param index index to use
+     * @return the result of buy
+     */
     public static String buy(GameProgress progress, int index) {
         if (index < 0 || index >= OFFERS.size()) { throw new IllegalArgumentException("Unknown offer"); }
         Offer offer = OFFERS.get(index);

@@ -9,8 +9,8 @@ import java.util.Random;
 public final class Battle {
     private static final int DAMAGE_VARIATION = 5;
     private static final int MINIMUM_DAMAGE = 1;
-    private static final double GUARDIAN_PULSE_STUN_CHANCE = 0.40;
-    private static final double GUARDIAN_PULSE_LOOP_CHANCE = 0.45;
+    static final double GUARDIAN_PULSE_STUN_CHANCE = 0.40;
+    static final double GUARDIAN_PULSE_LOOP_CHANCE = 0.45;
     private final List<Student> party = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
     private final List<Enemy> defeatedEarlier = new ArrayList<>();
@@ -26,75 +26,87 @@ public final class Battle {
     private final java.util.Map<Student, Integer> stuns = new java.util.HashMap<>();
     private final boolean merchantEncounter;
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
-    private final java.util.List<DamageOverTime> burns = new java.util.ArrayList<>();
-    private static final class DamageOverTime {
-        final GameCharacter source, target; final int total, duration, spRecovery; final boolean manaLeak; int ticks; double elapsedSeconds;
-        DamageOverTime(GameCharacter source, GameCharacter target, int damage) { this(source, target, damage, false); }
-        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak) { this(source, target, damage, manaLeak, 5); }
-        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak, int duration) { this(source, target, damage, manaLeak, duration, 0); }
-        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak, int duration, int spRecovery) { this.source = source; this.target = target; total = damage; this.manaLeak = manaLeak; this.duration = duration; this.spRecovery = spRecovery; }
-    }
+    private final BattleDotEngine dots = new BattleDotEngine(this);
     private int turn = -1;
-    private boolean pendingSecondCast;
-    private int pendingLooperHits;
-    private static final double LOOPER_LOOP_CHANCE = 0.70;
-    private int twinStage;
-    private Enemy twinTarget;
-    private Student twinActor;
-    private int twinAttackMultiplier = 1;
-    private Student looperActor;
-    private Enemy lastHeroHitTarget, looperTarget;
-    private int lastHeroHitDamage, looperBaseDamage, looperPreviousDamage;
-    private int angelHitsRemaining, angelDamage, angelAttackPower;
-    private boolean angelExplosion;
-    private Student angelActor;
-    private Enemy angelTarget;
+    private BattleHeroActions heroActions;
+    private BattleEnemyDamage enemyDamageResolver;
     private Enemy sparkCaster;
     private Student sparkTarget;
-    private final List<Enemy> rainArrowTargets = new ArrayList<>();
-    public List<Enemy> getRainArrowTargets() { return List.copyOf(rainArrowTargets); }
+    /** Returns the targets selected for the latest Rain of Arrows animation.
+     * @return the targets selected for the latest Rain of Arrows animation
+     */
+    public List<Enemy> getRainArrowTargets() { return heroActions.getRainArrowTargets(); }
     private Enemy pulseCaster;
     private int pulseLoops;
     private final java.util.Map<Student, Integer> pulseInitial = new java.util.HashMap<>(), pulsePrevious = new java.util.HashMap<>();
-    private Student escapeInitiator;
-    private int escapeTurnsRemaining;
-    public boolean isEscaping() { return escapeInitiator != null; }
-    public Student getEscapeInitiator() { return escapeInitiator; }
-    public int getEscapeTurnsRemaining() { return escapeTurnsRemaining; }
-    /** Starts a three-turn escape; selecting the command consumes the first turn. */
-    public boolean beginEscape() {
-        if (isOver() || isActionAnimating() || isEscaping() || !canUseDefendOrEscape()) return false;
-        escapeInitiator = getCurrent(); escapeTurnsRemaining = 2;
-        finish(escapeInitiator.getName() + " leads the party's escape! Turns remaining: 2.");
-        return true;
-    }
-    /** Cancels escape if its initiator is no longer able to lead. */
-    public boolean cancelEscapeIfKnockedOut() {
-        if (escapeInitiator == null || escapeInitiator.isAlive()) return false;
-        message = escapeInitiator.getName() + " was knocked out. Escape failed.";
-        escapeInitiator = null; escapeTurnsRemaining = 0; return true;
-    }
-    /** Consumes an initiator's ready turn and returns true when escape completes. */
-    public boolean advanceEscape(Student student) {
-        if (student == null || student != escapeInitiator || !student.isAlive() || escapeTurnsRemaining <= 0) return false;
-        escapeTurnsRemaining--;
-        if (escapeTurnsRemaining > 0) { message = "Escaping... Turns remaining: " + escapeTurnsRemaining + "."; return false; }
-        escapeInitiator = null;
-        for (Student hero : party) hero.applyEscapeXpPenalty();
-        progress.spendPetot((progress.getPetot() + 9) / 10);
-        message = "The party escaped!";
-        return true;
-    }
+    private BattleEscape escape;
+    private BattleItems items;
+    /** Returns whether the party is attempting to escape.
+     * @return whether the party is attempting to escape
+     */
+    public boolean isEscaping() { return escape.isEscaping(); }
+    /** Returns the student leading the escape, if any.
+     * @return the student leading the escape, if any
+     */
+    public Student getEscapeInitiator() { return escape.initiator(); }
+    /** Returns the remaining action cycles before escape.
+     * @return the remaining action cycles before escape
+     */
+    public int getEscapeTurnsRemaining() { return escape.turnsRemaining(); }
+    /** Starts a three-turn escape; selecting the command consumes the first turn.
+     * @return the result of begin escape
+     */
+    public boolean beginEscape() { return escape.begin(); }
+    /** Cancels escape after the initiator is knocked out.
+     * @return whether cancelled
+     */
+    public boolean cancelEscapeIfKnockedOut() { return escape.cancelIfKnockedOut(); }
+    /** Advances an escape cycle.
+     * @param student acting hero
+     * @return whether escaped
+     */
+    public boolean advanceEscape(Student student) { return escape.advance(student); }
+    /** Returns whether an Arcane Spark explosion is waiting.
+     * @return whether an Arcane Spark explosion is waiting
+     */
     public boolean hasPendingSparkExplosion() { return sparkCaster != null; }
-    public boolean hasPendingLooperHits() { return pendingLooperHits > 0; }
-    public boolean hasPendingAngelAttack() { return angelHitsRemaining > 0 || angelExplosion; }
-    public boolean isAngelExplosionPending() { return angelExplosion; }
+    /** Returns whether Looper Ring hits are waiting.
+     * @return whether Looper Ring hits are waiting
+     */
+    public boolean hasPendingLooperHits() { return heroActions.hasPendingLooperHits(); }
+    /** Returns whether Angel has combo hits or an explosion waiting.
+     * @return whether Angel has combo hits or an explosion waiting
+     */
+    public boolean hasPendingAngelAttack() { return heroActions.hasPendingAngelAttack(); }
+    /** Returns whether Angel’s combo explosion is waiting.
+     * @return whether Angel\u2019s combo explosion is waiting
+     */
+    public boolean isAngelExplosionPending() { return heroActions.isAngelExplosionPending(); }
+    /** Returns whether a Crystal Pulse loop is waiting.
+     * @return whether a Crystal Pulse loop is waiting
+     */
     public boolean hasPendingGuardianLoop() { return pulseLoops > 0; }
-    public boolean isActionAnimating() { return pendingSecondCast || hasPendingLooperHits() || hasPendingAngelAttack() || hasPendingSparkExplosion() || hasPendingTwinShot() || hasPendingGuardianLoop(); }
-    public boolean hasPendingTwinShot() { return twinStage != 0; }
+    /** Returns whether a delayed combat action is still resolving.
+     * @return whether a delayed combat action is still resolving
+     */
+    public boolean isActionAnimating() { return heroActions.hasPendingSecondCast() || hasPendingLooperHits() || hasPendingAngelAttack() || hasPendingSparkExplosion() || hasPendingTwinShot() || hasPendingGuardianLoop(); }
+    /** Returns whether Charice has a follow-up shot waiting.
+     * @return whether Charice has a follow-up shot waiting
+     */
+    public boolean hasPendingTwinShot() { return heroActions.hasPendingTwinShot(); }
+    /** Returns the delay between Twin Shot hits in milliseconds.
+     * @return the delay between Twin Shot hits in milliseconds
+     */
     public int twinShotDelayMillis() { return 300; }
+    /** Text identifying an ability as it is cast.
+     * @param caster name of the caster
+     * @param skill name of the ability
+     */
     public record AbilityAnnouncement(String caster, String skill) { }
     private AbilityAnnouncement lastAbility;
+    /** Returns the latest ability announcement, if any.
+     * @return the latest ability announcement, if any
+     */
     public AbilityAnnouncement getLastAbility() { return lastAbility; }
     private String message;
 
@@ -122,14 +134,31 @@ public final class Battle {
         this(progress, random, ambushed, progress.getEncounter());
     }
 
-    /** Starts a specific unlocked route encounter, including a replay. */
+    /** Starts a specific unlocked route encounter, including a replay.
+     * @param progress current game progress
+     * @param random random source
+     * @param ambushed the ambushed
+     * @param encounter encounter index
+     */
     public Battle(GameProgress progress, Random random, boolean ambushed, int encounter) {
         this(progress, random, ambushed, encounter, GameSettings.Difficulty.NORMAL);
     }
-    /** Starts an encounter using the selected monster difficulty. */
+    /** Starts an encounter using the selected monster difficulty.
+     * @param progress current game progress
+     * @param random random source
+     * @param ambushed the ambushed
+     * @param encounter encounter index
+     * @param difficulty selected difficulty
+     */
     public Battle(GameProgress progress, Random random, boolean ambushed, int encounter, GameSettings.Difficulty difficulty) {
         this(progress, random, ambushed, encounter, difficulty, false);
     }
+    /** Creates the merchant encounter using the supplied progress and difficulty.
+     * @param progress current game progress
+     * @param random random source
+     * @param difficulty selected difficulty
+     * @return the result of merchant battle
+     */
     public static Battle merchantBattle(GameProgress progress, Random random, GameSettings.Difficulty difficulty) {
         return new Battle(progress, random, false, 2, difficulty, true);
     }
@@ -141,6 +170,10 @@ public final class Battle {
         this.merchantEncounter = merchantEncounter;
         if (merchantEncounter && (progress.getEncounter() < 3 || progress.isMerchantDefeated())) throw new IllegalArgumentException("Merchant challenge unavailable");
         this.random = random;
+        this.heroActions = new BattleHeroActions(this, party, enemies, random, effects, dots);
+        this.escape = new BattleEscape(this, party, progress);
+        this.items = new BattleItems(this, progress, party, effects);
+        this.enemyDamageResolver = new BattleEnemyDamage(this, party, guards, random, effects, apRefills);
         party.addAll(progress.getParty());
         double partyMultiplier = switch (party.size()) {
             case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
@@ -160,44 +193,31 @@ public final class Battle {
             message = "The Mysterious Merchant challenges the party!";
             return;
         }
-        int count = EncounterRules.rollMonsterCount(encounter, random, difficulty);
-        boolean finalEncounter = encounter == GameProgress.FINAL_BOSS_ENCOUNTER;
-        ambushed = ambushed && !finalEncounter;
-        int sentinels = finalEncounter ? 5 : encounter == 3 ? 1 + random.nextInt(3) : encounter >= 1 ? 1 : 0;
-        int wisps = count - sentinels - (finalEncounter ? 1 : 0);
-        for (int index = 0; index < wisps; index++) {
-            String name = "Library Wisp " + (char) ('A' + index);
-            enemies.add(encounter == 0 && party.size() == 1 ? Enemy.soloOpeningWisp(name, difficulty, averageLevel)
-                    : new Enemy(name, false, false, difficulty, encounter, averageLevel));
-        }
-        for (int index = 0; index < sentinels; index++) {
-            boolean attack = finalEncounter ? index >= 2 : index % 2 == 1;
-            int variantIndex = finalEncounter ? (attack ? index - 2 : index) : index / 2;
-            String name = (attack ? "Attack Sentinel " : "Support Sentinel ") + (char) ('A' + variantIndex);
-            enemies.add(Enemy.sentinel(name, attack, difficulty, encounter, averageLevel, finalEncounter ? party.size() : 0));
-        }
-        if (finalEncounter) { enemies.add(Enemy.finalOpponent("Crystal Guardian", true, difficulty, averageLevel, party.size())); }
-        boolean goblinSpawned = !finalEncounter && random.nextInt(100) >= 95;
-        if (goblinSpawned) {
-            for (int index = enemies.size() - 1; index >= 0; index--) {
-                if (!enemies.get(index).isSentinel()) { enemies.remove(index); wisps--; break; }
-            }
-            enemies.add(Enemy.itmigims(difficulty, encounter, averageLevel));
-        }
-        message = finalEncounter ? "The Crystal Guardian and five Sentinels appear!"
-                : sentinels > 0 ? sentinels + " Stone Sentinel(s)" + (wisps > 0 ? " and " + wisps + " Library Wisp(s) appear!" : " appear!")
-                : wisps > 0 ? wisps + " Library Wisp(s) appear! Choose an action."
-                : "Itmigims appears! Choose an action.";
-        if (goblinSpawned && (wisps > 0 || sentinels > 0)) { message += "\nItmigims appears!"; }
-        if (ambushed) { message = "You have been ambushed!\n" + message; }
-        enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
+        EncounterFactory.Encounter created = EncounterFactory.create(encounter, random, difficulty, averageLevel, party.size(), ambushed);
+        enemies.addAll(created.enemies());
+        message = created.message();
     }
-    /** Returns the monster accuracy factor, fixed from difficulty and starting party size. */
+    /** Returns the monster accuracy factor, fixed from difficulty and starting party size.
+     * @return the monster accuracy factor, fixed from difficulty and starting party size
+     */
     public double getAccuracyScalingFactor() { return accuracyScalingFactor; }
-    /** Returns the difficulty and party-size accuracy factor for heroes. */
+    /** Returns the difficulty and party-size accuracy factor for heroes.
+     * @return the difficulty and party-size accuracy factor for heroes
+     */
     public double getHeroAccuracyScalingFactor() { return heroAccuracyScalingFactor; }
+    /** Returns whether this battle is against the merchant.
+     * @return whether this battle is against the merchant
+     */
     public boolean isMerchantEncounter() { return merchantEncounter; }
+    /** Returns the remaining stun cycles for a student.
+     * @param student student involved in the action
+     * @return the remaining stun cycles for a student
+     */
     public int getStunTurns(Student student) { return stuns.getOrDefault(student, 0); }
+    /** Consumes one stun cycle when the student is ready.
+     * @param student student involved in the action
+     * @return the result of consume stun turn
+     */
     public boolean consumeStunTurn(Student student) {
         int remaining = getStunTurns(student);
         if (remaining <= 0) return false;
@@ -206,7 +226,7 @@ public final class Battle {
         message = student.getName() + " is stunned and misses a turn.";
         return true;
     }
-    private void applyStun(Student student, int turns) {
+    void applyStun(Student student, int turns) {
         stuns.merge(student, turns, Math::max);
         guards.remove(student); student.endDefend();
         effects.add(BattleEffect.status(student, "Stunned"));
@@ -217,7 +237,9 @@ public final class Battle {
     /** Returns enemies in speed order.
      * @return enemies in speed order
      */ public List<Enemy> getEnemies() { return List.copyOf(enemies); }
-    /** All defeated waves remain eligible for victory rewards. */
+    /** All defeated waves remain eligible for victory rewards.
+     * @return the reward enemies
+     */
     public List<Enemy> getRewardEnemies() {
         List<Enemy> result = new ArrayList<>(defeatedEarlier); result.addAll(enemies); return List.copyOf(result);
     }
@@ -233,117 +255,52 @@ public final class Battle {
     /** Returns HP changes from the most recent action.
      * @return HP changes from the most recent action
      */ public List<BattleEffect> getEffects() { return List.copyOf(effects); }
-    /** Returns and clears equipment-triggered AP refills. */
+    /** Returns and clears equipment-triggered AP refills.
+     * @return and clears equipment-triggered AP refills
+     */
     public java.util.Set<Student> consumeApRefills() {
         java.util.Set<Student> result = java.util.Set.copyOf(apRefills); apRefills.clear(); return result;
     }
-    /** Whether a living participant has any active damage-over-time effect. */
-    public boolean hasDamageOverTime(GameCharacter target) {
-        return target != null && target.isAlive() && !isOver() && burns.stream().anyMatch(burn -> burn.target == target && burn.ticks < burn.duration);
+    /** Whether a living participant has any active damage-over-time effect.
+     * @param target target of the action
+     * @return whether a living participant has any active damage-over-time effect
+     */
+    public boolean hasDamageOverTime(GameCharacter target) { return dots.has(target); }
+    void clearKnockedOutHeroEffects(Student hero) {
+        dots.remove(hero); guards.remove(hero); hero.endDefend();
     }
-    private void clearKnockedOutHeroEffects(Student hero) {
-        burns.removeIf(burn -> burn.target == hero);
-        guards.remove(hero); hero.endDefend();
-    }
-    /** Applies one tick to the effects on a participant. */
-    public boolean tickDamageOverTime(GameCharacter participant) { return tickDamageOverTime(participant, null); }
-    private boolean tickDamageOverTime(GameCharacter participant, DamageOverTime only) {
-        if (participant == null || isOver() || !participant.isAlive() || burns.isEmpty()) return false;
-        boolean changed = false, damaged = false;
-        for (DamageOverTime burn : new java.util.ArrayList<>(burns)) {
-            if (!burns.contains(burn) || (only != null && burn != only)) continue;
-            GameCharacter target = burn.target;
-            if (target != participant || !target.isAlive() || burn.ticks >= burn.duration) continue;
-                int before = (int) ((long) burn.total * burn.ticks / burn.duration);
-                burn.ticks++;
-                int damage = (int) ((long) burn.total * burn.ticks / burn.duration) - before;
-                if (damage > 0 && (!hits(burn.source, target)
-                        || (target instanceof Student student && "ultra_instinct_shirt".equals(student.getEquipmentId(Equipment.Slot.ARMOR)) && random.nextDouble() < 0.5))) {
-                    if (!changed) effects.clear();
-                    if (target instanceof Enemy enemy) effects.add(BattleEffect.status(enemy, "Dodge"));
-                    else if (target instanceof Student student) effects.add(BattleEffect.status(student, "Dodge"));
-                    changed = true;
-                    continue;
-                }
-                boolean shielded = target instanceof Enemy enemy && enemy.getStoneSkinHits() > 0;
-                int taken = target.takeDamage(damage);
-                if (taken > 0) {
-                    if (!changed) effects.clear();
-                    if (target instanceof Enemy enemy) { effects.add(new BattleEffect(enemy, -taken)); reflectStoneSkin(shielded, burn.source, taken); applyManaLeak(burn.manaLeak, enemy, taken); }
-                    else if (target instanceof Student student) {
-                        effects.add(new BattleEffect(student, -taken));
-                        if (!student.isAlive()) { guards.remove(student); student.endDefend(); if (getCurrent() == student) turn = -1; }
-                    }
-                    if (burn.spRecovery > 0 && burn.source instanceof Student hero && hero.isAlive()) {
-                        int recovered = Math.min(burn.spRecovery, hero.getMaxSp() - hero.getSp());
-                        if (recovered > 0) { hero.restoreSp(hero.getSp() + recovered); effects.add(BattleEffect.status(hero, "+" + recovered + " SP")); }
-                    }
-                    changed = true; damaged = true;
-                }
-        }
-        burns.removeIf(burn -> !burn.target.isAlive() || burn.ticks >= burn.duration);
-        if (changed) {
-            message = isVictory() ? "Damage over time defeats the last enemy! Victory!" : isDefeat() ? "Damage over time defeats the party!" : damaged ? "Damage over time strikes!" : "Damage over time was dodged!";
-            if (isOver()) clearGuards();
-        }
-        return changed;
-    }
-    /** Advances each active DOT by real battle time; each effect has its own one-second clock. */
-    public boolean advanceDamageOverTime(double seconds) {
-        if (!Double.isFinite(seconds) || seconds < 0) throw new IllegalArgumentException("Invalid elapsed time");
-        if (isOver() || burns.isEmpty()) return false;
-        java.util.List<BattleEffect> combined = new java.util.ArrayList<>();
-        boolean changed = false;
-        for (DamageOverTime burn : new java.util.ArrayList<>(burns)) {
-            if (!burns.contains(burn) || !burn.target.isAlive() || isOver()) continue;
-            burn.elapsedSeconds += seconds;
-            while (burn.elapsedSeconds >= 1.0 && burns.contains(burn) && burn.target.isAlive() && !isOver()) {
-                burn.elapsedSeconds -= 1.0;
-                if (tickDamageOverTime(burn.target, burn)) { combined.addAll(getEffects()); changed = true; }
-            }
-        }
-        if (changed) replaceEffects(combined);
-        return changed;
-    }
-    /** Keeps DOT indicators when the participant also performs an action. */
+    /** Applies one tick to the effects on a participant.
+     * @param participant affected participant
+     * @return whether an effect changed
+     */
+    public boolean tickDamageOverTime(GameCharacter participant) { return dots.tick(participant); }
+    /** Advances damage-over-time effects by elapsed battle time.
+     * @param seconds elapsed seconds
+     * @return whether an effect changed
+     */
+    public boolean advanceDamageOverTime(double seconds) { return dots.advance(seconds); }
+    /** Keeps DOT indicators when the participant also performs an action.
+     * @param earlier the earlier
+     */
     public void prependEffects(List<BattleEffect> earlier) { if (earlier != null && !earlier.isEmpty()) effects.addAll(0, earlier); }
-    /** Displays all effects produced by simultaneous AP fills. */
+    /** Displays all effects produced by simultaneous AP fills.
+     * @param combined the combined
+     */
     public void replaceEffects(List<BattleEffect> combined) { effects.clear(); effects.addAll(combined); }
-    private void applyLightSaber(Student actor, Enemy target, int damage) {
+    void applyLightSaber(Student actor, Enemy target, int damage) {
         if (damage > 0 && target.isAlive() && "light_saber".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
-            burns.add(new DamageOverTime(actor, target, damage, hasManaLeak(actor)));
+            dots.add(actor, target, damage, hasManaLeak(actor), 5, 0);
         }
     }
-    /** Rolls once for each character whose AP has just filled. */
+    /** Rolls once for each character whose AP has just filled.
+     * @param students the students
+     * @param keepCurrentEffects the keep current effects
+     * @return the result of regenerate
+     */
     public boolean regenerate(java.util.List<Student> students, boolean keepCurrentEffects) {
-        boolean restored = false;
-        StringBuilder text = new StringBuilder();
-        for (Student student : students) {
-            if (!party.contains(student)) throw new IllegalArgumentException("Unknown party member");
-            int healed = HealthRegeneration.attempt(student, random);
-            if (healed > 0) {
-                if (!restored && !keepCurrentEffects) effects.clear();
-                effects.add(new BattleEffect(student, healed));
-                if (text.length() > 0) text.append("  ");
-                text.append(student.getName()).append(" regenerated ").append(healed).append(" HP.");
-                restored = true;
-            }
-            String accessory = student.getEquipmentId(Equipment.Slot.ACCESSORY);
-            int spRegen = accessory == null ? 0 : Equipment.fromId(accessory).getSpRegenPercent();
-            if (student.isAlive() && student.getSp() < student.getMaxSp() && spRegen > 0 && random.nextDouble() < 0.25) {
-                int before = student.getSp();
-                int recovery = (int)(((long)student.getMaxSp() * spRegen + 99) / 100);
-                student.restoreSp((int)Math.min(student.getMaxSp(), (long)before + recovery));
-                int recovered = student.getSp() - before;
-                if (!restored && !keepCurrentEffects) effects.clear();
-                effects.add(BattleEffect.status(student, "+" + recovered + " SP"));
-                if (text.length() > 0) text.append("  ");
-                text.append(student.getName()).append(" recovered ").append(recovered).append(" SP.");
-                restored = true;
-            }
-        }
-        if (restored) message = keepCurrentEffects ? message + "\n" + text : text.toString();
-        return restored;
+        BattleRegeneration.Result result = BattleRegeneration.attempt(students, party, random, effects, keepCurrentEffects);
+        if (result.restored()) message = keepCurrentEffects ? message + "\n" + result.message() : result.message();
+        return result.restored();
     }
     /** Selects a living student whose AP is ready.
      * @param student student chosen by the battle clock
@@ -374,242 +331,54 @@ public final class Battle {
      * @param target chosen enemy
      * @return whether the action was performed
      */
-    public boolean attack(Enemy target) {
-        if (isActionAnimating() || isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
-        effects.clear();
-        Student actor = getCurrent();
-        if (actor.getId() == Student.CHARICE && actor.getSp() < 2) return false;
-        lastAbility = null; rainArrowTargets.clear();
-        lastHeroHitDamage = 0; lastHeroHitTarget = null;
-        int multiplier = actor.consumeEtherealCharge() ? 4 : 1;
-        int attackPower = actor.getAttack() * multiplier;
-        if (actor.getId() == Student.CHARICE) {
-            actor.restoreSp(actor.getSp() - 2);
-            twinAttackMultiplier = multiplier;
-            beginTwinShot(actor, target);
-            return true;
-        }
-        if (actor.getId() == Student.ANGEL) {
-            angelActor = actor; angelAttackPower = attackPower; angelTarget = target;
-            angelHitsRemaining = 3 + ("giant_slayer_gloves".equals(actor.getEquipmentId(Equipment.Slot.WEAPON)) ? 2 : 0);
-            angelDamage = 0;
-            advanceAngelAttack();
-            return true;
-        }
-        int damage = hurt(target, attackPower);
-        applyLightSaber(actor, target, damage);
-        finish(looperHits(actor, actor.getName() + " attacks " + target.getName() + " for " + damage + " damage." + defeated(target)));
-        return true;
-    }
-    /** Uses the current student's special ability.
-     * @param ally healing target for Angel
-     * @param enemy enemy target for single-target abilities
-     * @return whether the action was performed
+    public boolean attack(Enemy target) { return heroActions.attack(target); }
+    /** Uses a hero ability.
+     * @param ally chosen ally
+     * @param enemy chosen enemy
+     * @return whether used
      */
-    public boolean ability(Student ally, Enemy enemy) {
-        if (isActionAnimating() || isOver() || getCurrent() == null) { return false; }
-        Student actor = getCurrent();
-        rainArrowTargets.clear();
-        lastHeroHitDamage = 0; lastHeroHitTarget = null;
-        if (actor.getSp() < actor.getAbilitySpCost()) { return false; }
-        if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS && (ally == null || !party.contains(ally))) { return false; }
-        if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
-                && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && actor.getAbilityType() != Student.AbilityType.RAIN_OF_ARROWS && !validEnemy(enemy)) { return false; }
-        if (!actor.spendAbilitySp()) { return false; }
-        String skillName = switch (actor.getAbilityType()) {
-            case ARCANE_BURST -> "Arcane Burst"; case CADET_STRIKE -> "Cadet Strike";
-            case RAIN_OF_ARROWS -> "Rain of Arrows"; case HEALING_KISS -> "Angel Hug";
-        };
-        lastAbility = new AbilityAnnouncement(actor.getName(), skillName);
-        if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
-            effects.clear();
-            boolean revived = !ally.isAlive();
-            if (revived) clearKnockedOutHeroEffects(ally);
-            int healed = ally.heal((int) Math.ceil(revived ? ally.getMaxHp() * 0.3 : (ally.getMaxHp() - ally.getHp()) * 0.5));
-            if (revived) ally.restoreSp((int) Math.ceil(ally.getMaxSp() * 0.3));
-            if (healed > 0) { effects.add(new BattleEffect(ally, healed)); }
-            finish("Angel uses Angel Hug. " + ally.getName() + (revived ? " is revived and" : "") + " recovers " + healed + " HP.");
-        } else if (actor.getAbilityType() == Student.AbilityType.ARCANE_BURST) {
-            boolean doubleCast = "great_sage_staff".equals(actor.getEquipmentId(Equipment.Slot.WEAPON)) && random.nextDouble() < 0.5;
-            String text = arcaneBurst(actor, "Zack uses Arcane Burst!");
-            if (doubleCast && !isVictory()) {
-                pendingSecondCast = true;
-                message = text;
-            } else {
-                finish(text);
-            }
-        } else if (actor.getAbilityType() == Student.AbilityType.RAIN_OF_ARROWS) {
-            effects.clear();
-            java.util.Set<Enemy> struck = new java.util.LinkedHashSet<>();
-            StringBuilder text = new StringBuilder(actor.getName() + " uses Rain of Arrows!");
-            for (int arrow = 0; arrow < 12 && actor.isAlive(); arrow++) {
-                List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
-                if (living.isEmpty()) break;
-                Enemy target = living.get(random.nextInt(living.size()));
-                rainArrowTargets.add(target);
-                int power = (int)Math.ceil(actor.getAttack() * (40 + random.nextInt(21)) / 100.0);
-                int damage = hurt(target, power);
-                if (damage > 0) struck.add(target);
-                text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
-            }
-            for (Enemy target : struck) if (target.isAlive() && random.nextDouble() < .5) {
-                burns.removeIf(burn -> burn.source == actor && burn.target == target && burn.spRecovery > 0);
-                burns.add(new DamageOverTime(actor, target, actor.getAttack(), hasManaLeak(actor), 5, 5));
-                effects.add(BattleEffect.status(target, "DOT"));
-            }
-            finish(looperHits(actor, text.toString()));
-        } else {
-            if (!validEnemy(enemy)) { return false; }
-            effects.clear();
-            double bonusRate = 0.60;
-            int damage = hurt(enemy, actor.getAttack() + (int) Math.ceil(actor.getBaseAttack() * bonusRate));
-            applyLightSaber(actor, enemy, damage);
-            String ability = "Cadet Strike";
-            finish(looperHits(actor, actor.getName() + " uses " + ability + " on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy)));
-        }
-        return true;
-    }
-    private void beginTwinShot(Student actor, Enemy enemy) {
-        int damage = hurt(enemy, (int)Math.ceil(actor.getAttack() * twinAttackMultiplier * (80 + random.nextInt(21)) / 100.0));
-        boolean reducedDefense = damage > 0 && enemy.isAlive() && random.nextDouble() < 0.5;
-        int defenseBefore = enemy.getDefense();
-        if (reducedDefense) enemy.applyTwinDefensePenalty();
-        int defensePenalty = defenseBefore - enemy.getDefense();
-        message = actor.getName() + " uses Twin Shot on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy);
-        if (reducedDefense && defensePenalty > 0) {
-            effects.add(BattleEffect.status(enemy, "DEF -" + defensePenalty));
-            message += "\n" + enemy.getName() + " loses " + defensePenalty + " DEF for Twin Shot.";
-        }
-        if (enemy.isAlive() && actor.isAlive()) { twinActor = actor; twinTarget = enemy; twinStage = 1; }
-        else { enemy.clearTwinDefensePenalty(); finish(looperHits(actor, message)); }
-    }
-    /** Resolves the second shot, then the optional third shot, without another action or SP cost. */
-    public boolean advanceTwinShot() {
-        if (!hasPendingTwinShot() || twinActor == null || twinTarget == null) return false;
-        Student actor = twinActor; Enemy target = twinTarget;
-        if (!target.isAlive() || !actor.isAlive() || isOver()) { target.clearTwinDefensePenalty(); twinStage = 0; twinTarget = null; twinActor = null; finish(message); return false; }
-        effects.clear();
-        int damage = hurt(target, (int)Math.ceil(actor.getAttack() * twinAttackMultiplier * 0.8), true);
-        message = actor.getName() + " hits " + target.getName() + " for " + damage + " damage." + defeated(target);
-        if (twinStage == 1 && target.isAlive() && actor.isAlive() && random.nextDouble() < .7) { twinStage = 2; }
-        else {
-            target.clearTwinDefensePenalty(); twinStage = 0; twinTarget = null; twinActor = null;
-            finish(looperHits(actor, message));
-        }
-        return true;
-    }
-    private String arcaneBurst(Student actor, String heading) {
-        effects.clear();
-        StringBuilder text = new StringBuilder(heading);
-        for (Enemy target : enemies) {
-            if (!actor.isAlive()) break;
-            if (target.isAlive()) {
-                int damage = hurt(target, actor.getAttack() + (int) Math.ceil(actor.getBaseAttack() * 0.40));
-                text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
-            }
-        }
-        return looperHits(actor, text.toString());
-    }
-    /** Resolves one punch or the final combo explosion. */
-    public boolean advanceAngelAttack() {
-        if (!hasPendingAngelAttack() || hasPendingLooperHits()) return false;
-        if (!angelActor.isAlive()) { angelHitsRemaining = 0; angelExplosion = false; finish(message); return false; }
-        List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
-        if (living.isEmpty()) { angelHitsRemaining = 0; angelExplosion = false; finish(message); return false; }
-        effects.clear();
-        if (angelExplosion) {
-            Enemy target = angelTarget.isAlive() ? angelTarget : living.get(random.nextInt(living.size()));
-            int power = (int) Math.ceil(angelDamage * (80 + random.nextInt(21)) / 100.0);
-            boolean shielded = target.getStoneSkinHits() > 0;
-            int damage = target.takeDamage(power);
-            reflectStoneSkin(shielded, angelActor, damage);
-            if (damage > 0) { effects.add(new BattleEffect(target, -damage)); applyManaLeak(hasManaLeak(angelActor), target, damage); }
-            angelExplosion = false;
-            finish("Combo explosion hits " + target.getName() + " for " + damage + " damage." + defeated(target));
-        } else {
-            if (angelHitsRemaining < ("giant_slayer_gloves".equals(angelActor.getEquipmentId(Equipment.Slot.WEAPON)) ? 5 : 3))
-                angelTarget = living.get(random.nextInt(living.size()));
-            int damage = hurt(angelTarget, angelAttackPower);
-            angelDamage += damage; angelHitsRemaining--;
-            message = "Angel attacks " + angelTarget.getName() + " for " + damage + " damage." + defeated(angelTarget);
-            if (isVictory() || !angelActor.isAlive()) { angelHitsRemaining = 0; angelExplosion = false; finish(message); }
-            else if (angelHitsRemaining == 0) { angelExplosion = true; message = looperHits(angelActor, message); }
-        }
-        return true;
-    }
-    /** Starts a chain based on the last hit of an attack or damaging cast. */
-    private String looperHits(Student actor, String message) {
-        if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
-                || !actor.isAlive() || lastHeroHitDamage <= 0 || isVictory() || random.nextDouble() >= LOOPER_LOOP_CHANCE) return message;
-        pendingLooperHits = 5; looperActor = actor; looperTarget = lastHeroHitTarget;
-        looperBaseDamage = lastHeroHitDamage; looperPreviousDamage = 0;
-        return message + "\nLooper Ring activates!";
-    }
-    /** Resolves one queued Looper Ring hit. The UI schedules these at 300 ms intervals. */
-    public boolean advanceLooperHit() {
-        if (!hasPendingLooperHits()) return false;
-        List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
-        if (living.isEmpty() || isOver()) { pendingLooperHits = 0; pendingSecondCast = false; finish(message); return false; }
-        Enemy target = looperTarget != null && looperTarget.isAlive() ? looperTarget : living.get(random.nextInt(living.size()));
-        looperTarget = target;
-        int power = (int) Math.min(Integer.MAX_VALUE, ((long) looperBaseDamage * 5 + (long) looperPreviousDamage * 2 + 9) / 10);
-        effects.clear();
-        boolean shielded = target.getStoneSkinHits() > 0;
-        int damage = target.takeDamage(power);
-        reflectStoneSkin(shielded, looperActor, damage);
-        looperPreviousDamage = damage;
-        if (angelExplosion && looperActor == angelActor) { angelDamage += damage; angelTarget = target; }
-        effects.add(new BattleEffect(target, -damage)); applyManaLeak(true, target, damage);
-        message = "Looper Ring hits " + target.getName() + " for " + damage + " damage." + defeated(target);
-        pendingLooperHits--;
-        if (!looperActor.isAlive()) { pendingLooperHits = 0; pendingSecondCast = false; angelExplosion = false; }
-        if (pendingLooperHits > 0 && random.nextDouble() >= LOOPER_LOOP_CHANCE) pendingLooperHits = 0;
-        if (isVictory()) { pendingLooperHits = 0; pendingSecondCast = false; angelExplosion = false; finish(message); }
-        else if (pendingLooperHits == 0 && !pendingSecondCast && !angelExplosion) finish(message);
-        return true;
-    }
-    /** Whether the Great Sage Staff has a follow-up cast waiting to resolve. */
-    public boolean hasPendingSecondCast() { return pendingSecondCast; }
-    /** Applies the delayed follow-up without spending extra SP or an extra action. */
-    public boolean completeSecondCast() {
-        if (!pendingSecondCast || hasPendingLooperHits()) return false;
-        pendingSecondCast = false;
-        if (isOver() || getCurrent() == null || !getCurrent().isAlive()) return false;
-        lastAbility = new AbilityAnnouncement(getCurrent().getName(), "Arcane Burst");
-        finish(arcaneBurst(getCurrent(), "The staff casts Arcane Burst again!"));
-        return true;
-    }
+    public boolean ability(Student ally, Enemy enemy) { return heroActions.ability(ally, enemy); }
+    /** Advances Twin Shot.
+     * @return whether advanced
+     */
+    public boolean advanceTwinShot() { return heroActions.advanceTwinShot(); }
+    /** Advances Angel's combo.
+     * @return whether advanced
+     */
+    public boolean advanceAngelAttack() { return heroActions.advanceAngelAttack(); }
+    /** Advances a Looper Ring hit.
+     * @return whether advanced
+     */
+    public boolean advanceLooperHit() { return heroActions.advanceLooperHit(); }
+    /** Indicates a pending second cast.
+     * @return whether pending
+     */
+    public boolean hasPendingSecondCast() { return heroActions.hasPendingSecondCast(); }
+    /** Completes a second cast.
+     * @return whether completed
+     */
+    public boolean completeSecondCast() { return heroActions.completeSecondCast(); }
     /** Uses a first-aid kit on a living student.
      * @param target student to heal
      * @return whether an item was used
      */
-    public boolean useKit(Student target) {
-        if (isActionAnimating() || isOver() || getCurrent() == null || !validAlly(target)) { return false; }
-        int before = target.getHp();
-        if (!progress.useKit(target)) { return false; }
-        effects.clear();
-        int healed = target.getHp() - before;
-        effects.add(new BattleEffect(target, healed));
-        finish(getCurrent().getName() + " uses a First-Aid Kit. " + target.getName()
-                + " recovers " + healed + " HP.");
-        return true;
-    }
-    /** Uses a White Flower on a fallen party member. */
-    public boolean useWhiteFlower(Student target) {
-        if (isActionAnimating() || isOver() || getCurrent() == null || target == null || !party.contains(target) || target.isAlive()) return false;
-        int restored = progress.getInventory().useWhiteFlower(target);
-        if (restored <= 0) return false;
-        clearKnockedOutHeroEffects(target);
-        effects.clear(); effects.add(new BattleEffect(target, restored));
-        finish(getCurrent().getName() + " uses White Flower. " + target.getName() + " returns with " + restored + " HP.");
-        return true;
-    }
-    /** Whether a living party member can be protected by the current actor. */
+    public boolean useKit(Student target) { return items.useKit(target); }
+    /** Uses a White Flower on a fallen hero.
+     * @param target fallen hero
+     * @return whether used
+     */
+    public boolean useWhiteFlower(Student target) { return items.useWhiteFlower(target); }
+    /** Whether a living party member can be protected by the current actor.
+     * @return whether a living party member can be protected by the current actor
+     */
     public boolean canUseDefendOrEscape() {
         Student actor = getCurrent();
         return actor != null && !"heroes_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY));
     }
-    /** Victory Petot, including difficulty, optional greed, and Market Charm. */
+    /** Victory Petot, including difficulty, optional greed, and Market Charm.
+     * @param greed the greed
+     * @return the result of victory petot
+     */
     public int victoryPetot(boolean greed) {
         long amount = getRewardEnemies().stream().filter(Enemy::isDefeated).mapToLong(Enemy::getPetotDrop).sum();
         if (greed) amount *= 10;
@@ -618,11 +387,18 @@ public final class Battle {
         }
         return (int)Math.min(GameProgress.MAX_PETOT, amount);
     }
+    /** Returns whether the current student can guard the target.
+     * @param target target of the action
+     * @return whether the current student can guard the target
+     */
     public boolean canDefend(Student target) {
         Student actor = getCurrent();
         return canUseDefendOrEscape() && validAlly(target) && (target != actor || party.stream().filter(Student::isAlive).count() == 1);
     }
-    /** Protects one ally until the defender is selected for their next action. */
+    /** Protects one ally until the defender is selected for their next action.
+     * @param target target of the action
+     * @return the result of defend
+     */
     public boolean defend(Student target) {
         if (isActionAnimating() || isOver() || !canDefend(target)) return false;
         effects.clear(); Student actor = getCurrent(); actor.defend(); guards.put(actor, target);
@@ -637,8 +413,18 @@ public final class Battle {
         Student target = party.stream().filter(this::canDefend).findFirst().orElse(null);
         if (target != null) defend(target);
     }
+    /** Returns the student intercepting the current attack, if any.
+     * @return the student intercepting the current attack, if any
+     */
     public Student getBlockingStudent() { return blockingStudent; }
+    /** Returns the ally protected from the current attack, if any.
+     * @return the ally protected from the current attack, if any
+     */
     public Student getProtectedStudent() { return protectedStudent; }
+    /** Returns the ally guarded by the given student, if any.
+     * @param defender the defender
+     * @return the ally guarded by the given student, if any
+     */
     public Student getGuardedAlly(Student defender) {
         Student ally = guards.get(defender);
         return defender != null && defender.isAlive() && ally != null && ally.isAlive() ? ally : null;
@@ -651,354 +437,87 @@ public final class Battle {
     public boolean enemyAttack(Enemy enemy) {
         if (isOver() || isActionAnimating() || getCurrent() != null || !validEnemy(enemy)) { return false; }
         effects.clear(); blockingStudent = null; protectedStudent = null; lastAbility = null;
-        List<Student> living = party.stream().filter(Student::isAlive).toList();
-        if (enemy.isBoss()) {
-            long defeatedCompanions = enemies.stream().filter(other -> other != enemy && other.isDefeated()).count();
-            boolean missingSupport = enemies.stream().anyMatch(other -> other != enemy && other.isDefeated() && other.isSentinel() && !other.isAttackSentinel());
-            int action = enemy.guardianAction(defeatedCompanions >= 3 && missingSupport); enemy.recordAction();
-            if (action == 1) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Crystal Pulse");
-                message = enemy.getName() + " begins charging Crystal Pulse!";
-            } else if (action == 2) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Crystal Pulse");
-                pulseCaster = enemy; pulseInitial.clear(); pulsePrevious.clear();
-                StringBuilder text = new StringBuilder(enemy.getName() + " unleashes Crystal Pulse!");
-                for (Student target : living) {
-                    if (!target.isAlive() || !enemy.isAlive()) continue;
-                    int power = (int)Math.ceil(enemy.getAttack() * (180 + random.nextInt(21)) / 100.0);
-                    int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1);
-                    Student recipient = lastDamageRecipient;
-                    pulseInitial.merge(recipient, damage, Integer::sum);
-                    if (damage > 0 && recipient.isAlive() && random.nextDouble() < GUARDIAN_PULSE_STUN_CHANCE) {
-                        applyStun(recipient, 1);
-                    }
-                    text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
-                }
-                message = text.toString();
-                if (!isOver() && enemy.isAlive() && random.nextDouble() < GUARDIAN_PULSE_LOOP_CHANCE) pulseLoops = 5;
-                else { enemy.finishPulse(); pulseCaster = null; }
-            } else if (action == 4) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Crystal Mesh");
-                List<Integer> missing = new ArrayList<>();
-                for (int i = 0; i < enemies.size(); i++) if (enemies.get(i) != enemy && enemies.get(i).isDefeated()) missing.add(i);
-                double roll = random.nextDouble();
-                int count = Math.min(missing.size(), roll < .15 ? 3 : roll < .40 ? 2 : 1);
-                List<Integer> supports = missing.stream().filter(slot -> !enemies.get(slot).isAttackSentinel()).toList();
-                for (int i = 0; i < count; i++) {
-                    int slot = i == 0 ? supports.get(random.nextInt(supports.size())) : missing.get(random.nextInt(missing.size()));
-                    missing.remove(Integer.valueOf(slot));
-                    Enemy old = enemies.get(slot); defeatedEarlier.add(old);
-                    burns.removeIf(burn -> burn.target == old);
-                    enemies.set(slot, Enemy.sentinel(old.getName(), old.isAttackSentinel(), encounterDifficulty, 4, encounterPartyLevel, party.size()));
-                }
-                message = enemy.getName() + " uses Crystal Mesh! " + count + " Sentinel" + (count == 1 ? "" : "s") + " appear!";
-            } else if (action == 3) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Crushing Grip");
-                Student target = living.get(random.nextInt(living.size()));
-                int power = (int)Math.ceil(enemy.getAttack() * (120 + random.nextInt(21)) / 100.0);
-                int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1);
-                Student recipient = lastDamageRecipient;
-                if (damage > 0 && recipient.isAlive() && random.nextDouble() < .5) {
-                    int total = enemy.scaleDamage(enemy.getAttack());
-                    burns.add(new DamageOverTime(enemy, recipient, total, false, 3));
-                    effects.add(BattleEffect.status(recipient, "DOT"));
-                }
-                message = enemy.getName() + " uses Crushing Grip on " + recipient.getName() + " for " + damage + " damage.";
-            } else {
-                Student target = living.get(random.nextInt(living.size()));
-                int damage = enemyDamage(enemy, target, 0, 1);
-                message = enemy.getName() + " attacks " + lastDamageRecipient.getName() + " for " + damage + " damage.";
-            }
-            if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
-            else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); }
-            return true;
-        }
-        if (enemy.isMerchant() || enemy.isMirror()) {
-            int skill = enemy.merchantSkill(enemies.stream().anyMatch(e -> e.isMirror() && e.isAlive()));
-            enemy.recordAction();
-            if (skill == 1) {
-                burns.removeIf(burn -> burn.target instanceof Enemy other && other.isMirror());
-                enemies.removeIf(Enemy::isMirror);
-                enemies.add(enemy.mirror(1)); enemies.add(enemy.mirror(2));
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Mirror Image");
-                message = enemy.getName() + " uses Mirror Image!";
-            } else if (skill == 5) {
-                List<Enemy> copies = enemies.stream().filter(e -> e.isMirror() && e.isAlive()).toList();
-                int hpTotal = copies.stream().mapToInt(Enemy::getHp).sum();
-                int spTotal = copies.stream().mapToInt(Enemy::getSp).sum();
-                int percent = 10 + random.nextInt(6);
-                int hpRestored = enemy.heal((int) Math.ceil(hpTotal * percent / 100.0));
-                int spRestored = enemy.absorbSp((int) Math.ceil(spTotal * percent / 100.0));
-                burns.removeIf(burn -> burn.target instanceof Enemy other && other.isMirror());
-                enemies.removeIf(Enemy::isMirror);
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Recall");
-                if (hpRestored > 0) effects.add(new BattleEffect(enemy, hpRestored));
-                if (spRestored > 0) effects.add(BattleEffect.status(enemy, "+" + spRestored + " SP"));
-                message = enemy.getName() + " uses Recall, absorbing " + hpRestored + " HP and " + spRestored + " SP.";
-            } else if (skill == 2) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Magic Missiles");
-                StringBuilder text = new StringBuilder(enemy.getName() + " uses Magic Missiles!");
-                List<Student> unselected = new ArrayList<>();
-                for (int i = 0; i < (enemy.isMirror() ? 1 : 3); i++) {
-                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
-                    unselected.removeIf(target -> !target.isAlive());
-                    if (unselected.isEmpty()) unselected.addAll(targets);
-                    Student target = unselected.remove(random.nextInt(unselected.size()));
-                    if (random.nextDouble() >= (enemy.isMirror() ? 0.5 : 0.6)) { effects.add(BattleEffect.status(target, "Miss")); text.append("\nMissed ").append(target.getName()).append("."); continue; }
-                    int power = (int)Math.ceil(enemy.getAttack() * (enemy.isMirror() ? 80 + random.nextInt(21) : 100 + random.nextInt(41)) / 100.0);
-                    int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1, true);
-                    Student recipient = lastDamageRecipient;
-                    if (damage > 0 && recipient.isAlive()) { applyStun(recipient, enemy.isMirror() ? 1 : 2); }
-                    text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
-                }
-                message = text.toString();
-            } else if (skill == 3) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Mana Burn");
-                StringBuilder text = new StringBuilder(enemy.getName() + " uses Mana Burn!");
-                Student target = living.get(random.nextInt(living.size()));
-                if (random.nextDouble() >= 0.6) {
-                    effects.add(BattleEffect.status(target, "Miss"));
-                    text.append("\nMissed ").append(target.getName()).append(".");
-                } else {
-                    int damage = (int)Math.ceil((target.getMaxSp() - target.getSp()) * (50 + random.nextInt(11)) / 100.0);
-                    int taken = target.takeDamage(damage); effects.add(new BattleEffect(target, -taken));
-                    if (!target.isAlive()) { clearKnockedOutHeroEffects(target); }
-                    text.append("\n").append(target.getName()).append(" takes ").append(taken).append(" damage.");
-                }
-                message = text.toString();
-            } else if (skill == 4) {
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Heat Stroke");
-                StringBuilder text = new StringBuilder(enemy.getName() + " uses Heat Stroke!");
-                for (int i = 0; i < 2; i++) {
-                    List<Student> targets = party.stream().filter(Student::isAlive).toList(); if (targets.isEmpty()) break;
-                    Student target = targets.get(random.nextInt(targets.size()));
-                    int damage = enemy.scaleDamage((int)Math.ceil(enemy.getAttack() * (140 + random.nextInt(61)) / 100.0));
-                    burns.add(new DamageOverTime(enemy, target, damage));
-                    effects.add(BattleEffect.status(target, "Heat Stroke"));
-                    text.append("\n").append(target.getName()).append(" is afflicted with Heat Stroke.");
-                }
-                message = text.toString();
-            } else {
-                Student target = living.get(random.nextInt(living.size()));
-                int damage = enemyDamage(enemy, target, 0, 1);
-                message = enemy.getName() + " attacks " + lastDamageRecipient.getName() + " for " + damage + " damage.";
-            }
-            if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
-            return true;
-        }
-        if (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0) {
-            enemy.advanceEscapeCountdown();
-            if (enemy.getEscapeCountdown() == 0 && enemy.escape()) {
-                enemy.recordAction();
-                lastAbility = new AbilityAnnouncement(enemy.getName(), "Escape");
-                effects.add(BattleEffect.status(enemy, "Escape"));
-                message = enemy.getName() + " uses Escape and flees!";
-                if (isVictory()) { message += "\nThe remaining enemies are gone!"; clearGuards(); }
-                return true;
-            }
-        }
-        if (enemy.isLootGoblin()) {
-            enemy.recordAction();
-            message = enemy.getName() + " watches the battle.";
-            return true;
-        }
-        if (enemy.isSentinel() && !enemy.isBoss()) {
-            enemy.sentinelCooldowns();
-            if (enemy.isAttackSentinel()) {
-                int attackSkill = enemy.attackSkill();
-                enemy.recordAction();
-                if (attackSkill != 0) {
-                    String name = attackSkill == 1 ? "Stone Sweep" : "Stone Smash";
-                    lastAbility = new AbilityAnnouncement(enemy.getName(), name);
-                    StringBuilder text = new StringBuilder(enemy.getName() + " uses " + name + "!");
-                    List<Student> targets = attackSkill == 1 ? living : List.of(living.get(random.nextInt(living.size())));
-                    for (Student target : targets) {
-                        if (!enemy.isAlive()) break;
-                        if (!target.isAlive()) continue;
-                        int percent = attackSkill == 1 ? 60 + random.nextInt(21) : 80 + random.nextInt(11);
-                        int power = (int)Math.ceil(enemy.getAttack() * percent / 100.0);
-                        boolean pierce = attackSkill == 1 && random.nextDouble() < .30;
-                        int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1, false, pierce);
-                        Student recipient = lastDamageRecipient;
-                        text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
-                        if (attackSkill == 2 && damage > 0 && recipient.isAlive() && random.nextDouble() < .30) {
-                            applyStun(recipient, 3);
-                        }
-                    }
-                    message = text.toString();
-                } else {
-                    Student target = living.get(random.nextInt(living.size()));
-                    int damage = enemyDamage(enemy, target, 0, 1);
-                    message = enemy.getName() + " attacks " + lastDamageRecipient.getName() + " for " + damage + " damage.";
-                }
-                if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
-                else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); }
-                return true;
-            }
-        }
-        boolean skill = !enemy.isLootGoblin() && !enemy.isMirror() && (enemy.isSentinel() ? enemy.isBoss() && enemy.usesSkillNext() : enemy.useArcaneSpark());
-        enemy.recordAction();
-        Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.canUseStoneMend()
-                ? enemies.stream().filter(other -> other.isAlive() && !other.isLootGoblin()
-                        && other.getHp() * 2 <= other.getMaxHp())
-                    .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)
-                : null;
-        Enemy skinTarget = enemy.isSentinel() && !enemy.isBoss() ? enemies.stream().filter(Enemy::isAlive)
-                .filter(other -> other.getStoneSkinHits() == 0)
-                .max(java.util.Comparator.comparingInt(Enemy::getAttack)).orElse(null) : null;
-        if (healTarget != null && enemy.spendHealSp()) {
-            lastAbility = new AbilityAnnouncement(enemy.getName(), "Stone Mend");
-            int healed = healTarget.heal(enemy.healingPower(healTarget));
-            effects.add(new BattleEffect(healTarget, healed));
-            message = enemy.getName() + " uses Stone Mend and heals " + healTarget.getName() + " for " + healed + " HP.";
-        } else if (skinTarget != null && enemy.castStoneSkin(skinTarget)) {
-            lastAbility = new AbilityAnnouncement(enemy.getName(), "Stone Skin");
-            effects.add(BattleEffect.status(skinTarget, "Stone Skin"));
-            message = enemy.getName() + " uses Stone Skin on " + skinTarget.getName() + ".";
-        } else if (skill && enemy.isBoss()) {
-            lastAbility = new AbilityAnnouncement(enemy.getName(), enemy.isBoss() ? "Crystal Pulse" : "Stone Sweep");
-            StringBuilder text = new StringBuilder(enemy.getName() + (enemy.isBoss() ? " uses Crystal Pulse!" : " uses Stone Sweep!"));
-            for (Student target : living) {
-                if (!target.isAlive()) continue;
-                int damage = enemyDamage(enemy, target, enemy.isBoss() ? 0 : -5, enemy.isBoss() ? 2 : 1);
-                Student recipient = lastDamageRecipient;
-                text.append("\n");
-                if (recipient != target) text.append(recipient.getName()).append(" protects ").append(target.getName()).append(". ");
-                text.append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
-                if (!recipient.isAlive()) text.append(" ").append(recipient.getName()).append(" is knocked out.");
-            }
-            message = text.toString();
-        } else {
-            if (skill) lastAbility = new AbilityAnnouncement(enemy.getName(), "Arcane Spark");
-            Student target = living.get(random.nextInt(living.size()));
-            int power = skill ? (int) Math.ceil(enemy.getAttack() * (100 + random.nextInt(21)) / 100.0) : enemy.getAttack();
-            int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1);
-            Student recipient = lastDamageRecipient;
-            message = skill ? enemy.getName() + " uses Arcane Spark on " + target.getName() + "."
-                    : enemy.getName() + " attacks " + target.getName() + ".";
-            if (recipient != target) message += " " + recipient.getName() + " protects " + target.getName() + ".";
-            message += " " + recipient.getName() + " takes " + damage + " damage.";
-            if (!recipient.isAlive()) { message += " " + recipient.getName() + " is knocked out."; }
-            if (skill && !isOver() && random.nextDouble() < 0.20) { sparkCaster = enemy; sparkTarget = target; }
-        }
-        if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
-        else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); }
-        return true;
+        BattleEnemyActions action = new BattleEnemyActions(this, party, enemies, defeatedEarlier, effects,
+                random, encounterDifficulty, encounterPartyLevel, pulseInitial, pulsePrevious,
+                pulseCaster, pulseLoops, sparkCaster, sparkTarget, message);
+        boolean acted = action.act(enemy);
+        message = action.message(); lastAbility = action.announcement();
+        pulseCaster = action.pulseCaster(); pulseLoops = action.pulseLoops();
+        sparkCaster = action.sparkCaster(); sparkTarget = action.sparkTarget();
+        return acted;
     }
 
-    /** Resolves one delayed Crystal Pulse loop against surviving original targets. */
+    Student lastDamageRecipient() { return lastDamageRecipient; }
+    void removeDamageOverTime(GameCharacter target) { dots.remove(target); }
+    void removeMirrorDamageOverTime() { dots.removeMirrors(); }
+    void addEnemyDamageOverTime(Enemy source, Student target, int damage, int duration) {
+        dots.add(source, target, damage, false, duration, 0);
+    }
+
+    /** Resolves one delayed Crystal Pulse loop against surviving original targets.
+     * @return the result of resolve guardian loop
+     */
     public boolean resolveGuardianLoop() {
         if (!hasPendingGuardianLoop()) return false;
-        effects.clear(); StringBuilder text = new StringBuilder("Crystal Pulse echoes!");
-        for (Student hero : party) {
-            int base = pulseInitial.getOrDefault(hero, 0);
-            if (!hero.isAlive() || base <= 0) continue;
-            int amount = (int)Math.min(Integer.MAX_VALUE, ((long)base * 5 + (long)pulsePrevious.getOrDefault(hero, 0) * 2 + 9) / 10);
-            int damage = hero.takeDamage(amount); pulsePrevious.put(hero, damage);
-            if (damage > 0) effects.add(new BattleEffect(hero, -damage));
-            if (!hero.isAlive()) clearKnockedOutHeroEffects(hero);
-            text.append("\n").append(hero.getName()).append(" takes ").append(damage).append(" damage.");
-        }
-        message = text.toString(); pulseLoops--;
-        if (isOver() || pulseLoops == 0 || random.nextDouble() >= GUARDIAN_PULSE_LOOP_CHANCE) {
-            pulseLoops = 0; pulseCaster.finishPulse(); pulseCaster = null;
-        }
-        return true;
+        BattleEnemyFollowups.PulseResult result = BattleEnemyFollowups.pulse(this, party, effects, random, pulseInitial, pulsePrevious, pulseCaster, pulseLoops);
+        message = result.message(); pulseLoops = result.loops(); pulseCaster = result.caster(); return true;
     }
-
-    /** Resolves the delayed Arcane Spark explosion against living heroes. */
+    /** Resolves an Arcane Spark explosion.
+     * @return whether resolved
+     */
     public boolean resolveSparkExplosion() {
         if (!hasPendingSparkExplosion()) return false;
-        Enemy caster = sparkCaster; Student primary = sparkTarget; sparkCaster = null; sparkTarget = null;
-        effects.clear(); StringBuilder text = new StringBuilder("Arcane Spark explodes!");
-        for (Student target : party) if (target.isAlive()) {
-            int power = caster.getAttack() * (target == primary ? 2 : 1);
-            int damage = enemyDamage(caster, target, power - caster.getAttack(), 1);
-            text.append("\n").append(lastDamageRecipient.getName()).append(" takes ").append(damage).append(" damage.");
-        }
-        message = text.toString();
-        if (isDefeat()) { message += "\nThe party is defeated."; clearGuards(); }
-        else if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); }
-        return true;
+        Enemy caster = sparkCaster; Student target = sparkTarget; sparkCaster = null; sparkTarget = null;
+        message = BattleEnemyFollowups.spark(this, party, effects, caster, target); return true;
     }
 
-    /** Chance to hit; difficulty and party size scale accuracy, with dodge capped at 60%. */
+    /** Chance to hit; difficulty and party size scale accuracy, with dodge capped at 60%.
+     * @param agility the agility
+     * @param accuracy the accuracy
+     * @param scalingFactor the scaling factor
+     * @return the result of hit chance
+     */
     public static double hitChance(double agility, double accuracy, double scalingFactor) {
         if (!Double.isFinite(agility) || !Double.isFinite(accuracy) || agility < 0 || accuracy <= 0 || !Double.isFinite(scalingFactor) || scalingFactor <= 0)
             throw new IllegalArgumentException("Invalid accuracy parameters");
         double dodge = agility / (agility + accuracy * scalingFactor / 100.0);
         return 1.0 - Math.min(0.60, dodge);
     }
-    private boolean hits(GameCharacter attacker, GameCharacter defender) {
+    boolean hits(GameCharacter attacker, GameCharacter defender) {
         double factor = attacker instanceof Student ? heroAccuracyScalingFactor : accuracyScalingFactor;
         return random.nextDouble() < hitChance(defender.getEffectiveAgility(), attacker.getEffectiveAccuracy(), factor);
     }
-    private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier) {
+    int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier) {
         return enemyDamage(enemy, target, bonus, multiplier, false);
     }
-    private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit) {
+    int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit) {
         return enemyDamage(enemy, target, bonus, multiplier, guaranteedHit, false);
     }
-    private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit, boolean ignoreDefense) {
-        Student intended = target;
-        Student protector = party.stream().filter(candidate -> candidate != intended && candidate.isDefending()
-                && candidate.isAlive() && getStunTurns(candidate) == 0 && guards.get(candidate) == intended).findFirst().orElse(null);
-        if (protector == null) {
-            Student ringBearer = party.stream().filter(candidate -> candidate != intended && candidate.isAlive() && getStunTurns(candidate) == 0
-                    && "heroes_ring".equals(candidate.getEquipmentId(Equipment.Slot.ACCESSORY))).findFirst().orElse(null);
-            if (ringBearer != null && random.nextDouble() < 0.5) protector = ringBearer;
+    int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit, boolean ignoreDefense) {
+        int damage = enemyDamageResolver.resolve(enemy, target, bonus, multiplier, guaranteedHit, ignoreDefense);
+        lastDamageRecipient = enemyDamageResolver.lastDamageRecipient();
+        if (enemyDamageResolver.blockingStudent() != null) {
+            blockingStudent = enemyDamageResolver.blockingStudent();
+            protectedStudent = enemyDamageResolver.protectedStudent();
         }
-        if (protector != null) {
-            target = protector; blockingStudent = protector; protectedStudent = intended;
-            effects.add(BattleEffect.status(protector, "Guard"));
-        }
-        lastDamageRecipient = target;
-        if (!guaranteedHit && !hits(enemy, target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
-        String armor = target.getEquipmentId(Equipment.Slot.ARMOR);
-        if ("ultra_instinct_shirt".equals(armor) && random.nextDouble() < 0.5) {
-            effects.add(BattleEffect.status(target, "Dodge"));
-            return 0;
-        }
-        int power = Math.max(0, enemy.getAttack() + bonus);
-        int adjusted = damageAfterDefense(power, ignoreDefense ? 0 : target.getDefense());
-        double regenerationRate = "blade_mail".equals(armor) ? HealthRegeneration.rate(target) : 0;
-        int incoming = enemy.scaleDamage(adjusted + (guaranteedHit ? 0 : random.nextInt(DAMAGE_VARIATION))) * multiplier;
-        String accessory = target.getEquipmentId(Equipment.Slot.ACCESSORY);
-        if ("guardian_band".equals(accessory) && random.nextDouble() < 0.15) {
-            incoming = Math.max(1, (int)Math.ceil(incoming * 0.75));
-            effects.add(BattleEffect.status(target, "Ward"));
-        }
-        int damage = target.takeDamage(incoming);
-        effects.add(new BattleEffect(target, -damage));
-        if (!target.isAlive()) { clearKnockedOutHeroEffects(target); }
-        if (damage > 0 && target.isAlive() && "courage_charm".equals(accessory)
-                && target.getHp() * 2L <= target.getMaxHp() && random.nextDouble() < 0.20) {
-            int healed = target.heal((target.getMaxHp() + 19) / 20);
-            if (healed > 0) { effects.add(BattleEffect.status(target, "Courage")); effects.add(new BattleEffect(target, healed)); }
-        }
-        if (damage > 0 && "blade_mail".equals(armor)) {
-            effects.add(BattleEffect.status(target, "Reflect"));
-            int reflectedPower = (int)Math.min(Integer.MAX_VALUE, Math.ceil(damage * 0.50 * (1.0 + regenerationRate) - 1e-9));
-            int reflected = enemy.takeDamage(reflectedPower);
-            if (reflected > 0) { effects.add(new BattleEffect(enemy, -reflected)); applyManaLeak(hasManaLeak(target), enemy, reflected); }
-        }
-        if (damage > 0 && target.isAlive() && "ethereal_robe".equals(armor)) target.chargeEthereal();
-        if (damage > 0 && target.isAlive() && "ring_of_power".equals(target.getEquipmentId(Equipment.Slot.ACCESSORY))
-                && random.nextDouble() < 0.5) { apRefills.add(target); }
         return damage;
     }
 
-    private boolean validAlly(Student target) { return target != null && party.contains(target) && target.isAlive(); }
-    private boolean validEnemy(Enemy target) { return target != null && enemies.contains(target) && target.isAlive(); }
-    /** Applies proportional defense; negative defense increases damage, capped at -20. */
+    boolean validAlly(Student target) { return target != null && party.contains(target) && target.isAlive(); }
+    boolean validEnemy(Enemy target) { return target != null && enemies.contains(target) && target.isAlive(); }
+    /** Applies proportional defense; negative defense increases damage, capped at -20.
+     * @param power the power
+     * @param defense the defense
+     * @return the result of damage after defense
+     */
     public static int damageAfterDefense(int power, int defense) {
         return Math.max(MINIMUM_DAMAGE, (int)Math.ceil(Math.max(0, power) * 100.0 / (100 + Math.max(-20, defense))));
     }
-    private int hurt(Enemy target, int attack) {
+    int hurt(Enemy target, int attack) {
         return hurt(target, attack, false);
     }
-    private int hurt(Enemy target, int attack, boolean guaranteedHit) {
-        lastHeroHitTarget = target; lastHeroHitDamage = 0;
+    int hurt(Enemy target, int attack, boolean guaranteedHit) {
+        heroActions.recordHit(target, 0);
         if (!guaranteedHit && !hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         int defense = target.getDefense();
         Student actor = getCurrent();
@@ -1008,13 +527,13 @@ public final class Battle {
         boolean shielded = target.getStoneSkinHits() > 0;
         int damage = target.takeDamage(damageAfterDefense(attack, defense) + random.nextInt(DAMAGE_VARIATION));
         reflectStoneSkin(shielded, actor, damage);
-        lastHeroHitDamage = damage;
+        heroActions.recordHit(target, damage);
         effects.add(new BattleEffect(target, -damage));
         applyManaLeak(hasManaLeak(getCurrent()), target, damage);
         return damage;
     }
     /** Stone Skin returns 10% of actual damage without triggering further reflection. */
-    private void reflectStoneSkin(boolean shielded, GameCharacter source, int damage) {
+    void reflectStoneSkin(boolean shielded, GameCharacter source, int damage) {
         if (!shielded || damage <= 0 || !(source instanceof Student hero) || !hero.isAlive()) return;
         int reflected = hero.takeDamage((int)(((long)damage + 9) / 10));
         if (reflected > 0) {
@@ -1023,21 +542,27 @@ public final class Battle {
             if (!hero.isAlive()) { clearKnockedOutHeroEffects(hero); if (getCurrent() == hero) turn = -1; }
         }
     }
-    private static boolean hasManaLeak(Student student) {
+    static boolean hasManaLeak(Student student) {
         return student != null && "looper_ring".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY));
     }
-    private void applyManaLeak(boolean enabled, Enemy target, int damage) {
+    void applyManaLeak(boolean enabled, Enemy target, int damage) {
         if (!enabled || damage <= 0 || target.getSp() <= 0) return;
         int amount = (int) Math.ceil(target.getMaxSp() * (5 + random.nextInt(6)) / 100.0);
         int drained = target.loseSp(amount);
         if (drained > 0) effects.add(BattleEffect.manaLeak(target, drained));
     }
-    private String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
-    private void clearGuards() {
+    String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
+    void clearGuards() {
         guards.clear();
         for (Student student : party) student.endDefend();
     }
-    private void finish(String action) {
+    Random dotRandom() { return random; }
+    List<BattleEffect> dotEffects() { return effects; }
+    void dotKnockout(Student student) { guards.remove(student); student.endDefend(); if (getCurrent() == student) turn = -1; }
+    void dotMessage(String value) { message = value; }
+    void heroMessage(String text) { message = text; }
+    void heroAnnouncement(AbilityAnnouncement value) { lastAbility = value; }
+    void finish(String action) {
         message = action;
         if (hasPendingLooperHits()) return;
         if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); return; }

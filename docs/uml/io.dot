@@ -1,0 +1,10 @@
+digraph UML {
+graph [rankdir=BT, splines=ortho, nodesep=0.5, ranksep=0.8, bgcolor="white", pad=0.3];
+node [shape=record, fontname="Helvetica", fontsize=10, color="#324a70", style="filled", fillcolor="#f4f7fc", margin="0.12,0.08"];
+edge [fontname="Helvetica", fontsize=8, color="#506781"];
+"game.io.SaveException" [label="{SaveException||}"];
+"game.io.SaveStore" [label="{SaveStore|-directory: Path\l…\l|+defaultDirectory(): Path\l+exists(int, Format): boolean\l+save(int, Format, GameProgress): void\l+load(int, Format): GameProgress\l}"];
+"game.io.SaveStore.Format" [label="{«enum» SaveStore.Format|…\l|}"];
+"game.io.SaveTextEncoder" [label="{SaveTextEncoder||}"];
+"game.io.SaveStore" -> "game.io.SaveStore.Format" [style=dotted, arrowhead=none];
+}

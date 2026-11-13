@@ -8,6 +8,9 @@ import javax.swing.JPanel;
 public final class AspectRatioPanel extends JPanel {
     private static final int WIDTH = 960;
     private static final int HEIGHT = 540;
+    /** Serialized state: screens.
+     * @serial
+     */
     private final JPanel screens;
 
     /** Wraps the game screens with a black letterbox.

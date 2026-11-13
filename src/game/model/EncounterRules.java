@@ -16,7 +16,12 @@ public final class EncounterRules {
     public static int rollMonsterCount(int stage, Random random) {
         return rollMonsterCount(stage, random, GameSettings.Difficulty.NORMAL);
     }
-    /** Biases encounter sizes within their existing stage limits. */
+    /** Biases encounter sizes within their existing stage limits.
+     * @param stage stage index
+     * @param random random source
+     * @param difficulty selected difficulty
+     * @return the result of roll monster count
+     */
     public static int rollMonsterCount(int stage, Random random, GameSettings.Difficulty difficulty) {
         if (stage < 0 || stage >= MINIMUM_MONSTERS.length) {
             throw new IllegalArgumentException("Unknown route stage");

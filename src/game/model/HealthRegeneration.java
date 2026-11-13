@@ -8,7 +8,10 @@ public final class HealthRegeneration {
     private static final double[] BASE_RATES = {0.05, 0.08, 0.06, 0.05};
     private HealthRegeneration() { }
 
-    /** Returns the character's regeneration rate, including equipment and defense. */
+    /** Returns the character's regeneration rate, including equipment and defense.
+     * @param student student involved in the action
+     * @return the character's regeneration rate, including equipment and defense
+     */
     public static double rate(Student student) {
         double bonus = switch (java.util.Objects.toString(student.getEquipmentId(Equipment.Slot.ARMOR), "")) {
             case "campus_vest" -> 0.10;
@@ -23,10 +26,17 @@ public final class HealthRegeneration {
         if (student.isDefending()) bonus += 0.20;
         return BASE_RATES[student.getId()] + bonus;
     }
-    /** Returns the amount restored by a successful attempt, before the HP cap. */
+    /** Returns the amount restored by a successful attempt, before the HP cap.
+     * @param student student involved in the action
+     * @return the amount restored by a successful attempt, before the HP cap
+     */
     public static int amount(Student student) { return Math.max(1, (int) Math.round(student.getMaxHp() * rate(student))); }
 
-    /** Rolls once for a living injured character and returns the actual HP restored. */
+    /** Rolls once for a living injured character and returns the actual HP restored.
+     * @param student student involved in the action
+     * @param random random source
+     * @return the result of attempt
+     */
     public static int attempt(Student student, Random random) {
         java.util.Objects.requireNonNull(student); java.util.Objects.requireNonNull(random);
         if (!student.isAlive() || student.getHp() >= student.getMaxHp() || random.nextDouble() >= CHANCE) return 0;

@@ -8,13 +8,29 @@ public final class Inventory implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
     /** Maximum number of first-aid kits in a save. */
     public static final int MAX_KITS = 9;
+    /** Maximum White Flowers held at one time. */
     public static final int MAX_WHITE_FLOWERS = 9;
+    /** Serialized state: white flowers.
+     * @serial
+     */
     private int whiteFlowers;
+    /** Serialized state: kits.
+     * @serial
+     */
     private int kits;
+    /** Serialized state: vest owner.
+     * @serial
+     */
     private int vestOwner = -1;
     // Legacy save representation; the live bag contains typed items.
+    /** Serialized state: equipment.
+     * @serial
+     */
     private ArrayList<String> equipment;
     private transient ItemBag<Item> items;
+    /** Serialized state: rewards claimed.
+     * @serial
+     */
     private boolean[] rewardsClaimed;
     /** Creates an inventory with the supplied number of kits.
      * @param kits number of first-aid kits
@@ -60,8 +76,17 @@ public final class Inventory implements java.io.Serializable {
      * @return kit count
      */
     public int getKits() { return kits; }
+    /** Returns the number of White Flowers in the shared bag.
+     * @return the number of White Flowers in the shared bag
+     */
     public int getWhiteFlowers() { return whiteFlowers; }
+    /** Adds a White Flower when the bag has room.
+     * @return the result of add white flower
+     */
     public boolean addWhiteFlower() { upgradeLegacy(); if (whiteFlowers >= MAX_WHITE_FLOWERS) return false; items.add(new WhiteFlower()); whiteFlowers++; return true; }
+    /** Restores the White Flower count from a save.
+     * @param count number to use
+     */
     public void restoreWhiteFlowers(int count) {
         if (count < 0 || count > MAX_WHITE_FLOWERS) throw new IllegalArgumentException("Invalid White Flower count");
         upgradeLegacy();
@@ -69,6 +94,10 @@ public final class Inventory implements java.io.Serializable {
         for (int i = 0; i < count; i++) items.add(new WhiteFlower());
         whiteFlowers = count;
     }
+    /** Revives a fallen student and consumes a White Flower on success.
+     * @param student student involved in the action
+     * @return the result of use white flower
+     */
     public int useWhiteFlower(Student student) {
         upgradeLegacy();
         if (whiteFlowers == 0 || student == null || student.isAlive()) return 0;
@@ -92,7 +121,9 @@ public final class Inventory implements java.io.Serializable {
         if (healed > 0) { items.removeFirst(item -> item == kit); kits--; }
         return healed;
     }
-    /** Adds a kit if there is space in the shared bag. */
+    /** Adds a kit if there is space in the shared bag.
+     * @return the result of add kit
+     */
     public boolean addKit() {
         upgradeLegacy();
         if (kits >= MAX_KITS) { return false; }

@@ -11,11 +11,12 @@ public final class DotDodgeTest {
         public double nextDouble() { return values[Math.min(index++, values.length - 1)]; }
     }; }
     @SuppressWarnings("unchecked") static void add(Battle battle, GameCharacter source, GameCharacter target) throws Exception {
-        Class<?> type = Class.forName("game.model.Battle$DamageOverTime");
+        Class<?> type = Class.forName("game.model.BattleDotEngine$DamageOverTime");
         Constructor<?> ctor = type.getDeclaredConstructor(GameCharacter.class, GameCharacter.class, int.class);
         ctor.setAccessible(true);
-        Field burns = Battle.class.getDeclaredField("burns"); burns.setAccessible(true);
-        ((List<Object>) burns.get(battle)).add(ctor.newInstance(source, target, 50));
+        Field dots = Battle.class.getDeclaredField("dots"); dots.setAccessible(true); Object engine = dots.get(battle);
+        Field burns = engine.getClass().getDeclaredField("burns"); burns.setAccessible(true);
+        ((List<Object>) burns.get(engine)).add(ctor.newInstance(source, target, 50));
     }
     public static void main(String[] args) throws Exception {
         Battle missed = new Battle(List.of(Student.CHARICE), rolls(.999999));

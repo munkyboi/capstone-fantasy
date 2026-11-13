@@ -12,14 +12,39 @@ public final class GameProgress implements java.io.Serializable {
     private static final int STARTING_KITS = 3;
     private static final int STARTING_WHITE_FLOWERS = 1;
 
+    /** Serialized state: party.
+     * @serial
+     */
     private final List<Student> party = new ArrayList<>();
+    /** Serialized state: reserve.
+     * @serial
+     */
     private List<Student> reserve = new ArrayList<>();
+    /** Serialized state: kits.
+     * @serial
+     */
     private int kits = STARTING_KITS;
+    /** Serialized state: inventory.
+     * @serial
+     */
     private Inventory inventory = new Inventory(STARTING_KITS);
+    /** Serialized state: encounter.
+     * @serial
+     */
     private int encounter;
+    /** Serialized state: petot.
+     * @serial
+     */
     private int petot;
+    /** Serialized state: merchant defeated.
+     * @serial
+     */
     private boolean merchantDefeated;
+    /** Returns whether Carbon Market has been unlocked.
+     * @return whether Carbon Market has been unlocked
+     */
     public boolean isMerchantDefeated() { return merchantDefeated; }
+    /** Marks the merchant as defeated and unlocks the market. */
     public void unlockCarbonMarket() {
         if (encounter < 3) throw new IllegalStateException("Complete stage 3 first");
         merchantDefeated = true;
@@ -45,13 +70,17 @@ public final class GameProgress implements java.io.Serializable {
     /** Returns the current party in speed order.
      * @return the current party in speed order
      */ public List<Student> getParty() { return List.copyOf(party); }
-    /** All recruited students, including those currently resting. */
+    /** All recruited students, including those currently resting.
+     * @return the roster
+     */
     public List<Student> getRoster() {
         List<Student> members = new ArrayList<>(party);
         if (reserve != null) members.addAll(reserve);
         return List.copyOf(members);
     }
-    /** Change active students while keeping inactive students and their equipment. */
+    /** Change active students while keeping inactive students and their equipment.
+     * @param ids identifiers
+     */
     public void setActiveParty(List<Integer> ids) {
         if (ids == null || ids.isEmpty() || ids.size() > 4 || ids.stream().distinct().count() != ids.size()) throw new IllegalArgumentException("Invalid party");
         List<Student> roster = new ArrayList<>(getRoster());
@@ -68,20 +97,30 @@ public final class GameProgress implements java.io.Serializable {
     /** Returns first-aid kits remaining.
      * @return first-aid kits remaining
      */ public int getKits() { return getInventory().getKits(); }
-    /** Returns the shared Petot balance. */
+    /** Returns the shared Petot balance.
+     * @return the shared Petot balance
+     */
     public int getPetot() { return petot; }
-    /** Adds earned Petot up to the balance limit and returns the amount credited. */
+    /** Adds earned Petot up to the balance limit and returns the amount credited.
+     * @param amount amount to apply
+     * @return the result of add petot
+     */
     public int addPetot(int amount) {
         if (amount < 0) { throw new IllegalArgumentException("Invalid Petot amount"); }
         int credited = (int) Math.min((long) amount, (long) MAX_PETOT - petot);
         petot += credited; return credited;
     }
-    /** Restores a validated Petot balance. */
+    /** Restores a validated Petot balance.
+     * @param amount amount to apply
+     */
     public void restorePetot(int amount) {
         if (amount < 0 || amount > MAX_PETOT) { throw new IllegalArgumentException("Invalid Petot balance"); }
         petot = amount;
     }
-    /** Spends Petot if sufficient funds are available. */
+    /** Spends Petot if sufficient funds are available.
+     * @param amount amount to apply
+     * @return the result of spend petot
+     */
     public boolean spendPetot(int amount) {
         if (amount < 0) { throw new IllegalArgumentException("Invalid Petot amount"); }
         if (amount > petot) { return false; }
@@ -165,7 +204,10 @@ public final class GameProgress implements java.io.Serializable {
     public List<String> claimStageRewardItems() {
         return claimStageRewardItems(encounter);
     }
-    /** Awards the specific unlocked stage's one-time rewards. */
+    /** Awards the specific unlocked stage's one-time rewards.
+     * @param stage stage index
+     * @return the result of claim stage reward items
+     */
     public List<String> claimStageRewardItems(int stage) {
         if (stage < 0 || stage > encounter) { throw new IllegalArgumentException("Stage is locked"); }
         List<String> previous = new ArrayList<>(getInventory().getEquipmentIds());
@@ -247,26 +289,71 @@ public final class GameProgress implements java.io.Serializable {
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, int kits, int encounter) {
         return restore(ids, hitPoints, java.util.Collections.nCopies(ids.size(), 0), kits, encounter);
     }
-    /** Reconstructs a saved party including experience. */
+    /** Reconstructs a saved party including experience.
+     * @param ids identifiers
+     * @param hitPoints the hit points
+     * @param experience the experience
+     * @param kits the kits
+     * @param encounter encounter index
+     * @return the result of restore
+     */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience, int kits, int encounter) {
         return restore(ids, hitPoints, experience, null, kits, encounter);
     }
-    /** Reconstructs a saved party with its level-up allocations. */
+    /** Reconstructs a saved party with its level-up allocations.
+     * @param ids identifiers
+     * @param hitPoints the hit points
+     * @param experience the experience
+     * @param allocations the allocations
+     * @param kits the kits
+     * @param encounter encounter index
+     * @return the result of restore
+     */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, int kits, int encounter) {
         return restore(ids, hitPoints, experience, allocations, null, kits, encounter);
     }
-    /** Reconstructs a saved party with progression settings per student. */
+    /** Reconstructs a saved party with progression settings per student.
+     * @param ids identifiers
+     * @param hitPoints the hit points
+     * @param experience the experience
+     * @param allocations the allocations
+     * @param progression the progression
+     * @param kits the kits
+     * @param encounter encounter index
+     * @return the result of restore
+     */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, int kits, int encounter) {
         return restore(ids, hitPoints, experience, allocations, progression, null, kits, encounter);
     }
-    /** Restores armor before HP validation for equipment that changes maximum HP. */
+    /** Restores armor before HP validation for equipment that changes maximum HP.
+     * @param ids identifiers
+     * @param hitPoints the hit points
+     * @param experience the experience
+     * @param allocations the allocations
+     * @param progression the progression
+     * @param armorIds the armor ids
+     * @param kits the kits
+     * @param encounter encounter index
+     * @return the result of restore
+     */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, List<String> armorIds, int kits, int encounter) {
         return restore(ids, hitPoints, experience, allocations, progression, armorIds, null, kits, encounter);
     }
-    /** Restores HP-affecting accessories before validating saved HP. */
+    /** Restores HP-affecting accessories before validating saved HP.
+     * @param ids identifiers
+     * @param hitPoints the hit points
+     * @param experience the experience
+     * @param allocations the allocations
+     * @param progression the progression
+     * @param armorIds the armor ids
+     * @param accessoryIds the accessory ids
+     * @param kits the kits
+     * @param encounter encounter index
+     * @return the result of restore
+     */
     public static GameProgress restore(List<Integer> ids, List<Integer> hitPoints, List<? extends Number> experience,
             List<int[]> allocations, List<int[]> progression, List<String> armorIds, List<String> accessoryIds, int kits, int encounter) {
         if (ids == null || hitPoints == null || experience == null || ids.isEmpty() || ids.size() > 4 || hitPoints.size() != ids.size() || experience.size() != ids.size()
@@ -310,7 +397,9 @@ public final class GameProgress implements java.io.Serializable {
         result.encounter = encounter;
         return result;
     }
-    /** Applies changed XP rules without removing earned levels or allocated stats. */
+    /** Applies changed XP rules without removing earned levels or allocated stats.
+     * @param settings game settings
+     */
     public void applySettings(GameSettings settings) {
         for (Student student : getRoster()) student.configureProgression(settings.getGrowthFactor(), settings.getLevelCap());
     }

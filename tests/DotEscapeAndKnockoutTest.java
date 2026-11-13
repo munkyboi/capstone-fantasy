@@ -10,9 +10,9 @@ public final class DotEscapeAndKnockoutTest {
     static void check(boolean ok,String msg){if(!ok)throw new AssertionError(msg);}
     static Object field(Object o,String n)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);return f.get(o);}
     @SuppressWarnings("unchecked") static void addDot(Battle b,GameCharacter s,int damage)throws Exception{
-        Class<?> type=Class.forName("game.model.Battle$DamageOverTime");Constructor<?> ctor=type.getDeclaredConstructor(GameCharacter.class,GameCharacter.class,int.class);ctor.setAccessible(true);
+        Class<?> type=Class.forName("game.model.BattleDotEngine$DamageOverTime");Constructor<?> ctor=type.getDeclaredConstructor(GameCharacter.class,GameCharacter.class,int.class);ctor.setAccessible(true);
         GameCharacter source=s instanceof Student?b.getEnemies().get(0):b.getParty().get(0);
-        ((List<Object>)field(b,"burns")).add(ctor.newInstance(source,s,damage));
+        ((List<Object>)field(field(b,"dots"),"burns")).add(ctor.newInstance(source,s,damage));
     }
     static void key(BattlePanel p,String name){p.getActionMap().get(name).actionPerformed(new ActionEvent(p,0,""));}
     static void stop(BattlePanel p)throws Exception{for(String n:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","looperHitTimer","angelAttackTimer","sparkExplosionTimer","abilityAlertTimer"))((javax.swing.Timer)field(p,n)).stop();}
@@ -22,7 +22,7 @@ public final class DotEscapeAndKnockoutTest {
             GameProgress p=new GameProgress(List.of(Student.BOGART,Student.ANGEL));Battle b=new Battle(p,fixed);Student victim=p.getParty().stream().filter(s->s.getId()==Student.BOGART).findFirst().orElseThrow();Student healer=p.getParty().stream().filter(s->s.getId()==Student.ANGEL).findFirst().orElseThrow();
             addDot(b,victim,50);addDot(b,victim,20);victim.takeDamage(victim.getHp()-1);
             check(b.enemyAttack(b.getEnemies().get(0))&&!victim.isAlive(),"enemy knocks out afflicted hero");
-            check(((List<?>)field(b,"burns")).isEmpty(),"all DOT cleared immediately on KO");
+            check(((List<?>)field(field(b,"dots"),"burns")).isEmpty(),"all DOT cleared immediately on KO");
             check(b.selectStudent(healer),"reviver ready");check(useHug?b.ability(victim,null):b.useWhiteFlower(victim),"revival succeeds");
             check(victim.isAlive()&&!b.hasDamageOverTime(victim)&&!b.tickDamageOverTime(victim),"revival does not restore DOT");
         }

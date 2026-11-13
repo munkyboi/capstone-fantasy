@@ -1,66 +1,69 @@
 # Capstone Fantasy
 
-A student-themed, turn-based Java RPG for Object-Oriented Programming at the University of San Jose–Recoletos. The project is in its foundation stage.
-
-## Inventory architecture
-
-The shared inventory holds `Item` objects in the project-defined generic `ItemBag<T>`. Consumables, key items, and equipment are represented by `Item` subclasses. Unknown equipment IDs raise `ItemNotFoundException`; save and load errors are reported through `SaveException`. Stable equipment IDs and consumable counts remain in save files for compatibility with earlier versions, and are converted back to item objects when loaded.
+Capstone Fantasy is a student-themed Java Swing RPG created for an Object-Oriented Programming capstone. Choose a party of students, follow the campus route, fight monsters, and prepare for the Crystal Guardian.
 
 ## Build and run
 
-Install JDK 17 or newer. From the project folder, run:
+Install JDK 17 or newer. From the project folder:
 
 ```sh
 sh build.sh
 java -jar build/capstone-fantasy.jar
 ```
 
-The game opens at 960 × 720 and can be resized, maximized, or minimized. The battlefield keeps a 16:9 aspect ratio while the battle controls and monster list are overlaid on the scene; control panel backgrounds use 80% opacity. Text and related battle controls scale with the 16:9 viewport. Other screens also retain 16:9 proportions, with black bars when needed. Use **Up/Down** and **Enter** or **Space** on the main menu. On character selection, use **Left/Right** and **Enter** or **Space** to choose or remove students; choose the configured number of students, then press **Down** and **Enter** to continue. **Escape** goes back. On the campus route, use **Left/Right** to move between unlocked locations and **Enter** to start the current encounter. All five route encounters are playable; the final encounter is the Crystal Guardian. After victory, press Enter to visit camp. At camp, use **Up/Down** to choose a student, **Enter** to use a First-Aid Kit, **I** to open Inventory & Equipment, **S** to save, and **C** to return to the route. In the inventory screen, **Up/Down** selects a student and **Left/Right** selects a weapon, armor, or accessory slot. Press **Enter** to choose a compatible item from the shared bag or unequip; the stat preview shows the effect before confirmation. Use **Page Up/Page Down** to scroll the shared bag. Press **Esc** to cancel or return to camp. Each item can be equipped by only one student, and weapons are class-specific. The party starts with its matching weapons, First-Aid Kits, a Campus Vest (+4 defense, +5% HP, +5% HP regeneration), and a Campus Pass key item. The first stage awards a Focus Charm (+2 ATK, +5% ACC) and a +3 ATK weapon upgrade for each selected student. Scholar Staff adds +5% ACC, Hunter Crossbows +5% AGI, Cadet Blade +5% HP regeneration, and Champion Wraps +5% SPD; the second awards a Training Uniform (+6 defense, +5% ACC, +5% AGI). Stage rewards are granted once after victory. To replay a cleared stage, select it on the route and confirm **Yes**; use arrow keys to change the answer and Escape to cancel. Replays do not move route progress backward or repeat guaranteed stage rewards. Defeated Library Wisps and Stone Sentinels award Petot, with higher rewards in later stages; the Crystal Guardian awards 110 Petot. Rewards also apply on replays; the victory popup shows the amount credited. Each defeated Library Wisp has a 30% chance to drop a First-Aid Kit if the bag is below its nine-kit limit. Each Stone Sentinel has a 25% chance to drop the unique Sentinel Band (+2 defense, +50 HP, +8% HP regeneration) if the party does not already own it. Drops are awarded on victory and appear in the reward popup. From the route, **C** opens camp after the first victory. After clearing stage 3, select marker 3 and press **Up** to challenge the Mysterious Merchant. Defeating the merchant opens Carbon Market; select it on the route or press **M** at camp to visit. In the market, use **Up/Down** and **Enter** to buy, or **Esc** to return to the previous screen. The merchant creates two mirror copies with 75% HP and SP. Magic Missiles can stun three heroes; Mana Burn has a 60% chance to damage one hero for 50–60% of their missing SP; Heat Stroke applies damage over five target action-bar turns. Each copy can only use a weaker single Magic Missile and basic attacks; the Merchant cannot cast Magic Missiles while any copy is active. Damage over time ticks before the affected participant acts, including a turn skipped due to stun. Recall absorbs 10–15% of the living copies’ combined remaining HP and SP. The unlocked shop is saved with the party. The First-Aid Kit costs 20 Petot and the unique Market Charm (+1 attack, +1 defense) costs 60 Petot. Carbon Market also sells unique 2,500-Petot legendary weapons, accessories and armor. Their stat bonuses and special effects are shown in the market and inventory. Blade Mail reflects damage, Ultra Instinct Shirt can dodge, Designer Leather Vest doubles its wearer's XP, and Ethereal Robe empowers the wearer's next basic attack after taking damage.
+The window is resizable. The game uses a 16:9 viewport with nearest-neighbour scaling for its pixel art.
 
-In battle use **Up/Down** and **Enter** or **Space** to choose Attack, Ability, Item, or Defend. Each living participant's bar fills smoothly at a default rate of 10 AP per second, up to their threshold: Zack 35, Bogart 30, Charice 28, Angel 50, Library Wisps A–F 24, 26, 28, 30, 32, and 34, and Stone Sentinel 32. Stage 1 generates 1–2 monsters, stage 2 generates 2–3, and stage 3 generates 3–4; stages 2 and 3 include one Stone Sentinel. Stage 4 uses 4–6 monsters, including 1–3 Stone Sentinels; the final stage has five Stone Sentinels and the boss, which occupies monster formation position 2. When a student's bar fills, that student is selected automatically. When no student is selected, a ready monster attacks automatically. Each participant's bar resets after its action. The clock pauses while a student is choosing a command or target; if multiple students are ready, they act in speed order before the clock resumes. A cursor shows the target on the battlefield: use arrow keys to move among living allies or enemies, Enter or Space to confirm, and Escape to cancel without using a turn or item. Red damage and green healing numbers rise and fade; attackers move briefly toward their target. Zack's Arcane Burst targets all living enemies. Charice uses Twin Shot as her 2 SP basic attack. Rain of Arrows fires 12 arrows at random living enemies and can inflict damage over five one-second ticks, restoring her SP on damaging ticks. Use **Page Up/Page Down** to scroll longer battle messages. Angel's basic attack hits the selected target first, then selects random living enemies for up to two follow-up hits; if only one enemy was alive when the attack began, it hits at most twice. Angel can also use Healing Kiss. Students begin with SP: Zack 180, Bogart 35, Charice 60, and Angel 30. Their abilities start at 15, 5, 5, and 10 SP respectively and cost one additional SP per character level. An ability requires sufficient SP; a failed attempt does not spend AP. SP is restored after a victory when the party returns to camp. Each active student earns experience on victory, including knocked-out students. The XP multiplier is 3× for one student, 2× for two, 1.5× for three, and 1× for four; fractional XP is rounded to the nearest whole point. The first level requires 100 XP; subsequent requirements grow according to the XP growth setting, up to the configured level cap. Each level adds 5 maximum HP, 2 ATK, 1 DEF and 3 maximum SP; speed increases by 1 every five levels, starting at level 6, and AGI and ACC each increase by 1 per level. Leveling up restores HP and SP completely, including reviving knocked-out students. Levels and XP are shown in battle rewards and saved. A graphical desktop is required.
+## Playing
 
-Monster HP and attack increase from stage 3 onward, with later-stage enemies also awarding more XP and Petot. At battle start, enemy HP, attack, defense and speed follow a smooth S-curve based on the active party's average level, with gentler growth near levels 1 and 100. XP rewards scale separately with average level; speed scaling is capped at twice its level-one rate. Library Wisps and Stone Sentinels use a skill on every third action. Wisps cast Arcane Spark, while Sentinels use Stone Sweep and can spend SP to heal another injured monster. The Crystal Guardian uses a double-damage Crystal Pulse against all students on every fourth action, with a countdown over its head. Defend reduces damage from either skill, and battle messages and damage indicators show the results.
+Use the arrow keys to navigate and Enter or Space to confirm. Instructions and additional shortcuts appear on each screen.
 
-When a character's AP fills, that character has a 25% chance to regenerate HP. Zack, Bogart, Charice and Angel restore 5%, 8%, 6% and 5% of maximum HP respectively. Armor regeneration bonuses add percentage points using maximum HP. Each camp visit gives five attempts per active character, with animated healing totals displayed in front of the party; returning from inventory or saving does not start another camp visit. Regeneration cannot revive a knocked-out character. The initially full AP bars at a normal battle start do not count as a fill.
+- Choose Zack, Bogart, Charice and/or Angel for the active party; the default party size is three and can be changed in Settings.
+- Select encounters along the five-stage campus route. A completed stage can be replayed. After a victory, choose **Explore** to repeat the stage or **Camp** to return to camp.
+- In battle, use Attack, Ability, Item, Defend or Escape. Combatants act as their action-point (AP) bars fill. Characters have distinct skills; enemies include Wisps, Attack and Support Sentinels, and the Crystal Guardian.
+- At camp, use items, manage equipment, spend level-up points, and save. The shared inventory includes First-Aid Kits, White Flowers, and equipment with weapon, armor and accessory slots.
+- Defeat the Mysterious Merchant after stage 3 to unlock the Carbon Market. Monsters award XP and Petot, and may drop items.
 
-At camp, choose a student with the arrow keys and press **L** to allocate level-up points. Each level after the first grants one point in addition to the automatic level bonuses. Choose HP (+5 maximum), SP (+3 maximum), ATK (+1), DEF (+1), SPD (+1), AGI (+1), or ACC (+1) with the arrow keys and press Enter to spend a point; Esc returns to camp. HP increases also heal living students by 5, while SP increases restore 3 SP. SPD determines priority when multiple students are ready; equipment speed bonuses also increase AP charge rate without changing AP thresholds. Existing saves grant the unspent points earned at the saved level.
+Normal stage battles start with the party's AP bars full. When enabled, non-boss stages can instead begin with an ambush, giving enemies an opportunity to act first. This is a gameplay variation of the assignment's party-first rule; it should not be presented as strict party-first combat.
 
-Normal battles start with the party AP bars full. At the start of each non-boss stage battle, there is a 50% chance of an ambush: party AP starts empty, monsters start with 80% of their AP, and enemies may act first. The final boss is exempt from ambushes. The stage retains its usual enemies and advances normally after victory. Entering camp does not trigger ambushes. The Settings menu selects Slow (5), Normal (10), Fast (15), or Ultra (20) AP per second, applied equally to students and monsters. Animation frame rate remains independent.
+## Settings
 
-## Game settings
-
-Choose **Settings** on the title screen. Use Up/Down to choose a setting, Left/Right to adjust it, and Escape to save and return. Select **Reset to Defaults** and press Enter to restore every setting; leave the screen to save. Battle speed controls AP charge rate; XP growth ranges from 1% to 20% (default 7%), with the XP required to advance from level `n` calculated as `round(100 × (1 + growth / 100)^(n - 1))`. The level cap can be 20 through 100 in steps of 10, and the party size can be one through four. Greed is Good defaults to off and multiplies monster Petot rewards by 10 when enabled. Enable Ambush defaults to on and can be switched off; the final boss is never ambushed. XP Boost is Normal (1×), Hyper (2×), or Ultra (5×). Difficulty is Easy (0.75×), Normal (1×), Hard (1.5×), or Insane (2×); it scales monster HP, outgoing damage, speed and XP, with faster speed reducing the monster's AP threshold. Monster XP is rounded per monster, then multiplied by the party-size bonus and XP Boost and rounded to a whole point. Preferences are stored separately from saves in `~/.capstone-fantasy/settings.properties`.
-
-Settings apply when starting or loading a game. Changing the XP curve preserves earned levels and relative progress. Lowering the cap below a character's level preserves that level but prevents further advancement until the cap is raised. If a loaded party has a different size than the current setting, choose the active students; inactive recruits keep their stats and equipment in reserve. Newly recruited students start at level 1.
-
-## Optional classic fonts
-
-Headings use Eight Bit Dragon by Chequered Ink and body labels use Gome Pixel by Fitrah Type when installed locally. Neither font is included in this repository or the game archive. On macOS, install the original `EightBitDragon-anqx.ttf` and `GomePixel-Regular.otf` in `~/Library/Fonts/`. To use files elsewhere, launch with `-Dcapstone.font=/path/to/EightBitDragon-anqx.ttf` and `-Dcapstone.bodyFont=/path/to/GomePixel-Regular.otf` before `-jar`. Missing fonts fall back to a built-in font. The Gome Pixel demo replaces digits with placeholders, so numeric game information uses a legible built-in font.
-
-[Eight Bit Dragon](https://www.fontspace.com/eight-bit-dragon-font-f30428) has a non-commercial license restricting redistribution. [Gome Pixel](https://www.fontspace.com/gome-pixel-font-f119163) is a personal-use demo. Review their licenses before distributing the game or using it commercially.
+The title-screen settings include battle speed (5, 10, 15 or 20 base AP per second), difficulty, XP boost, level cap (20–100 in steps of 10), party size (1–4), ambushes and the Greed is Good Petot bonus. Difficulty also determines XP growth. Settings can be reset to defaults from the same screen.
 
 ## Saving and loading
 
-At camp, press **S** to open the save screen. Choose one of three slots with **Up/Down** and select text or binary with **Left/Right**. Press Enter to save; replacing an existing save requires a second Enter, and Esc cancels. Text and binary saves are independent files, so saving one does not update the other. The main menu's **Load Game** opens the same slot and format selector and returns a loaded game to camp. Saves are kept in `~/.capstone-fantasy/saves/` and contain the current and reserve party, level-up allocations, progression rules, levels, experience, HP, SP, Petot balance, shared bag, equipment slots, claimed stage rewards, key item, and unlocked route position. Older saves remain supported: saves from before Petot start at zero; saves from before SP start with full SP, their base stats update to the current values, and their vest ownership and kits are preserved, starter weapons are assigned, and rewards for already completed stages are added once. Missing or invalid files show a message. This version saves at camp after any of the five battles.
+At camp, press **S** to choose one of three save slots. Text and binary saves are separate; select the format with the left and right arrow keys. Load a slot from the title screen. Replacing a save requires confirmation.
 
-To run the save regression check after building:
+## Code guide
+
+- `src/game/model/GameCharacter.java`, `Student.java`, `Enemy.java`, `Hero.java` and the `Combatant` / `Targetable` interfaces define combatants and their shared behavior.
+- `src/game/model/Battle.java`, `EncounterRules.java` and `GameProgress.java` manage battle state, encounter rules and progression.
+- `src/game/model/Item.java`, `ItemBag.java`, `Inventory.java` and `Equipment.java` implement the item hierarchy, the generic shared bag and equipment. `ItemNotFoundException` handles unknown item IDs.
+- `src/game/io/SaveStore.java` and `SaveException.java` handle persistence and save errors.
+- `src/game/view/` contains Swing screens for the route, battle, camp, inventory, settings and menus. `src/game/Main.java` starts the application.
+
+The assignment's full requirements and final deliverables still need to be checked against the current implementation, including the party-first requirement and the requested UML documentation.
+
+## Tests
+
+After building, compile the regression checks and run an individual check, for example:
 
 ```sh
 mkdir -p build/test-classes
 javac -cp build/capstone-fantasy.jar -d build/test-classes tests/*.java
-java -cp build/capstone-fantasy.jar:build/test-classes EquipmentSystemTest
-java -cp build/capstone-fantasy.jar:build/test-classes SaveStoreTest
-java -Djava.awt.headless=true -cp build/capstone-fantasy.jar:build/test-classes RouteBattleTest
-java -Djava.awt.headless=true -cp build/capstone-fantasy.jar:build/test-classes AnimationTest
+java -Djava.awt.headless=true -cp build/capstone-fantasy.jar:build/test-classes EquipmentSystemTest
 ```
+
+Additional checks are in `tests/`; some UI checks may require a graphical environment. Automated checks do not replace an in-game playtest.
+
+## Optional classic fonts
+
+Headings use Eight Bit Dragon by Chequered Ink and body labels use Gome Pixel by Fitrah Type when installed locally. Neither font is included in this repository or the game archive. On macOS, install the original `EightBitDragon-anqx.ttf` and `GomePixel-Regular.otf` in `~/Library/Fonts/`. Consult the application font settings for alternative paths.
+
+[Eight Bit Dragon](https://www.fontspace.com/eight-bit-dragon-font-f30428) has a non-commercial license restricting redistribution. [Gome Pixel](https://www.fontspace.com/gome-pixel-font-f119163) is a personal-use demo. Review their licenses before distributing the game or using it commercially.
 
 ## Direction
 
-The game is intended to be suitable for a school audience, without profanity, innuendo, sexual content, or immoral themes. Its battle layout takes inspiration from classic JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system); the application is being built in Java Swing. The game uses a finer, 32-bit-inspired pixel-art treatment. The battlefield and student portraits are rendered at low resolution and scaled with nearest-neighbor interpolation. The in-game shell also uses a reduced-resolution rendering layer for a consistent pixel-art appearance; native window controls remain unchanged.
-
-## AI assistance
-
-OpenAI Codex helped plan the game and draft the Java Swing main menu, character-selection, route, battle, camp and save-slot screens, progression, action points, battle and save/load logic, regression checks, and build script. OpenAI's built-in image generation tool created the student concept, idle artwork, Library Wisp and Stone Sentinel sprites, title logo and title, camp, and campus route backgrounds, and adapted a Kenney sample into the selection background. This disclosure will be updated as work progresses. The student is responsible for understanding and explaining the submitted work.
+The game is intended for a school audience. Its battle layout takes inspiration from classic JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system).
 
 ## Art references and assets
 
@@ -77,17 +80,3 @@ OpenAI Codex helped plan the game and draft the Java Swing main menu, character-
 - **Stone Sentinel:** `assets/sprites/stone-sentinel-v1.png`, generated with OpenAI's built-in image tool. Prompt: "Original formidable stone sentinel guardian enemy for a wholesome 16-bit school fantasy JRPG, full-body standing idle sprite, made of blue-gray carved stone with sturdy blocky armor and subtle cyan crystal light, confident guardian stance, readable at small scale, facing left, transparent background, crisp pixel art, no gore, no horror, no sinister symbols, no text, no watermark, one character only, SFW."
 - **Tiny Dungeon:** Kenney, [source](https://kenney.nl/assets/tiny-dungeon), CC0 1.0. The downloaded pack and its license are in `assets/kenney-tiny-dungeon/`.
 - **Battle layout reference:** [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system). No assets or code from that project are included.
-
-## Known limitations
-
-Five encounters and a camp are implemented. HP, knockouts, and remaining First-Aid Kits carry between battles; kits cannot revive knocked-out students, but a level-up fully restores them. Saving currently captures only the available camp state. The inventory currently has one consumable and one key item; additional consumables and later-stage rewards depend on future encounters. The requested independent AP system and stage ambush allow enemies to act before the party, so combat does **not** satisfy the course brief's party-first turn rule; instructor approval or a compliant mode is needed. Stats and balance are provisional, sprite movement uses simple position animation rather than multiple animation frames, and the route markers and paths are drawn by the application over the campus artwork.
-
-Most damaging strikes and damage-over-time ticks roll independently. Dodge = defender AGI / (defender AGI + attacker ACC × factor / 100), capped at 60%; hit chance is 1 − dodge. The party-size multiplier is 3× for one hero, 2× for two, 1.5× for three and 1× for four, based on the active party at battle start. The hero factor is 100 × party multiplier / difficulty multiplier; the monster factor is 100 × party multiplier × difficulty multiplier. Enemy AGI grows by 0.5 per average party level, rounded to the nearest integer. Some effects use fixed or guaranteed hit chances instead. Ultra Instinct Shirt adds a separate 50% dodge roll after an incoming hit succeeds.
-
-Defend targets a living ally (or the defender when alone) until the defender begins their next action. The defender intercepts attacks against that ally, gains 20% defense and adds 20 percentage points of maximum HP to their regeneration amount on successful regeneration rolls. An area attack can hit the defender once for their own place and again when they intercept for the protected ally.
-
-Abilities show a temporary battle announcement naming the caster and skill. Each defeated monster has an independent 5% chance to drop a White Flower, up to nine in the shared bag. In battle, select Item and choose White Flower to revive a fallen ally with 30% of maximum HP (rounded up); revived allies start with empty AP. At camp, select a fallen student and press R to use a White Flower. Flower counts are saved in both formats.
-
-Carbon Market sells Hero’s Ring for 2,500 Petot. This accessory grants +10% maximum HP, +10% DEF, +10 percentage points of HP regeneration, and -30% SPD. When a living ally is targeted, the wearer has a 50% chance to intercept that hit without spending AP or starting a persistent Defend action; a manually assigned defender takes priority.
-
-Itmigims is a rare loot goblin with a 5% chance to replace a Wisp on stages 1–4; it never appears in the final battle. Its listed stats are level-one, normal-difficulty values and follow the existing monster scaling. Itmigims cannot attack or regain HP. The first damaging hit starts a thirteen-action countdown; on its thirteenth action Itmigims spends 10 SP to escape. A defeated Itmigims has a 20% chance to award one available Carbon Market item, followed by a separate 5% chance for a second (1% overall). Escaped goblins award no loot, XP, or Petot. Stone Mend heals the casting Sentinel or another living monster for 20% of the target’s missing HP, rounded up.

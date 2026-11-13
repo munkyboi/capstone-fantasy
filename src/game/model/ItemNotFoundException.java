@@ -4,6 +4,8 @@ package game.model;
 public final class ItemNotFoundException extends IllegalArgumentException {
     private static final long serialVersionUID = 1L;
 
-    /** Creates an error identifying the missing item. @param id unrecognized identifier */
+    /** Creates an error identifying the missing item.
+     * @param id unrecognized identifier
+     */
     public ItemNotFoundException(String id) { super("Unknown equipment: " + id); }
 }

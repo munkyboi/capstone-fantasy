@@ -12,7 +12,13 @@ import javax.swing.plaf.LayerUI;
 /** Renders the in-game interface at reduced resolution for a crisp pixel-art look. */
 public final class PixelShell extends LayerUI<JPanel> {
     private static final double PIXEL_SCALE = 1.25;
+    /** Serialized state: pixels.
+     * @serial
+     */
     private BufferedImage pixels;
+
+    /** Creates a pixel-rendering layer. */
+    public PixelShell() { }
 
     /** Wraps the existing screens without changing their input handling.
      * @param screens interactive game screens

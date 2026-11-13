@@ -6,7 +6,7 @@ public final class FirstAidKit extends Item {
     private static final int HEAL_AMOUNT = 30;
     /** Creates a first-aid kit. */
     public FirstAidKit() { super("First-Aid Kit"); }
-    @Override public String getCategory() { return "Consumable"; }
+    /** {@inheritDoc} */    @Override public String getCategory() { return "Consumable"; }
     /** Heals a living student.
      * @param student recipient
      * @return HP restored

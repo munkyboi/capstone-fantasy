@@ -18,21 +18,69 @@ public final class WorldMapPanel extends JPanel {
     };
     private static final int[] X = {35, 94, 156, 218, 282};
     private static final int[] Y = {105, 82, 105, 82, 105};
+    /** Serialized state: background.
+     * @serial
+     */
     private final BufferedImage background = ScreenArt.prepareBackground("/assets/backgrounds/campus-route-v1.png");
+    /** Serialized state: locked icons.
+     * @serial
+     */
     private final BufferedImage lockedIcons = ScreenArt.load("/assets/ui/carbon-market-locked-icons-v1.png");
+    /** Serialized state: open icons.
+     * @serial
+     */
     private final BufferedImage openIcons = ScreenArt.load("/assets/ui/carbon-market-open-icons-v1.png");
+    /** Serialized state: battle.
+     * @serial
+     */
     private final java.util.function.BiConsumer<GameProgress, Integer> battle;
+    /** Serialized state: camp.
+     * @serial
+     */
     private final Consumer<GameProgress> camp;
+    /** Serialized state: menu.
+     * @serial
+     */
     private final Runnable menu;
+    /** Serialized state: shop.
+     * @serial
+     */
     private Consumer<GameProgress> shop = ignored -> { };
+    /** Serialized state: merchant.
+     * @serial
+     */
     private Consumer<GameProgress> merchant = ignored -> { };
+    /** Serialized state: shop selected.
+     * @serial
+     */
     private boolean shopSelected;
+    /** Serialized state: progress.
+     * @serial
+     */
     private GameProgress progress;
+    /** Serialized state: cursor.
+     * @serial
+     */
     private int cursor;
+    /** Serialized state: notice.
+     * @serial
+     */
     private String notice;
+    /** Serialized state: replay prompt.
+     * @serial
+     */
     private boolean replayPrompt;
+    /** Serialized state: replay yes.
+     * @serial
+     */
     private boolean replayYes;
+    /** Serialized state: exit prompt.
+     * @serial
+     */
     private boolean exitPrompt;
+    /** Serialized state: exit yes.
+     * @serial
+     */
     private boolean exitYes;
 
     /** Creates the campus route screen.
@@ -44,7 +92,11 @@ public final class WorldMapPanel extends JPanel {
         this((progress, stage) -> battle.accept(progress), camp, menu);
     }
 
-    /** Creates a route that supplies the selected stage to the battle. */
+    /** Creates a route that supplies the selected stage to the battle.
+     * @param battle the battle
+     * @param camp the camp
+     * @param menu the menu
+     */
     public WorldMapPanel(java.util.function.BiConsumer<GameProgress, Integer> battle,
             Consumer<GameProgress> camp, Runnable menu) {
         this.battle = battle; this.camp = camp; this.menu = menu;
@@ -71,8 +123,13 @@ public final class WorldMapPanel extends JPanel {
         });
     }
 
-    /** Supplies the action used to enter Carbon Market. */
+    /** Supplies the action used to enter Carbon Market.
+     * @param action the action
+     */
     public void setShopAction(Consumer<GameProgress> action) { shop = java.util.Objects.requireNonNull(action); }
+    /** Sets the action used to start the merchant encounter.
+     * @param action the action
+     */
     public void setMerchantAction(Consumer<GameProgress> action) { merchant = java.util.Objects.requireNonNull(action); }
 
     /** Displays the party's unlocked position on the route.

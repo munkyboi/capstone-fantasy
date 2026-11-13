@@ -7,7 +7,10 @@ import java.util.Random;
 
 /** Loot tables for defeated monsters. Each entry is rolled independently on victory. */
 public final class MonsterLoot {
-    /** One possible item and its probability for each defeated monster of a type. */
+    /** One possible item and its probability for each defeated monster of a type.
+     * @param itemId stable item identifier
+     * @param chance base drop probability
+     */
     public record Drop(String itemId, double chance) { }
     private static final List<String> NON_SHOP_GEAR = List.of(
             "student_staff", "cadet_sword", "hand_crossbows", "monk_wraps",
@@ -22,15 +25,29 @@ public final class MonsterLoot {
     }
     private static final Map<String, List<Drop>> TABLES = Map.of("wisp", table(), "sentinel", table());
     private MonsterLoot() { }
-    /** Returns the immutable drop table for an enemy. */
+    /** Returns the immutable drop table for an enemy.
+     * @param enemy enemy involved in the action
+     * @return the immutable drop table for an enemy
+     */
     public static List<Drop> tableFor(Enemy enemy) {
         return enemy.isLootGoblin() ? List.of() : TABLES.getOrDefault(enemy.isSentinel() ? "sentinel" : "wisp", List.of());
     }
-    /** Awards rolled drops only when inventory limits and uniqueness permit them. */
+    /** Awards rolled drops only when inventory limits and uniqueness permit them.
+     * @param enemies the enemies
+     * @param progress current game progress
+     * @param random random source
+     * @return the result of award
+     */
     public static List<String> award(List<Enemy> enemies, GameProgress progress, Random random) {
         return award(enemies, progress, random, GameSettings.Difficulty.NORMAL);
     }
-    /** Rolls defeated-enemy loot using the current difficulty's reward multiplier. */
+    /** Rolls defeated-enemy loot using the current difficulty's reward multiplier.
+     * @param enemies the enemies
+     * @param progress current game progress
+     * @param random random source
+     * @param difficulty selected difficulty
+     * @return the result of award
+     */
     public static List<String> award(List<Enemy> enemies, GameProgress progress, Random random, GameSettings.Difficulty difficulty) {
         double multiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         List<String> drops = new ArrayList<>();

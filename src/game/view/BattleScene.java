@@ -20,7 +20,7 @@ import javax.swing.JPanel;
 final class BattleScene extends JPanel {
     /** A group of indicators created together with its own animation clock. */
     record EffectBatch(java.util.List<BattleEffect> effects, long startedNanos, int lane) { }
-    private static final double EFFECT_DURATION_MILLIS = 1600.0;
+    static final double EFFECT_DURATION_MILLIS = 1600.0;
     private static final double HOP_DURATION_MILLIS = 180.0;
     private static final int VIRTUAL_WIDTH = 320;
     private static final int VIRTUAL_HEIGHT = 180;
@@ -64,6 +64,9 @@ final class BattleScene extends JPanel {
     private final State state;
     BattleScene(State state) {
         this.state = state;
+        this.overlays = new BattleHudOverlays(state, this::hudHeight, uniformIcon, rewardArt);
+        this.spritesRenderer = new BattleSpritesRenderer(this, sprites, stunIcon, dotIcon);
+        this.hudRenderer = new BattleHudRenderer(state, effectRenderer, overlays);
         addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent event) {
                 if (state.battle() == null || !state.battle().isVictory() || getWidth() <= 0) return;
@@ -89,7 +92,7 @@ final class BattleScene extends JPanel {
                 scaledWidth, scaledHeight, null);
     }
 
-    private static void drawFlippedFit(Graphics2D g, BufferedImage image, int x, int y, int width, int height) {
+    static void drawFlippedFit(Graphics2D g, BufferedImage image, int x, int y, int width, int height) {
         double scale = Math.min((double) width / image.getWidth(), (double) height / image.getHeight());
         int drawnWidth = Math.max(1, (int) Math.round(image.getWidth() * scale));
         int drawnHeight = Math.max(1, (int) Math.round(image.getHeight() * scale));
@@ -98,12 +101,12 @@ final class BattleScene extends JPanel {
                 0, 0, image.getWidth(), image.getHeight(), null);
     }
 
-    private static int fittedHeight(BufferedImage image, int sourceWidth, int width, int height) {
+    static int fittedHeight(BufferedImage image, int sourceWidth, int width, int height) {
         double scale = Math.min((double) width / sourceWidth, (double) height / image.getHeight());
         return Math.max(1, (int) Math.round(image.getHeight() * scale));
     }
 
-    private static void drawFit(Graphics2D g, BufferedImage image, int sourceX, int sourceWidth,
+    static void drawFit(Graphics2D g, BufferedImage image, int sourceX, int sourceWidth,
             int x, int y, int width, int height) {
         double scale = Math.min((double) width / sourceWidth, (double) height / image.getHeight());
         int drawnWidth = Math.max(1, (int) Math.round(sourceWidth * scale));
@@ -136,6 +139,10 @@ final class BattleScene extends JPanel {
         private final BufferedImage rewardIcons = image("/assets/ui/reward-icons-v1.png");
         private final BufferedImage uniformIcon = trimIcon(image("/assets/ui/reward-uniform-v1.png"));
         private final BufferedImage[] rewardArt = rewardArt();
+        private final BattleHudOverlays overlays;
+        private final BattleSpritesRenderer spritesRenderer;
+        private final BattleHudRenderer hudRenderer;
+        private final BattleEffectsRenderer effectRenderer = new BattleEffectsRenderer(this);
 
         private BufferedImage[] rewardArt() {
             BufferedImage[] icons = new BufferedImage[5];
@@ -181,114 +188,7 @@ final class BattleScene extends JPanel {
                 int slotWidth = Math.max(27, w / 7);
                 int spriteWidth = Math.max(20, slotWidth * 3 / 4);
                 int spriteHeight = Math.max(28, h * 3 / 8);
-                java.util.List<Student> drawParty = new java.util.ArrayList<>(battle.getParty());
-                if (state.showEffects() && state.blockingStudent() != null) {
-                    drawParty.remove(state.blockingStudent());
-                    drawParty.add(state.blockingStudent());
-                }
-                for (Student student : drawParty) {
-                    int index = battle.getParty().indexOf(student);
-                    int x = partyX(index, slotWidth), y = partyFootY(h, index) - spriteHeight;
-                    int spriteCenter = x + slotWidth / 2;
-                    int spriteTop = y;
-                    if (!battle.isOver() && student.isAlive() && student == battle.getCurrent()) {
-                        drawActiveMarker(g, x + slotWidth / 2, partyFootY(h, index));
-                    }
-                    BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
-                    if (fallen != null) {
-                        int fallenWidth = spriteWidth + 4;
-                        int left = x + (slotWidth - fallenWidth) / 2;
-                        drawFit(g, fallen, 0, fallen.getWidth(), left, y, fallenWidth, spriteHeight);
-                    } else if (sprites != null) {
-                        int slice = sprites.getWidth() / 4, id = student.getId();
-                        int left = x + (slotWidth - spriteWidth) / 2 + attackOffset(student, 1);
-                        int lift = battle.isVictory() ? victoryLift(student, index) : attackLift(student);
-                        if (student == state.blockingStudent() && state.protectedStudent() != null && state.showEffects()) {
-                            int targetIndex = battle.getParty().indexOf(state.protectedStudent());
-                            if (targetIndex >= 0) {
-                                double movement = guardMovement();
-                                left += (int) Math.round((partyX(targetIndex, slotWidth) - x + 7) * movement);
-                                lift += (int) Math.round((partyFootY(h, targetIndex) - partyFootY(h, index)) * movement);
-                            }
-                        }
-                        spriteCenter = left + spriteWidth / 2;
-                        spriteTop = y + lift + spriteHeight - fittedHeight(sprites, slice, spriteWidth, spriteHeight);
-                        java.awt.Composite previousComposite = g.getComposite();
-                        if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.5f));
-                        if (state.escaping() && student.isAlive()) {
-                            int sway = (int) Math.round(2 * Math.sin(System.nanoTime() / 120_000_000.0));
-                            Graphics2D flipped = (Graphics2D) g.create();
-                            try { flipped.translate(2 * (left + sway) + spriteWidth, 0); flipped.scale(-1, 1);
-                                drawFit(flipped, sprites, id * slice, slice, left + sway, y + lift, spriteWidth, spriteHeight);
-                            } finally { flipped.dispose(); }
-                        } else drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
-                        g.setComposite(previousComposite);
-                    }
-                    if (student.isAlive() && !battle.isOver() && battle.getStunTurns(student) > 0 && stunIcon != null) {
-                        int centerX = Math.max(9, Math.min(w - 9, spriteCenter - (battle.hasDamageOverTime(student) ? 8 : 0)));
-                        int centerY = Math.max(9, spriteTop - 9);
-                        int frame = isShowing() ? (int) ((System.nanoTime() / 125_000_000L) % 16) : 0;
-                        Graphics2D iconGraphics = (Graphics2D) g.create();
-                        try {
-                            iconGraphics.rotate(frame * Math.PI / 8, centerX, centerY);
-                            drawFit(iconGraphics, stunIcon, 0, stunIcon.getWidth(), centerX - 8, centerY - 8, 16, 16);
-                        } finally { iconGraphics.dispose(); }
-                    }
-                    if (student.isAlive() && battle.hasDamageOverTime(student) && dotIcon != null) {
-                        int centerX = Math.max(8, Math.min(w - 8, spriteCenter + (battle.getStunTurns(student) > 0 ? 8 : 0)));
-                        int centerY = Math.max(8, spriteTop - 9);
-                        drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
-                    }
-                    if (state.partyTarget(index)) {
-                        int slice = sprites != null ? sprites.getWidth() / 4 : 0;
-                        int drawnHeight = sprites != null ? fittedHeight(sprites, slice, spriteWidth, spriteHeight) : spriteHeight;
-                        drawCursor(g, x + slotWidth / 2, partyFootY(h, index) - drawnHeight - 3);
-                    }
-                }
-                java.util.List<Integer> drawOrder = new java.util.ArrayList<>();
-                for (int index = 0; index < battle.getEnemies().size(); index++) { drawOrder.add(index); }
-                drawOrder.sort(java.util.Comparator.comparingInt(index -> enemyFootY(h, enemySlot(index, battle.getEnemies()))));
-                if (battle.isMerchantEncounter()) drawOrder.sort(java.util.Comparator.comparingInt(index -> battle.getEnemies().get(index).isMirror() ? 1 : 0));
-                for (int enemyIndex : drawOrder) {
-                    Enemy enemy = battle.getEnemies().get(enemyIndex);
-                    int slot = enemySlot(enemyIndex, battle.getEnemies());
-                    int x = enemyX(slot, slotWidth);
-                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
-                    boolean escaping = enemy.hasEscaped() && state.attackingSprite() == enemy
-                            && state.showEffects() && state.effectProgress() < 1.0;
-                    if (enemyImage != null && (enemy.isAlive() || escaping) && !(enemy.isMirror() && battle.isVictory())) {
-                        int enemyWidth = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                        int enemyHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
-                        int enemyX = x + (slotWidth - enemyWidth) / 2 + (escaping
-                                ? (int) Math.ceil((w + enemyWidth - x) * state.effectProgress()) : attackOffset(enemy, -1));
-                        int enemyY = enemyFootY(h, slot) - enemyHeight + attackLift(enemy);
-                        java.awt.Composite previous = g.getComposite();
-                        if (enemy.isMirror()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.70f));
-                        if (escaping) drawFlippedFit(g, enemyImage, enemyX, enemyY, enemyWidth, enemyHeight);
-                        else drawFit(g, enemyImage, 0, enemyImage.getWidth(), enemyX, enemyY, enemyWidth, enemyHeight);
-                        g.setComposite(previous);
-                        if (enemy.isAlive() && battle.hasDamageOverTime(enemy) && dotIcon != null) {
-                            int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
-                            int centerX = Math.max(7, Math.min(w - 7, enemyX + enemyWidth / 2));
-                            int centerY = Math.max(7, enemyY + enemyHeight - drawnHeight - 8);
-                            drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
-                        }
-                        if (enemy.isAlive() && ((enemy.isBoss() && enemy.getBossCountdown() > 0) || (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0))) {
-                            int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
-                            int textY = enemyY + enemyHeight - drawnHeight - 5;
-                            g.setFont(ClassicUi.numbers(12));
-                            String countdown = Integer.toString(enemy.isBoss() ? enemy.getBossCountdown() : enemy.getEscapeCountdown());
-                            int textWidth = g.getFontMetrics().stringWidth(countdown);
-                            int textX = Math.max(0, Math.min(w - textWidth - 2, enemyX + enemyWidth / 2 - textWidth / 2));
-                            g.setColor(Color.BLACK); g.drawString(countdown, textX + 1, textY + 1);
-                            g.setColor(new Color(250, 218, 143)); g.drawString(countdown, textX, textY);
-                        }
-                        if (enemy.isAlive() && state.enemyTarget(enemyIndex)) {
-                            int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
-                            drawCursor(g, x + slotWidth / 2, enemyFootY(h, slot) - drawnHeight - 3);
-                        }
-                    }
-                }
+                spritesRenderer.draw(g, battle, w, h, slotWidth, spriteWidth, spriteHeight);
                 if (state.rainShooter() != null) {
                     Student shooter = state.rainShooter();
                     double elapsed = state.rainElapsedMillis();
@@ -331,303 +231,30 @@ final class BattleScene extends JPanel {
                         RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
                 output.drawImage(pixels, 0, 0, getWidth(), getHeight(), null);
                 output.scale(hudScale(), hudScale());
-                int columns = Math.min(3, battle.getEnemies().size());
-                int columnWidth = 200;
-                int listWidth = columns * columnWidth;
-                int listLeft = 960 - listWidth - 24;
-                int listRows = (battle.getEnemies().size() + columns - 1) / columns;
-                int listHeight = listRows * 31 + 8;
-                output.setColor(new Color(15, 25, 47, 204));
-                output.fillRect(listLeft, 12, listWidth, listHeight);
-                output.setFont(ClassicUi.numbers(12));
-                for (int i = 0; i < battle.getEnemies().size(); i++) {
-                    Enemy enemy = battle.getEnemies().get(i);
-                    int column = i % columns;
-                    int row = i / columns;
-                    int left = listLeft + column * columnWidth;
-                    int y = 27 + row * 31;
-                    boolean targeted = enemy.isAlive() && state.enemyTarget(i);
-                    if (targeted) {
-                        output.setColor(new Color(100, 83, 40, 180));
-                        output.fillRect(left + 1, y - 13, columnWidth - 2, 29);
-                        output.setColor(new Color(250, 218, 143));
-                        output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
-                    }
-                    output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    String label = (enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Support Sentinel ", "Support ").replace("Attack Sentinel ", "Attack ").replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " HP"
-                            + (enemy.hasEscaped() ? " ESC" : enemy.isAlive() ? "" : " KO");
-                    java.awt.Font normalFont = output.getFont();
-                    float labelSize = normalFont.getSize2D();
-                    while (output.getFontMetrics().stringWidth(label) > columnWidth - 68 && labelSize > 7) {
-                        labelSize -= 0.5f; output.setFont(normalFont.deriveFont(labelSize));
-                    }
-                    output.drawString(label, left + 7, y);
-                    output.setFont(normalFont);
-                    output.setColor(new Color(52, 68, 101));
-                    output.fillRect(left + columnWidth - 54, y - 8, 46, 4);
-                    output.setColor(new Color(239, 157, 102));
-                    output.fillRect(left + columnWidth - 54, y - 8,
-                            enemy.isAlive() ? (int) (46 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
-                }
-                if (state.showEffects()) {
-                    long now = System.nanoTime();
-                    for (EffectBatch batch : state.effectBatches()) {
-                        double progress = Math.min(1.0, Math.max(0.0, (now - batch.startedNanos()) / (EFFECT_DURATION_MILLIS * 1_000_000.0)));
-                        if (progress < 1.0) drawEffects(output, virtualWidth, virtualHeight, batch.effects(), progress, batch.lane());
-                    }
-                }
-                if (state.abilityAnnouncement() != null) drawAbilityAlert(output, state.abilityAnnouncement());
-                if (state.choosingItem()) drawItemPicker(output);
-                if (battle.isOver()) {
-                    drawBattleAlert(output, battle.isVictory() ? "Victory!" : "You lost!");
-                    if (battle.isVictory()) { drawRewards(output); }
-                }
-                else if (state.showAmbush()) { drawBattleAlert(output, "You have been ambushed!"); }
+                hudRenderer.draw(output, battle, virtualWidth, virtualHeight);
             } finally { output.dispose(); }
         }
 
+    State battleState() { return state; }
+    BufferedImage studentArt() { return sprites; }
+    BufferedImage enemyArt(Enemy enemy) {
+        return enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin
+                : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
+    }
+
         private double hudScale() { return getWidth() / 960.0; }
-        private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
-        private int rewardRowCount() {
-            return (int) state.rewardItems().stream().distinct().count() + (state.rewardPetot() > 0 ? 1 : 0)
-                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
-                    + (state.bonusXpStudents().isEmpty() ? 0 : 1);
-        }
-        private int rewardButtonY() {
-            int y = Math.max(18, hudHeight() / 5) + 52;
-            int rows = rewardRowCount();
-            int rowHeight = Math.max(12, Math.min(24, (hudHeight() - y - 97) / Math.max(1, rows)));
-            return y + 53 + rows * rowHeight;
-        }
+        int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
+        private int rewardButtonY() { return overlays.rewardButtonY(); }
 
-        private void drawRewards(Graphics2D g) {
-            java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
-            for (String id : state.rewardItems()) { counts.merge(id, 1, Integer::sum); }
-            java.util.List<String> items = new java.util.ArrayList<>(counts.keySet());
-            int width = 360, x = (960 - width) / 2;
-            int y = Math.max(18, hudHeight() / 5) + 52;
-            int rows = items.size() + (state.rewardPetot() > 0 ? 1 : 0)
-                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
-                    + (state.bonusXpStudents().isEmpty() ? 0 : 1);
-            int rowHeight = Math.max(12, Math.min(24, (hudHeight() - y - 97) / Math.max(1, rows)));
-            int height = 82 + rows * rowHeight;
-            g.setColor(new Color(12, 25, 48, 224));
-            g.fillRect(x, y, width, height);
-            g.setColor(new Color(247, 204, 114));
-            g.drawRect(x, y, width - 1, height - 1);
-            g.drawRect(x + 3, y + 3, width - 7, height - 7);
-            g.setFont(ClassicUi.body(17));
-            g.drawString("You gain:", x + 16, y + 27);
-            g.setFont(ClassicUi.numbers(Math.min(14, rowHeight - 2)));
-            int offset = 0;
-            if (state.rewardExperience() > 0) {
-                int cy = y + 48;
-                g.setColor(new Color(175, 133, 245)); g.fillPolygon(new int[] {x + 27, x + 35, x + 27, x + 19}, new int[] {cy - 10, cy - 2, cy + 6, cy - 2}, 4);
-                g.setColor(Color.WHITE); g.drawString(state.rewardExperience() + " XP each", x + 50, cy + 4);
-                offset++;
-            }
-            if (!state.bonusXpStudents().isEmpty()) {
-                int cy = y + 48 + offset * rowHeight;
-                g.setColor(Color.WHITE); g.drawString("Bonus XP: " + String.join(", ", state.bonusXpStudents()), x + 16, cy + 4);
-                offset++;
-            }
-            if (state.rewardPetot() > 0) {
-                int cy = y + 48 + offset * rowHeight;
-                g.setColor(new Color(240, 189, 73)); g.fillOval(x + 18, cy - 10, 18, 18);
-                g.setColor(new Color(255, 232, 154)); g.drawOval(x + 20, cy - 8, 14, 14);
-                g.setColor(Color.WHITE); g.drawString(state.rewardPetot() + " Petot", x + 50, cy + 6);
-                offset++;
-            }
-            for (int i = 0; i < items.size(); i++) {
-                String id = items.get(i);
-                int rowY = y + 36 + (i + offset) * rowHeight;
-                drawRewardIcon(g, id, x + 16, rowY, Math.min(24, rowHeight));
-                g.setColor(Color.WHITE);
-                String name = "first_aid_kit".equals(id) ? "First-Aid Kit"
-                        : "white_flower".equals(id) ? "White Flower" : Equipment.fromId(id).getName();
-                g.drawString(counts.get(id) + "x " + name, x + 50, rowY + rowHeight - 3);
-            }
-            if (!state.leveledStudents().isEmpty()) {
-                g.setColor(new Color(250, 218, 143));
-                g.drawString("Level up: " + String.join(", ", state.leveledStudents()), x + 16,
-                        y + 36 + (offset + items.size()) * rowHeight + rowHeight - 3);
-            }
-            int buttonY = y + height - 29;
-            String[] labels = state.canExplore() ? new String[]{"Explore", "Camp"} : new String[]{"Camp"};
-            for (int i = 0; i < labels.length; i++) {
-                int choice = state.canExplore() ? i : 1;
-                int bx = state.canExplore() ? x + 40 + i * 155 : x + 115;
-                boolean selected = state.victoryChoice() == choice;
-                g.setColor(selected ? new Color(250, 218, 143) : Color.WHITE);
-                g.setFont(ClassicUi.numbers(16));
-                g.drawString(labels[i], bx + 38, buttonY + 16);
-                if (selected) g.drawImage(PixelPointer.ART, bx + 5, buttonY, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
-            }
-        }
-
-        private void drawRewardIcon(Graphics2D g, String id, int x, int y, int size) {
-            if ("first_aid_kit".equals(id)) {
-                g.setColor(new Color(242, 239, 220)); g.fillRect(x + 3, y + 5, size - 6, size - 10);
-                g.setColor(new Color(202, 57, 65)); g.fillRect(x + size / 2 - 2, y + 7, 4, size - 14);
-                g.fillRect(x + 7, y + size / 2 - 2, size - 14, 4); return;
-            }
-            if ("white_flower".equals(id)) {
-                g.setColor(new Color(67, 142, 83)); g.fillRect(x + 11, y + 12, 3, 10); g.fillRect(x + 7, y + 16, 5, 3);
-                g.setColor(new Color(245, 245, 235)); g.fillRect(x + 9, y + 2, 6, 13); g.fillRect(x + 5, y + 6, 14, 5);
-                g.setColor(new Color(246, 207, 78)); g.fillRect(x + 10, y + 7, 4, 4); return;
-            }
-            if ("training_uniform".equals(id) && uniformIcon != null) {
-                drawFit(g, uniformIcon, 0, uniformIcon.getWidth(), x, y, size, size);
-                return;
-            }
-            int cell = switch (id) {
-                case "scholar_staff" -> 1;
-                case "cadet_blade" -> 2;
-                case "hunter_crossbows" -> 3;
-                case "champion_wraps" -> 4;
-                default -> 0;
-            };
-            BufferedImage icon = rewardArt[cell];
-            if (icon != null) { drawFit(g, icon, 0, icon.getWidth(), x, y, size, size); }
-        }
-
-        private void drawItemPicker(Graphics2D g) {
-            int width = 320, height = 105, x = (960 - width) / 2, y = Math.max(60, hudHeight() / 4);
-            g.setColor(new Color(12, 25, 48, 240)); g.fillRect(x, y, width, height);
-            g.setColor(new Color(247, 204, 114)); g.drawRect(x, y, width - 1, height - 1); g.drawRect(x + 3, y + 3, width - 7, height - 7);
-            g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143)); g.drawString("Choose an item", x + 16, y + 24);
-            String[] labels = {"First-Aid Kit  × " + state.kits(), "White Flower   × " + state.flowers()};
-            for (int i = 0; i < labels.length; i++) {
-                int row = y + 50 + i * 28;
-                g.setColor(i == state.itemChoice() ? new Color(250, 218, 143) : Color.WHITE);
-                if (i == state.itemChoice()) g.drawImage(PixelPointer.ART, x + 12, row - 16, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
-                g.drawString(labels[i], x + 42, row);
-            }
-        }
-        private void drawAbilityAlert(Graphics2D g, Battle.AbilityAnnouncement announcement) {
-            java.awt.Font plain = ClassicUi.body(17), bold = plain.deriveFont(java.awt.Font.BOLD);
-            g.setFont(bold); int casterWidth = g.getFontMetrics().stringWidth(announcement.caster());
-            int skillWidth = g.getFontMetrics().stringWidth(announcement.skill());
-            g.setFont(plain); int usedWidth = g.getFontMetrics().stringWidth(" used ");
-            int width = casterWidth + usedWidth + skillWidth + 28;
-            int x = (960 - width) / 2, y = Math.max(8, hudHeight() / 5 - 50);
-            g.setColor(new Color(12, 25, 48, 224)); g.fillRect(x, y, width, 40);
-            g.setColor(new Color(247, 204, 114)); g.drawRect(x, y, width - 1, 39); g.drawRect(x + 3, y + 3, width - 7, 33);
-            g.setColor(Color.WHITE); g.setFont(bold); g.drawString(announcement.caster(), x + 14, y + 26);
-            g.setFont(plain); g.drawString(" used ", x + 14 + casterWidth, y + 26);
-            g.setFont(bold); g.drawString(announcement.skill(), x + 14 + casterWidth + usedWidth, y + 26);
-        }
-        private void drawBattleAlert(Graphics2D g, String text) {
-            g.setFont(ClassicUi.body(17));
-            int width = g.getFontMetrics().stringWidth(text) + 28;
-            int x = (960 - width) / 2;
-            int y = Math.max(18, hudHeight() / 5);
-            g.setColor(new Color(12, 25, 48, 204));
-            g.fillRect(x, y, width, 42);
-            g.setColor(new Color(247, 204, 114));
-            g.drawRect(x, y, width - 1, 41);
-            g.drawRect(x + 3, y + 3, width - 7, 35);
-            g.setColor(Color.WHITE);
-            g.drawString(text, x + 14, y + 27);
-        }
-
-        private void drawEffects(Graphics2D g, int w, int h, java.util.List<BattleEffect> effects, double progress, int lane) {
-            Battle battle = state.battle();
-            Map<Object, int[]> changes = new java.util.LinkedHashMap<>();
-            Map<Object, java.util.List<String>> labels = new java.util.LinkedHashMap<>();
-            Map<Enemy, Integer> manaLeaks = new java.util.LinkedHashMap<>();
-            for (BattleEffect effect : effects) {
-                if (effect.isManaLeak()) { manaLeaks.merge(effect.getEnemy(), effect.getAmount(), Integer::sum); continue; }
-                Object target = effect.getStudent() != null ? effect.getStudent() : effect.getEnemy();
-                int[] amounts = changes.computeIfAbsent(target, ignored -> new int[2]);
-                if (effect.getLabel() != null) labels.computeIfAbsent(target, ignored -> new java.util.ArrayList<>()).add(effect.getLabel());
-                else amounts[effect.getAmount() > 0 ? 0 : 1] += effect.getAmount();
-            }
-            int slotWidth = Math.max(27, w / 7);
-            int spriteHeight = Math.max(28, h * 3 / 8);
-            g.setFont(ClassicUi.numbers(18));
-            for (Map.Entry<Object, int[]> entry : changes.entrySet()) {
-                int index = battle.getParty().indexOf(entry.getKey());
-                int x;
-                int spriteWidth = Math.max(20, slotWidth * 3 / 4);
-                int height = sprites != null ? fittedHeight(sprites, sprites.getWidth() / 4, spriteWidth, spriteHeight) : spriteHeight;
-                int ground = 0;
-                if (index >= 0) {
-                    x = partyX(index, slotWidth) + slotWidth / 2;
-                    ground = partyFootY(h, index);
-                }
-                else {
-                    index = battle.getEnemies().indexOf(entry.getKey());
-                    if (index < 0) { continue; }
-                    int slot = enemySlot(index, battle.getEnemies());
-                    x = enemyX(slot, slotWidth) + slotWidth / 2;
-                    ground = enemyFootY(h, slot);
-                    Enemy enemy = (Enemy) entry.getKey();
-                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
-                    int boxWidth = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                    int boxHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
-                    height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
-                }
-                int alpha = (int) Math.round(255 * Math.min(1.0, Math.max(0.0, (1.0 - progress) * 2.0)));
-                int py = Math.max(22, Math.round((float) (ground - 4 - height) * hudHeight() / h) - (int) (progress * 28));
-                for (int amount : entry.getValue()) {
-                    if (amount == 0) { continue; }
-                    String text = (amount > 0 ? "+" : "") + amount + " HP";
-                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(text) / 2 + lane;
-                    g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
-                    g.setColor(new Color(255, 255, 255, alpha));
-                    for (int dx = -1; dx <= 1; dx++) {
-                        for (int dy = -1; dy <= 1; dy++) {
-                            if (dx != 0 || dy != 0) { g.drawString(text, px + dx, py + dy); }
-                        }
-                    }
-                    g.setColor(amount > 0 ? new Color(92, 255, 133, alpha) : new Color(255, 100, 100, alpha));
-                    g.drawString(text, px, py);
-                    py = Math.max(20, py - 22);
-                }
-                for (String label : labels.getOrDefault(entry.getKey(), java.util.List.of())) {
-                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(label) / 2 + lane;
-                    g.setColor(new Color(0, 0, 0, alpha)); g.drawString(label, px + 2, py + 2);
-                    g.setColor(new Color(255, 255, 255, alpha));
-                    for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
-                        if (dx != 0 || dy != 0) g.drawString(label, px + dx, py + dy);
-                    g.setColor(new Color(250, 218, 143, alpha)); g.drawString(label, px, py);
-                    py = Math.max(20, py - 22);
-                }
-            }
-            for (Map.Entry<Enemy, Integer> entry : manaLeaks.entrySet()) {
-                Enemy enemy = entry.getKey();
-                int index = battle.getEnemies().indexOf(enemy);
-                if (index < 0) continue;
-                int slot = enemySlot(index, battle.getEnemies());
-                int spriteWidth = Math.max(20, slotWidth * 3 / 4);
-                BufferedImage art = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
-                int width = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
-                int boxHeight = enemy.isMerchant() || enemy.isMirror() || enemy.isSentinel() && !enemy.isBoss() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : spriteHeight;
-                int height = art != null ? fittedHeight(art, art.getWidth(), width, boxHeight) : boxHeight;
-                int centerX = enemyX(slot, slotWidth) + slotWidth / 2;
-                int centerY = enemyFootY(h, slot) - height / 2;
-                int alpha = (int) Math.round(255 * Math.max(0, Math.min(1, Math.min(progress * 4, (1 - progress) * 4))));
-                String text = entry.getValue() + " SP";
-                int px = Math.round((float) centerX * 960 / w) - g.getFontMetrics().stringWidth(text) / 2 + lane;
-                int py = Math.round((float) centerY * hudHeight() / h) + (int) (progress * 20);
-                g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
-                g.setColor(new Color(255, 255, 255, alpha));
-                for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
-                    if (dx != 0 || dy != 0) g.drawString(text, px + dx, py + dy);
-                g.setColor(new Color(255, 157, 45, alpha)); g.drawString(text, px, py);
-            }
-        }
-
-        private int partyX(int index, int slotWidth) {
+        int partyX(int index, int slotWidth) {
             return PARTY_CENTERS_X[index] - slotWidth / 2;
         }
 
-        private int partyFootY(int height, int index) {
+        int partyFootY(int height, int index) {
             return PARTY_FEET_Y[index] * height / VIRTUAL_HEIGHT;
         }
 
-        private int enemySlot(int index, java.util.List<Enemy> enemies) {
+        int enemySlot(int index, java.util.List<Enemy> enemies) {
             int bossIndex = -1;
             for (int i = 0; i < enemies.size(); i++) {
                 if (enemies.get(i).isBoss() || enemies.get(i).isMerchant()) { bossIndex = i; break; }
@@ -643,7 +270,7 @@ final class BattleScene extends JPanel {
             return otherIndex == 0 ? 0 : otherIndex + 1;
         }
 
-        private int enemyX(int index, int slotWidth) {
+        int enemyX(int index, int slotWidth) {
             if (state.battle() != null && state.battle().isMerchantEncounter()) {
                 int[] centers = {190, 265, 225, 200, 210, 185};
                 return centers[index] - slotWidth / 2;
@@ -652,12 +279,12 @@ final class BattleScene extends JPanel {
             return centers[index] - slotWidth / 2;
         }
 
-        private int enemyFootY(int height, int index) {
+        int enemyFootY(int height, int index) {
             int[] feet = state.encounterStage() == 4 ? new int[]{110, 130, 145, 110, 145, 128} : ENEMY_FEET_Y;
             return feet[index] * height / VIRTUAL_HEIGHT;
         }
 
-        private int victoryLift(Student student, int index) {
+        int victoryLift(Student student, int index) {
             if (!student.isAlive()) { return 0; }
             double progress = state.victoryProgress();
             if (progress >= 1.0) { return 0; }
@@ -665,18 +292,18 @@ final class BattleScene extends JPanel {
             return -(int) Math.round(4 * Math.max(0, Math.sin(phase * 2 * Math.PI)));
         }
 
-        private double guardMovement() {
+        double guardMovement() {
             double elapsed = state.effectProgress() * EFFECT_DURATION_MILLIS;
             if (elapsed < 140) return elapsed / 140.0;
             if (elapsed < 550) return 1.0;
             if (elapsed < 800) return (800.0 - elapsed) / 250.0;
             return 0.0;
         }
-        private int attackOffset(Object participant, int direction) {
+        int attackOffset(Object participant, int direction) {
             return direction * (int) Math.round(4 * attackHop(participant));
         }
 
-        private int attackLift(Object participant) {
+        int attackLift(Object participant) {
             return -(int) Math.round(3 * attackHop(participant));
         }
 
@@ -686,7 +313,7 @@ final class BattleScene extends JPanel {
             return Math.sin(Math.PI * phase);
         }
 
-        private void drawActiveMarker(Graphics2D g, int x, int footY) {
+        void drawActiveMarker(Graphics2D g, int x, int footY) {
             // Fixed pixel-art light rays sit behind the selected student.
             int[] offsets = {-14, -11, -8, 8, 11, 14};
             int[] heights = {12, 19, 11, 15, 21, 12};
@@ -708,7 +335,7 @@ final class BattleScene extends JPanel {
             g.drawOval(x - 14, footY - 4, 28, 8);
         }
 
-        private void drawCursor(Graphics2D g, int x, int y) {
+        void drawCursor(Graphics2D g, int x, int y) {
             g.setColor(Color.BLACK);
             g.fillPolygon(new int[] {x - 5, x + 5, x}, new int[] {y - 7, y - 7, y + 1}, 3);
             g.setColor(new Color(255, 232, 160));
