@@ -405,7 +405,9 @@ public final class BattlePanel extends JPanel {
     }
 
     private double studentRate(Student student, double baseRate) {
-        return baseRate * student.getEffectiveSpeed() / student.getStartingSpeed();
+        // A fixed 5% per SPD avoids disproportionately large gains for low-SPD classes.
+        double speedBonus = (student.getEffectiveSpeed() - student.getStartingSpeed()) * 0.05;
+        return baseRate * Math.max(0.1, 1.0 + speedBonus);
     }
 
     private boolean selectReadyStudent() {

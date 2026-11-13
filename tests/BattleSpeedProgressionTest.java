@@ -23,12 +23,15 @@ public final class BattleSpeedProgressionTest {
             }
             Student angel=Student.create(Student.ANGEL);angel.gainExperience(500);
             check(angel.getLevel()==6 && angel.getUnmodifiedSpeed()==6,"level speed growth");
-            check(Math.abs(rate(panel,angel,10)-12)<1e-9,"level growth accelerates AP");
+            check(Math.abs(rate(panel,angel,10)-10.5)<1e-9,"level growth accelerates AP by 5 percent per point");
             check(angel.allocateStatPoint(Student.Stat.SPD),"allocate speed");
-            check(Math.abs(rate(panel,angel,10)-14)<1e-9,"allocated speed accelerates AP");
+            check(Math.abs(rate(panel,angel,10)-11)<1e-9,"allocated speed accelerates AP by 5 percent per point");
             Student hunter=Student.create(Student.CHARICE);GameProgress party=new GameProgress(List.of(Student.CHARICE));hunter=party.getParty().get(0);
             party.getInventory().addEquipment("demon_hunter");check(party.equip(hunter,Equipment.Slot.WEAPON,"demon_hunter"),"equip speed weapon");
-            check(Math.abs(rate(panel,hunter,10)-10*hunter.getEffectiveSpeed()/19.0)<1e-9,"equipment speed included");
+            check(Math.abs(rate(panel,hunter,10)-10*(1+(hunter.getEffectiveSpeed()-19)*0.05))<1e-9,"equipment speed included");
+            GameProgress monk=new GameProgress(List.of(Student.ANGEL));Student geared=monk.getParty().get(0);
+            monk.getInventory().addEquipment("giant_slayer_gloves");check(monk.equip(geared,Equipment.Slot.WEAPON,"giant_slayer_gloves"),"equip gloves");
+            check(Math.abs(rate(panel,geared,10)-17.5)<1e-9,"15 glove SPD gives 75 percent more AP, not 300 percent");
             for(String name:List.of("apTimer","effectTimer","victoryTimer")){Field f=BattlePanel.class.getDeclaredField(name);f.setAccessible(true);javax.swing.Timer timer=(javax.swing.Timer)f.get(panel);check(timer.getDelay()==16,"60 FPS timer " + name);timer.stop();}
         }catch(Exception e){throw new RuntimeException(e);}});
         System.out.println("Battle speed and SPD progression checks passed");

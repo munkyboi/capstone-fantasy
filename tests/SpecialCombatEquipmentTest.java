@@ -91,7 +91,7 @@ public final class SpecialCombatEquipmentTest {
                 Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true); advance.invoke(panel, 1.0);
                 Field points = BattlePanel.class.getDeclaredField("actionPoints"); points.setAccessible(true);
                 @SuppressWarnings("unchecked") Map<Student, Double> values = (Map<Student, Double>) points.get(panel);
-                check(Math.abs(values.get(student(speedParty, 2)) - (10.0 * 33 / 19)) < 0.001, "speed equipment accelerates AP");
+                check(Math.abs(values.get(student(speedParty, 2)) - 17.0) < 0.001, "speed equipment accelerates AP");
                 for (String timer : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer")) { Field f = BattlePanel.class.getDeclaredField(timer); f.setAccessible(true); ((javax.swing.Timer) f.get(panel)).stop(); }
                 GameProgress ringProgress = new GameProgress(List.of(0, 1, 2));
                 equip(ringProgress, 2, "ring_of_power");
