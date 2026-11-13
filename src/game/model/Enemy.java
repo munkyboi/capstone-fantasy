@@ -15,6 +15,11 @@ public final class Enemy extends GameCharacter {
     private static final int[] STAGE_XP_BONUS = {0, 0, 3, 6, 10};
     private static final double[] STAGE_HP_MULTIPLIER = {1.0, 1.0, 1.08, 1.16, 1.25};
     private static final int[] STAGE_ATTACK_BONUS = {0, 0, 1, 2, 3};
+    // Final-stage multipliers indexed by active party size; difficulty still applies independently.
+    private static final double[] FINAL_HP = {1, .35, .595, .7225, .80};
+    private static final double[] FINAL_DAMAGE = {1, .20, .595, .7225, .75};
+    private static final double[] FINAL_AP_THRESHOLD = {1, 1.8, 1.62, 1.44, 1.35};
+    private static final int FINAL_MEND_COOLDOWN = 4;
     private final String name;
     private final int maxHp;
     private final int attack;
@@ -32,9 +37,11 @@ public final class Enemy extends GameCharacter {
     private final int petotDrop;
     private final int experienceDrop;
     private final double difficultyMultiplier;
+    private double finalDamageScale = 1.0;
+    private boolean finalEncounter;
     private int actionsTaken;
     private int skillPoints;
-    private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown, sparkCooldown;
+    private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown, sparkCooldown, stoneMendCooldown;
 
     private Enemy(Enemy original, GameSettings.Difficulty difficulty, double partyLevel, boolean copy, int number) {
         double levels = partyLevel - 1, p = levels / 99.0, curve = p * p * (3.0 - 2.0 * p);
@@ -106,6 +113,15 @@ public final class Enemy extends GameCharacter {
     }
     private Enemy(String name, boolean sentinel, boolean boss, boolean lootGoblin,
             GameSettings.Difficulty difficulty, int stage, double partyLevel) {
+        this(name, sentinel, boss, lootGoblin, difficulty, stage, partyLevel, 0);
+    }
+    /** Creates a final-stage opponent adjusted for the active party size. */
+    public static Enemy finalOpponent(String name, boolean boss, GameSettings.Difficulty difficulty, double partyLevel, int partySize) {
+        if (partySize < 1 || partySize > 4) throw new IllegalArgumentException("Invalid party size");
+        return new Enemy(name, true, boss, false, difficulty, 4, partyLevel, partySize);
+    }
+    private Enemy(String name, boolean sentinel, boolean boss, boolean lootGoblin,
+            GameSettings.Difficulty difficulty, int stage, double partyLevel, int finalPartySize) {
         if (stage < 0 || stage > 4) throw new IllegalArgumentException("Invalid stage");
         if (!Double.isFinite(partyLevel) || partyLevel < 1 || partyLevel > 100) throw new IllegalArgumentException("Invalid party level");
         double levels = partyLevel - 1;
@@ -121,12 +137,16 @@ public final class Enemy extends GameCharacter {
         this.sentinel = sentinel;
         this.boss = boss;
         this.lootGoblin = lootGoblin;
+        finalEncounter = finalPartySize > 0;
         this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         skillPoints = lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : !sentinel && !boss ? 80 : 0;
         petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
         experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
-        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale));
+        double partyHealth = FINAL_HP[finalPartySize];
+        finalDamageScale = FINAL_DAMAGE[finalPartySize];
+        double partyThreshold = FINAL_AP_THRESHOLD[finalPartySize];
+        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
         hp = maxHp;
         attack = (int) Math.round(((lootGoblin ? 1 : boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
         defense = (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
@@ -135,7 +155,7 @@ public final class Enemy extends GameCharacter {
         speed = Math.max(1, (int) Math.round((lootGoblin ? 15 : sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
         int wispIndex = suffix >= 'A' && suffix <= 'F' ? suffix - 'A' : 0;
-        actionThreshold = Math.max(1, (int) Math.round((lootGoblin ? 30 : boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex) / (difficultyMultiplier * speedScale)));
+        actionThreshold = Math.max(1, (int) Math.round((lootGoblin ? 30 : boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex) * partyThreshold / (difficultyMultiplier * speedScale)));
     }
     /** Sentinel healing resources are renewed for each battle. */
     public int getSp() { return skillPoints; }
@@ -149,7 +169,8 @@ public final class Enemy extends GameCharacter {
     }
     /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
     public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }
-    boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; return true; }
+    boolean canUseStoneMend() { if (stoneMendCooldown > 0) { stoneMendCooldown--; return false; } return skillPoints >= getHealSpCost(); }
+    boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; if (finalEncounter) stoneMendCooldown = FINAL_MEND_COOLDOWN; return true; }
     int healingPower(Enemy target) { return (target.getMaxHp() - target.getHp() + 4) / 5; }
     int heal(int amount) { if (lootGoblin) return 0; int healed = Math.min(maxHp - hp, Math.max(0, amount)); hp += healed; return healed; }
     /** Returns whether the next action uses this monster's skill. */
@@ -161,7 +182,7 @@ public final class Enemy extends GameCharacter {
     /** Returns the experience earned by each student on victory. */
     public int getExperienceDrop() { return (int) Math.round(experienceDrop * difficultyMultiplier); }
     /** Scales outgoing damage, including monster skills. */
-    public int scaleDamage(int damage) { return Math.max(1, (int) Math.round(damage * difficultyMultiplier)); }
+    public int scaleDamage(int damage) { return Math.max(1, (int) Math.round(damage * difficultyMultiplier * finalDamageScale)); }
     /** Returns the Petot awarded for defeating this enemy. */
     public int getPetotDrop() { return (int) Math.round(petotDrop * difficultyMultiplier); }
     public boolean isLootGoblin() { return lootGoblin; }

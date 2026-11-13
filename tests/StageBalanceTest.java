@@ -23,7 +23,7 @@ public final class StageBalanceTest {
         Battle finalBattle = new Battle(party, new Random(4), false, 4);
         check(finalBattle.getEnemies().stream().mapToInt(Enemy::getPetotDrop).sum() == 305, "boss battle Petot");
         check(finalBattle.getEnemies().stream().mapToInt(Enemy::getExperienceDrop).sum() == 305, "boss battle XP before party multiplier");
-        check(finalBattle.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow().getMaxHp() == 325, "boss health");
+        check(finalBattle.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow().getMaxHp() == 235, "boss health for three heroes");
         System.out.println("Stage balance checks passed");
     }
 }

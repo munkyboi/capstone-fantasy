@@ -145,9 +145,10 @@ public final class Battle {
         }
         for (int index = 0; index < sentinels; index++) {
             String name = sentinels == 1 ? "Stone Sentinel" : "Stone Sentinel " + (char) ('A' + index);
-            enemies.add(new Enemy(name, true, false, difficulty, encounter, averageLevel));
+            enemies.add(finalEncounter ? Enemy.finalOpponent(name, false, difficulty, averageLevel, party.size())
+                    : new Enemy(name, true, false, difficulty, encounter, averageLevel));
         }
-        if (finalEncounter) { enemies.add(new Enemy("Crystal Guardian", true, true, difficulty, encounter, averageLevel)); }
+        if (finalEncounter) { enemies.add(Enemy.finalOpponent("Crystal Guardian", true, difficulty, averageLevel, party.size())); }
         boolean goblinSpawned = !finalEncounter && random.nextInt(100) >= 95;
         if (goblinSpawned) {
             for (int index = enemies.size() - 1; index >= 0; index--) {
@@ -572,7 +573,7 @@ public final class Battle {
         }
         boolean skill = !enemy.isLootGoblin() && !enemy.isMirror() && (enemy.isSentinel() ? enemy.usesSkillNext() : enemy.useArcaneSpark());
         enemy.recordAction();
-        Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.getSp() >= enemy.getHealSpCost()
+        Enemy healTarget = enemy.isSentinel() && !enemy.isBoss() && enemy.canUseStoneMend()
                 ? enemies.stream().filter(other -> other.isAlive() && !other.isLootGoblin()
                         && other.getHp() * 4 <= other.getMaxHp() * 3)
                     .min(java.util.Comparator.comparingDouble(other -> (double) other.getHp() / other.getMaxHp())).orElse(null)

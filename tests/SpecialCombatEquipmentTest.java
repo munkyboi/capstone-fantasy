@@ -34,7 +34,7 @@ public final class SpecialCombatEquipmentTest {
                 && boss.getBossCountdown() == 3, "boss fourth action damages all and resets countdown");
         for (BattleEffect effect : b.getEffects()) {
             Student target = effect.getStudent();
-            int expected = (int) Math.round(Math.max(1, boss.getAttack() - target.getDefense()) * 1.5) * 2;
+            int expected = boss.scaleDamage(Math.max(1, boss.getAttack() - target.getDefense())) * 2;
             check(-effect.getAmount() == Math.min(expected, target.getHp() - effect.getAmount()), "boss 2x difficulty damage");
         }
         GameProgress support = new GameProgress(List.of(0, 1, 2)); support.advance();
@@ -107,7 +107,6 @@ public final class SpecialCombatEquipmentTest {
                 Battle dotBattle = (Battle) battleField.get(dotPanel);
                 Enemy guardian = dotBattle.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow();
                 dotBattle.getEnemies().stream().filter(e -> !e.isBoss()).forEach(e -> e.takeDamage(9999));
-                guardian.takeDamage(130);
                 Method perform = BattlePanel.class.getDeclaredMethod("performAction", Runnable.class, boolean.class); perform.setAccessible(true);
                 perform.invoke(dotPanel, (Runnable) () -> dotBattle.attack(guardian), true);
                 check(dotBattle.selectStudent(student(timed, 1)), "select while damage over time is active");
