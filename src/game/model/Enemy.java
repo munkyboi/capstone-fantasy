@@ -3,7 +3,7 @@ package game.model;
 /** An opponent in a battle. */
 public final class Enemy extends GameCharacter {
     private static final long serialVersionUID = 1L;
-    private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 110;
+    private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 250;
     private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 13;
     private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 12;
     private static final int WISP_SPEED = 3, SENTINEL_SPEED = 2;
@@ -19,7 +19,7 @@ public final class Enemy extends GameCharacter {
     private static final double[] FINAL_HP = {1, .35, .595, .7225, .80};
     private static final double[] FINAL_DAMAGE = {1, .20, .595, .7225, .75};
     private static final double[] FINAL_AP_THRESHOLD = {1, 1.8, 1.62, 1.44, 1.35};
-    private static final int STONE_MEND_COOLDOWN = 4;
+    private static final int STONE_MEND_COOLDOWN = 3;
     private final String name;
     private final int maxHp;
     private final int attack;
@@ -45,6 +45,7 @@ public final class Enemy extends GameCharacter {
 
     private int stoneSkinCooldown, stoneSweepCooldown, stoneSmashCooldown, stoneSkinDefense, stoneSkinHits, twinDefensePenalty;
     private double levelCurve;
+    private int pulseCountdown, pulseCooldown, gripCooldown, meshCooldown;
 
     private Enemy(Enemy original, GameSettings.Difficulty difficulty, double partyLevel, boolean copy, int number) {
         double levels = partyLevel - 1, p = levels / 99.0, curve = p * p * (3.0 - 2.0 * p);
@@ -160,19 +161,19 @@ public final class Enemy extends GameCharacter {
         this.lootGoblin = lootGoblin;
         this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
-        skillPoints = lootGoblin ? 100 : sentinel && !boss ? SENTINEL_BASE_SP : !sentinel && !boss ? 80 : 0;
-        petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
-        experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
+        skillPoints = lootGoblin ? 100 : boss ? 2000 : sentinel ? SENTINEL_BASE_SP : 80;
+        petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 50000 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
+        experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 10000 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
         double partyHealth = FINAL_HP[finalPartySize] * (soloOpening ? 0.50 : 1.0);
         finalDamageScale = FINAL_DAMAGE[finalPartySize] * (soloOpening ? 0.50 : 1.0);
         double partyThreshold = FINAL_AP_THRESHOLD[finalPartySize] * (soloOpening ? 1.6 : 1.0);
-        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? attackSentinel ? 200 : SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
+        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 2000 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
         hp = maxHp;
-        attack = (int) Math.round(((lootGoblin ? 1 : boss ? 24 : sentinel ? attackSentinel ? 20 : SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
-        defense = (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? attackSentinel ? 9 : SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
-        agility = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 10 : sentinel ? 5 : 9) + levels));
-        accuracy = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? 9 : 8) + levels));
-        speed = Math.max(1, (int) Math.round((lootGoblin ? 15 : sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
+        attack = (int) Math.round(((lootGoblin ? 1 : boss ? 32 : sentinel ? attackSentinel ? 20 : SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
+        defense = (int) Math.round((lootGoblin ? 18 : boss ? 24 : sentinel ? attackSentinel ? 9 : SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
+        agility = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 14 : sentinel ? 5 : 9) + levels));
+        accuracy = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 20 : sentinel ? 9 : 8) + levels));
+        speed = Math.max(1, (int) Math.round((lootGoblin ? 15 : boss ? 1 : sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);
         int wispIndex = suffix >= 'A' && suffix <= 'F' ? suffix - 'A' : 0;
         actionThreshold = Math.max(1, (int) Math.round((lootGoblin ? 30 : boss ? 40 : sentinel ? SENTINEL_AP : WISP_A_AP + WISP_AP_STEP * wispIndex) * partyThreshold / (difficultyMultiplier * speedScale)));
@@ -181,7 +182,18 @@ public final class Enemy extends GameCharacter {
     public int getSp() { return skillPoints; }
     /** Removes up to the supplied amount of current SP. */
     int loseSp(int amount) { int lost = Math.min(skillPoints, Math.max(0, amount)); skillPoints -= lost; return lost; }
-    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : sentinel && !boss ? SENTINEL_BASE_SP : !sentinel && !boss ? 80 : 0; }
+    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : boss ? 2000 : sentinel ? SENTINEL_BASE_SP : 80; }
+    int guardianAction(boolean companionsAlive) {
+        if (gripCooldown > 0) gripCooldown--;
+        if (meshCooldown > 0) meshCooldown--;
+        if (pulseCountdown > 0 && --pulseCountdown == 0) return 2;
+        if (pulseCooldown > 0) pulseCooldown--;
+        if (!companionsAlive && meshCooldown == 0 && skillPoints >= 100) { skillPoints -= 100; meshCooldown = 6; return 4; }
+        if (pulseCountdown == 0 && pulseCooldown == 0 && skillPoints >= 50) { skillPoints -= 50; pulseCountdown = 5; return 1; }
+        if (gripCooldown == 0 && skillPoints >= 15) { skillPoints -= 15; gripCooldown = 4; return 3; }
+        return 0;
+    }
+    void finishPulse() { pulseCooldown = 6; }
     boolean useArcaneSpark() {
         if (sparkCooldown > 0) { sparkCooldown--; return false; }
         if (actionsTaken < 2 || skillPoints < 12) return false;
@@ -192,18 +204,18 @@ public final class Enemy extends GameCharacter {
     boolean canUseStoneMend() { if (stoneMendCooldown > 0) { stoneMendCooldown--; return false; } return skillPoints >= getHealSpCost(); }
     boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; stoneMendCooldown = STONE_MEND_COOLDOWN; return true; }
     void sentinelCooldowns() { if(stoneSkinCooldown>0) stoneSkinCooldown--; if(stoneSweepCooldown>0) stoneSweepCooldown--; if(stoneSmashCooldown>0) stoneSmashCooldown--; }
-    boolean castStoneSkin(Enemy target) { if(stoneSkinCooldown>0 || skillPoints<20 || target.stoneSkinHits>0) return false; skillPoints-=20; stoneSkinCooldown=6; target.stoneSkinDefense=(int)Math.ceil(10*(1+2.97*levelCurve)*difficultyMultiplier); target.stoneSkinHits=5; return true; }
+    boolean castStoneSkin(Enemy target) { if(stoneSkinCooldown>0 || skillPoints<20 || target.stoneSkinHits>0) return false; skillPoints-=20; stoneSkinCooldown=4; target.stoneSkinDefense=(int)Math.ceil(10*(1+2.97*levelCurve)*difficultyMultiplier); target.stoneSkinHits=5; return true; }
     int attackSkill() { if(stoneSweepCooldown==0 && skillPoints>=15){skillPoints-=15;stoneSweepCooldown=6;return 1;} if(stoneSmashCooldown==0 && skillPoints>=10){skillPoints-=10;stoneSmashCooldown=4;return 2;} return 0; }
     public boolean isAttackSentinel() { return sentinel && !boss && attackSentinel; }
     public int getStoneSkinHits() { return stoneSkinHits; }
     int applyTwinDefensePenalty() { twinDefensePenalty = (int)Math.ceil(10 * (1 + 2.97 * levelCurve) * difficultyMultiplier); return twinDefensePenalty; }
     void clearTwinDefensePenalty() { twinDefensePenalty = 0; }
-    int healingPower(Enemy target) { return (target.getMaxHp() - target.getHp() + 4) / 5; }
-    int heal(int amount) { if (lootGoblin) return 0; int healed = Math.min(maxHp - hp, Math.max(0, amount)); hp += healed; return healed; }
+    int healingPower(Enemy target) { return (int)(((long)target.getMaxHp() + 4) / 5); }
+    int heal(int amount) { if (lootGoblin) return 0; int healed = Math.min(maxHp - hp, Math.max(0, boss ? Math.min(500, amount) : amount)); hp += healed; return healed; }
     /** Returns whether the next action uses this monster's skill. */
     boolean usesSkillNext() { return (actionsTaken + 1) % (boss ? 4 : 3) == 0; }
     /** Countdown displayed before the Guardian's next fourth-action skill. */
-    public int getBossCountdown() { return boss ? 3 - Math.max(0, (actionsTaken % 4) - 1) : 0; }
+    public int getBossCountdown() { return boss ? pulseCountdown : 0; }
     /** Records an action only after it is performed. */
     void recordAction() { actionsTaken++; }
     /** Returns the experience earned by each student on victory. */
@@ -247,7 +259,7 @@ public final class Enemy extends GameCharacter {
     /** Returns speed stat.
      * @return speed stat
      */ public int getSpeed() { return speed; }
-    public int getAgility() { return agility; }
+    public int getAgility() { return agility + (stoneSkinHits > 0 ? 5 : 0); }
     public int getAccuracy() { return accuracy; }
     /** Returns AP required before this enemy can attack.
      * @return AP required before this enemy can attack

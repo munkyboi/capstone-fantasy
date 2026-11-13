@@ -43,7 +43,7 @@ public final class EnemyLevelScalingTest {
         }
         for (int i = 0; i < 4; i++) p.advance();
         Battle boss = new Battle(p, new Random(1), false, 4);
-        check(boss.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow().getMaxHp() == 195,
+        check(boss.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow().getMaxHp() == 1502,
                 "boss scales using the same active party average");
         System.out.println("Enemy level scaling checks passed");
     }

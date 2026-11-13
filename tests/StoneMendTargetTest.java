@@ -13,24 +13,24 @@ public final class StoneMendTargetTest {
         GameProgress party=progress();Battle battle=new Battle(party,fixed());
         Enemy sentinel=battle.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy wisp=battle.getEnemies().stream().filter(e->!e.isSentinel()).findFirst().orElseThrow();
-        sentinel.takeDamage(61); int before=sentinel.getHp(),sp=sentinel.getSp();
+        sentinel.takeDamage(130); int before=sentinel.getHp(),sp=sentinel.getSp();
         int[] hp=party.getParty().stream().mapToInt(Student::getHp).toArray();
         check(battle.enemyAttack(sentinel),"self heal action");
-        check(sentinel.getHp()==before+13 && sentinel.getSp()==sp-sentinel.getHealSpCost(),"heals itself for 20% of missing HP rounded up");
+        check(sentinel.getHp()==before+50 && sentinel.getSp()==sp-sentinel.getHealSpCost(),"heals itself for 20% of maximum HP rounded up");
         check(battle.getLastAbility().skill().equals("Stone Mend") && battle.getMessage().contains("heals " + sentinel.getName()),"self-heal log");
         check(battle.getEffects().size()==1 && battle.getEffects().get(0).getEnemy()==sentinel && battle.getEffects().get(0).getStudent()==null,"heal indicator targets monster");
         check(Arrays.equals(hp,party.getParty().stream().mapToInt(Student::getHp).toArray()),"healing never changes party HP");
         wisp.takeDamage(50);before=wisp.getHp();
-        for(int i=0;i<4;i++) {
+        for(int i=0;i<3;i++) {
             check(battle.enemyAttack(sentinel) && wisp.getHp()==before
-                    && (battle.getLastAbility()==null || !battle.getLastAbility().skill().equals("Stone Mend")), "four actions without Stone Mend");
+                    && (battle.getLastAbility()==null || !battle.getLastAbility().skill().equals("Stone Mend")), "three actions without Stone Mend");
         }
-        check(battle.enemyAttack(sentinel) && wisp.getHp()==before+10,"heals the most injured monster for 20% of missing HP on fifth action");
+        check(battle.enemyAttack(sentinel) && wisp.getHp()==before+13,"heals the most injured monster for 20% of maximum HP on fourth action");
         check(battle.getEffects().get(0).getEnemy()==wisp,"other monster receives indicator");
         SwingUtilities.invokeAndWait(()->{try {
             GameProgress p=progress();BattlePanel panel=new BattlePanel(()->{},ignored->{},new GameSettings(),fixed());panel.start(p,true,1);
             Field bf=BattlePanel.class.getDeclaredField("battle");bf.setAccessible(true);Battle b=(Battle)bf.get(panel);
-            Enemy s=b.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow(); s.takeDamage(60);
+            Enemy s=b.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow(); s.takeDamage(130);
             Field points=BattlePanel.class.getDeclaredField("enemyPoints");points.setAccessible(true);
             @SuppressWarnings("unchecked") Map<Enemy,Double> enemyPoints=(Map<Enemy,Double>)points.get(panel);
             enemyPoints.replaceAll((enemy,value)->-1000.0);enemyPoints.put(s,(double)s.getActionThreshold());

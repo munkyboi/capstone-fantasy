@@ -18,6 +18,8 @@ import javax.swing.JPanel;
 
 /** Draws the battlefield, target cursors and transient HP changes. */
 final class BattleScene extends JPanel {
+    /** A group of indicators created together with its own animation clock. */
+    record EffectBatch(java.util.List<BattleEffect> effects, long startedNanos, int lane) { }
     private static final double EFFECT_DURATION_MILLIS = 1600.0;
     private static final double HOP_DURATION_MILLIS = 180.0;
     private static final int VIRTUAL_WIDTH = 320;
@@ -41,6 +43,7 @@ final class BattleScene extends JPanel {
         default java.util.List<String> leveledStudents() { return java.util.List.of(); }
         default java.util.List<String> bonusXpStudents() { return java.util.List.of(); }
         boolean showEffects();
+        default java.util.List<EffectBatch> effectBatches() { return java.util.List.of(); }
         boolean showAmbush();
         default Battle.AbilityAnnouncement abilityAnnouncement() { return null; }
         default boolean choosingItem() { return false; }
@@ -267,16 +270,13 @@ final class BattleScene extends JPanel {
                             int centerY = Math.max(7, enemyY + enemyHeight - drawnHeight - 8);
                             drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
                         }
-                        if (enemy.isAlive() && (enemy.isBoss() || (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0))) {
+                        if (enemy.isAlive() && ((enemy.isBoss() && enemy.getBossCountdown() > 0) || (enemy.isLootGoblin() && enemy.getEscapeCountdown() >= 0))) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
-                            int textX = x + slotWidth / 2 + 10;
-                            int textY = enemyFootY(h, slot) - drawnHeight - 5;
+                            int textY = enemyY + enemyHeight - drawnHeight - 5;
                             g.setFont(ClassicUi.numbers(12));
                             String countdown = Integer.toString(enemy.isBoss() ? enemy.getBossCountdown() : enemy.getEscapeCountdown());
-                            if (enemy.isLootGoblin()) {
-                                int textWidth = g.getFontMetrics().stringWidth(countdown);
-                                textX = Math.max(0, Math.min(w - textWidth - 2, x + slotWidth / 2 - textWidth / 2));
-                            }
+                            int textWidth = g.getFontMetrics().stringWidth(countdown);
+                            int textX = Math.max(0, Math.min(w - textWidth - 2, enemyX + enemyWidth / 2 - textWidth / 2));
                             g.setColor(Color.BLACK); g.drawString(countdown, textX + 1, textY + 1);
                             g.setColor(new Color(250, 218, 143)); g.drawString(countdown, textX, textY);
                         }
@@ -331,7 +331,13 @@ final class BattleScene extends JPanel {
                     output.fillRect(left + columnWidth - 54, y - 8,
                             enemy.isAlive() ? (int) (46 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
                 }
-                if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
+                if (state.showEffects()) {
+                    long now = System.nanoTime();
+                    for (EffectBatch batch : state.effectBatches()) {
+                        double progress = Math.min(1.0, Math.max(0.0, (now - batch.startedNanos()) / (EFFECT_DURATION_MILLIS * 1_000_000.0)));
+                        if (progress < 1.0) drawEffects(output, virtualWidth, virtualHeight, batch.effects(), progress, batch.lane());
+                    }
+                }
                 if (state.abilityAnnouncement() != null) drawAbilityAlert(output, state.abilityAnnouncement());
                 if (state.choosingItem()) drawItemPicker(output);
                 if (battle.isOver()) {
@@ -487,12 +493,12 @@ final class BattleScene extends JPanel {
             g.drawString(text, x + 14, y + 27);
         }
 
-        private void drawEffects(Graphics2D g, int w, int h) {
+        private void drawEffects(Graphics2D g, int w, int h, java.util.List<BattleEffect> effects, double progress, int lane) {
             Battle battle = state.battle();
             Map<Object, int[]> changes = new java.util.LinkedHashMap<>();
             Map<Object, java.util.List<String>> labels = new java.util.LinkedHashMap<>();
             Map<Enemy, Integer> manaLeaks = new java.util.LinkedHashMap<>();
-            for (BattleEffect effect : battle.getEffects()) {
+            for (BattleEffect effect : effects) {
                 if (effect.isManaLeak()) { manaLeaks.merge(effect.getEnemy(), effect.getAmount(), Integer::sum); continue; }
                 Object target = effect.getStudent() != null ? effect.getStudent() : effect.getEnemy();
                 int[] amounts = changes.computeIfAbsent(target, ignored -> new int[2]);
@@ -524,13 +530,12 @@ final class BattleScene extends JPanel {
                     int boxHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
                 }
-                double progress = state.effectProgress();
                 int alpha = (int) Math.round(255 * Math.min(1.0, Math.max(0.0, (1.0 - progress) * 2.0)));
                 int py = Math.max(22, Math.round((float) (ground - 4 - height) * hudHeight() / h) - (int) (progress * 28));
                 for (int amount : entry.getValue()) {
                     if (amount == 0) { continue; }
                     String text = (amount > 0 ? "+" : "") + amount + " HP";
-                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(text) / 2;
+                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(text) / 2 + lane;
                     g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
                     g.setColor(new Color(255, 255, 255, alpha));
                     for (int dx = -1; dx <= 1; dx++) {
@@ -543,7 +548,7 @@ final class BattleScene extends JPanel {
                     py = Math.max(20, py - 22);
                 }
                 for (String label : labels.getOrDefault(entry.getKey(), java.util.List.of())) {
-                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(label) / 2;
+                    int px = Math.round((float) x * 960 / w) - g.getFontMetrics().stringWidth(label) / 2 + lane;
                     g.setColor(new Color(0, 0, 0, alpha)); g.drawString(label, px + 2, py + 2);
                     g.setColor(new Color(255, 255, 255, alpha));
                     for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
@@ -562,12 +567,11 @@ final class BattleScene extends JPanel {
                 int width = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                 int boxHeight = enemy.isMerchant() || enemy.isMirror() || enemy.isSentinel() && !enemy.isBoss() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : spriteHeight;
                 int height = art != null ? fittedHeight(art, art.getWidth(), width, boxHeight) : boxHeight;
-                int centerX = enemyX(slot, slotWidth) + slotWidth / 2 + attackOffset(enemy, -1);
-                int centerY = enemyFootY(h, slot) - height / 2 + attackLift(enemy);
-                double progress = state.effectProgress();
+                int centerX = enemyX(slot, slotWidth) + slotWidth / 2;
+                int centerY = enemyFootY(h, slot) - height / 2;
                 int alpha = (int) Math.round(255 * Math.max(0, Math.min(1, Math.min(progress * 4, (1 - progress) * 4))));
                 String text = entry.getValue() + " SP";
-                int px = Math.round((float) centerX * 960 / w) - g.getFontMetrics().stringWidth(text) / 2;
+                int px = Math.round((float) centerX * 960 / w) - g.getFontMetrics().stringWidth(text) / 2 + lane;
                 int py = Math.round((float) centerY * hudHeight() / h) + (int) (progress * 20);
                 g.setColor(new Color(0, 0, 0, alpha)); g.drawString(text, px + 2, py + 2);
                 g.setColor(new Color(255, 255, 255, alpha));

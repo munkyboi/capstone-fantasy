@@ -14,8 +14,8 @@ public final class SentinelVariantsTest {
     public static void main(String[] args) throws Exception {
         Enemy support=Enemy.sentinel("Support",false,GameSettings.Difficulty.NORMAL,0,1,0);
         Enemy attack=Enemy.sentinel("Attack",true,GameSettings.Difficulty.NORMAL,0,1,0);
-        check(support.getMaxHp()==110 && support.getMaxSp()==900 && support.getAttack()==13 && support.getDefense()==12 && support.getSpeed()==2 && support.getAgility()==5 && support.getAccuracy()==9 && support.getActionThreshold()==32,"support stats");
-        check(attack.getMaxHp()==200 && attack.getMaxSp()==900 && attack.getAttack()==20 && attack.getDefense()==9 && attack.getSpeed()==2 && attack.getAgility()==5 && attack.getAccuracy()==9 && attack.getActionThreshold()==32,"attack stats");
+        check(support.getMaxHp()==250 && support.getMaxSp()==900 && support.getAttack()==13 && support.getDefense()==12 && support.getSpeed()==2 && support.getAgility()==5 && support.getAccuracy()==9 && support.getActionThreshold()==32,"support stats");
+        check(attack.getMaxHp()==250 && attack.getMaxSp()==900 && attack.getAttack()==20 && attack.getDefense()==9 && attack.getSpeed()==2 && attack.getAgility()==5 && attack.getAccuracy()==9 && attack.getActionThreshold()==32,"attack stats");
         for (GameSettings.Difficulty difficulty : GameSettings.Difficulty.values()) for (boolean offensive : new boolean[]{false,true}) {
             Enemy e=Enemy.sentinel("Sentinel",offensive,difficulty,0,1,0);
             check(e.getSp()==900 && e.getMaxSp()==900,"fixed SP across difficulties");
@@ -32,11 +32,11 @@ public final class SentinelVariantsTest {
         check(b.enemyAttack(support)&&skill(b).equals("Stone Skin")&&support.getSp()==880&&support.getDefense()==22&&support.getStoneSkinHits()==5,"skin costs 20 and adds 10 DEF");
         for(int i=0;i<4;i++){support.takeDamage(1);check(support.getDefense()==22,"skin persists for five hits");}
         support.takeDamage(1);check(support.getDefense()==12&&support.getStoneSkinHits()==0,"skin expires after fifth hit");
-        support.takeDamage(support.getHp()-55);int before=support.getHp();
-        check(b.enemyAttack(support)&&skill(b).equals("Stone Mend")&&support.getHp()==before+11&&support.getSp()==865,"mend triggers at half HP and costs 15");
-        support.takeDamage(20);
-        for(int i=0;i<4;i++){team.getParty().forEach(s->s.heal(999));check(b.enemyAttack(support)&&!skill(b).equals("Stone Mend"),"mend cooldown");}
-        team.getParty().forEach(s->s.heal(999));check(b.enemyAttack(support)&&skill(b).equals("Stone Mend"),"mend available on fifth action");
+        support.takeDamage(support.getHp()-125);int before=support.getHp();
+        check(b.enemyAttack(support)&&skill(b).equals("Stone Mend")&&support.getHp()==before+50&&support.getSp()==865,"mend triggers at half HP and costs 15");
+        support.takeDamage(70);
+        for(int i=0;i<3;i++){team.getParty().forEach(s->s.heal(999));check(b.enemyAttack(support)&&!skill(b).equals("Stone Mend"),"mend cooldown");}
+        team.getParty().forEach(s->s.heal(999));check(b.enemyAttack(support)&&skill(b).equals("Stone Mend"),"mend available on fourth action");
         GameProgress offensive=stage(0);Battle combat=new Battle(offensive,fixed(),false,0);replace(combat,attack);
         int total=offensive.getParty().stream().mapToInt(Student::getHp).sum();
         check(combat.enemyAttack(attack)&&skill(combat).equals("Stone Sweep")&&attack.getSp()==885,"sweep cost");

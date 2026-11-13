@@ -52,11 +52,12 @@ public final class FinalStagesLevelTest {
                         "final encounter has guardian and five distinct Sentinels");
                 check(!b.getMessage().contains("ambushed"), "final boss cannot be ambushed");
                 int xp = (int) Math.round(b.getEnemies().stream().mapToInt(Enemy::getExperienceDrop).sum() * 1.5);
-                for (Enemy e : b.getEnemies()) { e.takeDamage(999); }
+                for (Enemy e : b.getEnemies()) { e.takeDamage(Integer.MAX_VALUE); }
                 Method refresh = BattlePanel.class.getDeclaredMethod("refresh"); refresh.setAccessible(true); refresh.invoke(panel);
-                check(p.getParty().stream().allMatch(s -> s.getExperience() == xp), "each student earns boss experience");
+                Student expected = new Student(Student.ZACK); expected.gainExperience(xp); long awardedXp = expected.getExperience();
+                check(p.getParty().stream().allMatch(s -> s.getExperience() == awardedXp), "each student earns boss experience up to the level cap");
                 check(p.getInventory().getEquipmentIds().contains("campus_medal"), "boss stage reward");
-                refresh.invoke(panel); check(p.getParty().stream().allMatch(s -> s.getExperience() == xp), "victory XP awarded once");
+                refresh.invoke(panel); check(p.getParty().stream().allMatch(s -> s.getExperience() == awardedXp), "victory XP awarded once");
                 check(p.advance() && p.getEncounter() == 5 && !p.advance(), "final victory records completion");
                 int[] replay = {-1}; WorldMapPanel map = new WorldMapPanel((progress, stage) -> replay[0] = stage, q -> {}, () -> {});
                 map.open(p); key(map,"map-enter"); key(map,"map-right"); key(map,"map-enter");

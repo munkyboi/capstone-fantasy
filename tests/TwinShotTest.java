@@ -16,15 +16,15 @@ public final class TwinShotTest {
     public static void main(String[] args)throws Exception{
         GameProgress p=new GameProgress(List.of(Student.CHARICE));Student hero=p.getParty().get(0);Battle b=new Battle(p,rolls(0));Enemy e=target();addTarget(b,e);
         check(hero.getAbilitySpCost()==5&&b.selectStudent(hero)&&b.ability(null,e)&&hero.getSp()==55,"first shot costs 5 SP");
-        check(e.getHp()==184&&e.getDefense()==-1&&b.hasPendingTwinShot()&&b.twinShotDelayMillis()==300,"150% current ATK first shot and 300ms delay");
+        check(e.getHp()==234&&e.getDefense()==-1&&b.hasPendingTwinShot()&&b.twinShotDelayMillis()==300,"150% current ATK first shot and 300ms delay");
         check(b.getEffects().stream().anyMatch(effect->"DEF -10".equals(effect.getLabel())),"actual defense reduction is visible");
-        check(!b.attack(e)&&b.advanceTwinShot()&&e.getHp()==172&&b.twinShotDelayMillis()==300,"second shot uses reduced defense and 300ms delay");
-        check(b.advanceTwinShot()&&e.getHp()==160&&!b.isActionAnimating()&&b.getCurrent()==null&&e.getDefense()==9,"bonus shot resolves and defense is restored");
+        check(!b.attack(e)&&b.advanceTwinShot()&&e.getHp()==222&&b.twinShotDelayMillis()==300,"second shot uses reduced defense and 300ms delay");
+        check(b.advanceTwinShot()&&e.getHp()==210&&!b.isActionAnimating()&&b.getCurrent()==null&&e.getDefense()==9,"bonus shot resolves and defense is restored");
         GameProgress q=new GameProgress(List.of(Student.CHARICE));Student h=q.getParty().get(0);Battle boundary=new Battle(q,rolls(0,.5,.5));Enemy foe=target();addTarget(boundary,foe);
         check(boundary.selectStudent(h)&&boundary.ability(null,foe)&&boundary.advanceTwinShot(),"boundary cast");
-        check(foe.getHp()==173&&!boundary.hasPendingTwinShot(),"50 percent boundary neither reduces defense nor triggers extra shot");
+        check(foe.getHp()==223&&!boundary.hasPendingTwinShot(),"50 percent boundary neither reduces defense nor triggers extra shot");
         GameProgress m=new GameProgress(List.of(Student.CHARICE));Student mh=m.getParty().get(0);Battle miss=new Battle(m,rolls(.999,.999));Enemy me=target();addTarget(miss,me);
-        check(miss.selectStudent(mh)&&miss.ability(null,me)&&me.getHp()==200&&miss.advanceTwinShot()&&me.getHp()==189&&!miss.hasPendingTwinShot(),"second shot always hits after missed first shot");
+        check(miss.selectStudent(mh)&&miss.ability(null,me)&&me.getHp()==250&&miss.advanceTwinShot()&&me.getHp()==239&&!miss.hasPendingTwinShot(),"second shot always hits after missed first shot");
         GameProgress scaledParty=new GameProgress(List.of(Student.CHARICE));Student scaledHero=scaledParty.getParty().get(0);
         Battle scaled=new Battle(scaledParty,rolls(0));Enemy veteran=Enemy.sentinel("Veteran",true,GameSettings.Difficulty.INSANE,0,50,0);addTarget(scaled,veteran);
         int initialDef=veteran.getDefense();double x=49.0/99.0,curve=x*x*(3-2*x);int penalty=(int)Math.ceil(20*(1+2.97*curve));

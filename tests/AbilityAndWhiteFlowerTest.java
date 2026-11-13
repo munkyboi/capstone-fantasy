@@ -32,7 +32,7 @@ public final class AbilityAndWhiteFlowerTest {
         GameProgress finalParty = new GameProgress(List.of(1)); for(int i=0;i<4;i++) finalParty.advance();
         Battle bossBattle = new Battle(finalParty, fixed(0), false, 4, GameSettings.Difficulty.EASY);
         Enemy boss=bossBattle.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow();
-        for(int i=0;i<4;i++) check(bossBattle.enemyAttack(boss),"boss acts " + i);
+        for(int i=0;i<6;i++) { finalParty.getParty().forEach(h -> h.heal(9999)); check(bossBattle.enemyAttack(boss),"boss acts " + i); }
         check(bossBattle.getLastAbility()!=null && bossBattle.getLastAbility().skill().equals("Crystal Pulse"),"boss skill announcement");
         GameProgress stage2 = new GameProgress(List.of(1)); stage2.advance();
         Battle healing = new Battle(stage2, fixed(0)); Enemy sentinel=healing.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();

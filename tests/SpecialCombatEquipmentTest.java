@@ -25,25 +25,18 @@ public final class SpecialCombatEquipmentTest {
     public static void main(String[] args) throws Exception {
         GameProgress p = finalParty(); Battle b = new Battle(p, fixed(), false, 4, GameSettings.Difficulty.HARD);
         Enemy boss = b.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow();
-        check(boss.getBossCountdown() == 3, "initial boss countdown");
-        check(b.enemyAttack(boss) && boss.getBossCountdown() == 3, "boss first action");
-        check(b.enemyAttack(boss) && boss.getBossCountdown() == 2, "boss second action");
-        check(b.enemyAttack(boss) && boss.getBossCountdown() == 1, "boss third action");
-        int living = (int) b.getParty().stream().filter(Student::isAlive).count();
-        check(b.enemyAttack(boss) && b.getMessage().contains("Crystal Pulse") && b.getEffects().size() == living
-                && boss.getBossCountdown() == 3, "boss fourth action damages all and resets countdown");
-        for (BattleEffect effect : b.getEffects()) {
-            Student target = effect.getStudent();
-            int expected = boss.scaleDamage(Battle.damageAfterDefense(boss.getAttack(), target.getDefense())) * 2;
-            check(-effect.getAmount() == Math.min(expected, target.getHp() - effect.getAmount()), "boss 2x difficulty damage");
-        }
+        check(boss.getBossCountdown() == 0 && b.enemyAttack(boss) && boss.getBossCountdown() == 5, "boss starts charge");
+        for (int i=4;i>=1;i--) { p.getParty().forEach(h -> h.heal(9999)); check(b.enemyAttack(boss) && boss.getBossCountdown() == i, "boss countdown " + i); }
+        p.getParty().forEach(h -> h.heal(9999));
+        check(b.enemyAttack(boss) && b.getMessage().contains("Crystal Pulse") && boss.getBossCountdown() == 0, "pulse resolves after countdown");
+        while (b.hasPendingGuardianLoop()) b.resolveGuardianLoop();
         GameProgress support = new GameProgress(List.of(0, 1, 2)); support.advance();
         Battle sb = new Battle(support, fixed(), false, 1); Enemy sentinel = sb.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy ally = sb.getEnemies().stream().filter(e -> !e.isSentinel()).findFirst().orElseThrow();
         ally.takeDamage(40); int before = ally.getHp();
-        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 8 && sentinel.getSp() == 885,
-                "Sentinel heals 20 percent of the ally's missing HP and spends SP");
-        check(sb.getEffects().get(0).getAmount() == 8 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
+        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 13 && sentinel.getSp() == 885,
+                "Sentinel heals 20 percent of the ally's maximum HP and spends SP");
+        check(sb.getEffects().get(0).getAmount() == 13 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
         Field sentinelSp = Enemy.class.getDeclaredField("skillPoints"); sentinelSp.setAccessible(true); sentinelSp.setInt(sentinel, 15);
         for (int i = 0; i < 4; i++) { support.getParty().forEach(s -> s.heal(999)); check(sb.enemyAttack(sentinel), "Sentinel waits during cooldown"); }
         ally.takeDamage(Math.max(0, ally.getHp() - 25));

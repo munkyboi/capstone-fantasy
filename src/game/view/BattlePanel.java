@@ -88,6 +88,8 @@ public final class BattlePanel extends JPanel {
     private long victoryStartedNanos;
     private boolean showAmbush;
     private boolean showEffects;
+    private final java.util.List<BattleScene.EffectBatch> effectBatches = new java.util.ArrayList<>();
+    private int effectSequence;
     private long effectStartedNanos;
     private Object attackingSprite;
 
@@ -149,6 +151,7 @@ public final class BattlePanel extends JPanel {
             @Override public List<String> leveledStudents() { return leveledStudents; }
             @Override public List<String> bonusXpStudents() { return bonusXpStudents; }
             @Override public boolean showEffects() { return showEffects; }
+            @Override public List<BattleScene.EffectBatch> effectBatches() { return List.copyOf(effectBatches); }
             @Override public boolean escaping() { return battle != null && battle.isEscaping(); }
             @Override public boolean showAmbush() { return showAmbush; }
             @Override public Battle.AbilityAnnouncement abilityAnnouncement() { return abilityAnnouncement; }
@@ -165,7 +168,7 @@ public final class BattlePanel extends JPanel {
             @Override public Student blockingStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getBlockingStudent(); }
             @Override public Student protectedStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getProtectedStudent(); }
             @Override public double effectProgress() {
-                return showEffects ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
+                return attackingSprite != null ? Math.min(1.0, (System.nanoTime() - effectStartedNanos) / (EFFECT_MILLIS * 1_000_000.0)) : 1.0;
             }
         });
         abilityAlertTimer = new Timer(2000, event -> {
@@ -186,9 +189,11 @@ public final class BattlePanel extends JPanel {
         });
         ambushAlertTimer.setRepeats(false);
         effectTimer = new Timer(ANIMATION_FRAME_MILLIS, event -> {
-            if ((System.nanoTime() - effectStartedNanos) / 1_000_000.0 >= EFFECT_MILLIS) {
-                showEffects = false; attackingSprite = null; effectTimerStop();
-            }
+            long now = System.nanoTime();
+            effectBatches.removeIf(batch -> now - batch.startedNanos() >= EFFECT_MILLIS * 1_000_000L);
+            showEffects = !effectBatches.isEmpty();
+            if ((now - effectStartedNanos) / 1_000_000.0 >= EFFECT_MILLIS) attackingSprite = null;
+            if (!showEffects && attackingSprite == null) effectTimerStop();
             scene.repaint();
         });
         secondCastTimer = new Timer(SECOND_CAST_DELAY_MILLIS, event -> completeSecondCast());
@@ -238,7 +243,7 @@ public final class BattlePanel extends JPanel {
                 if (isShowing() && battle != null && !battle.isOver()) {
                     lastTickNanos = System.nanoTime();
                     apTimer.start();
-                    if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
+                    if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) sparkExplosionTimer.restart();
                     else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
                     else if (battle.hasPendingAngelAttack()) scheduleAngelAttack();
                     else if (battle.hasPendingTwinShot()) scheduleTwinShot();
@@ -254,11 +259,17 @@ public final class BattlePanel extends JPanel {
     private void effectTimerStop() { effectTimer.stop(); }
 
     private void showActionEffects(Object attacker) {
-        showEffects = !battle.getEffects().isEmpty();
+        long now = System.nanoTime();
+        if (!battle.getEffects().isEmpty()) {
+            int[] lanes = {0, -20, 20, -36, 36};
+            effectBatches.add(new BattleScene.EffectBatch(List.copyOf(battle.getEffects()), now, lanes[effectSequence++ % lanes.length]));
+            if (effectBatches.size() > 80) effectBatches.remove(0);
+        }
+        showEffects = !effectBatches.isEmpty();
         attackingSprite = attacker;
         if (showEffects || attacker != null) {
-            effectStartedNanos = System.nanoTime();
-            effectTimer.restart();
+            effectStartedNanos = now;
+            if (!effectTimer.isRunning()) effectTimer.start();
         }
     }
 
@@ -317,7 +328,7 @@ public final class BattlePanel extends JPanel {
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of(); victoryChoice = 1;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); twinShotTimer.stop(); sparkExplosionTimer.stop(); monsterTurnTimer.stop();
         victoryStartedNanos = 0;
-        showEffects = false; attackingSprite = null;
+        showEffects = false; attackingSprite = null; effectBatches.clear(); effectSequence = 0;
         showAmbush = ambushed;
         if (ambushed) { ambushAlertTimer.restart(); }
         resetActionPoints(ambushed);
@@ -371,7 +382,7 @@ public final class BattlePanel extends JPanel {
     private void advanceActionPoints(double seconds) {
         if (battle == null || battle.isOver()) { apTimer.stop(); return; }
         if (battle.cancelEscapeIfKnockedOut()) refresh();
-        if (battle.hasPendingSparkExplosion()) return;
+        if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) return;
         // Wait mode: freeze clocks while a ready student chooses a command or target.
         if (battle.getCurrent() != null) {
             if (battle.isEscaping() || battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
@@ -394,13 +405,16 @@ public final class BattlePanel extends JPanel {
                         battle.cancelEscapeIfKnockedOut();
                         battle.prependEffects(dotEffects);
                         resetEnemyAp(enemy);
+                        enemyPoints.keySet().retainAll(battle.getEnemies());
+                        readyEnemyDotEffects.keySet().retainAll(battle.getEnemies());
+                        processedDotCycles.removeIf(participant -> participant instanceof Enemy && !battle.getEnemies().contains(participant));
                         for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
                         applyApRefills();
                         Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
                         boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Stone Skin".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
                         showActionEffects(healing ? null : enemy);
                         announceAbility();
-                        if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
+                        if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) sparkExplosionTimer.restart();
                         if (!battle.isOver()) monsterTurnTimer.restart();
                         enemyActed = true;
                         changed = true;
@@ -408,7 +422,7 @@ public final class BattlePanel extends JPanel {
                     break;
                 }
             }
-            if (battle.hasPendingSparkExplosion()) break;
+            if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) break;
             if (enemyActed) { break; }
             if (remaining <= 0.0) { break; }
             double untilReady = Double.POSITIVE_INFINITY;
@@ -580,9 +594,13 @@ public final class BattlePanel extends JPanel {
         angelAttackTimer.restart();
     }
     private void resolveSparkExplosion() {
-        if (battle == null || !battle.resolveSparkExplosion()) return;
+        if (battle == null) return;
+        boolean resolved = battle.hasPendingGuardianLoop() ? battle.resolveGuardianLoop() : battle.resolveSparkExplosion();
+        if (!resolved) return;
+        battle.cancelEscapeIfKnockedOut();
         applyApRefills();
         showActionEffects(null);
+        if (battle.hasPendingGuardianLoop() && !battle.isOver()) sparkExplosionTimer.restart();
         if (battle.isOver()) apTimer.stop();
         lastTickNanos = System.nanoTime();
         refresh();
@@ -702,10 +720,10 @@ public final class BattlePanel extends JPanel {
             if (battle.isVictory() && !rewardRecorded) {
                 java.util.List<String> rewards = new java.util.ArrayList<>();
                 if (battle.isMerchantEncounter()) progress.unlockCarbonMarket();
-                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom, settings.getDifficulty())); }
+                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getRewardEnemies(), progress, battleRandom, settings.getDifficulty())); }
                 victoryRewardItems = List.copyOf(rewards);
                 victoryPetot = progress.addPetot(battle.victoryPetot(settings.isGreedIsGood()));
-                int baseExperience = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getExperienceDrop).sum();
+                int baseExperience = battle.getRewardEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getExperienceDrop).sum();
                 double multiplier = switch (progress.getParty().size()) {
                     case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;
                     default -> throw new IllegalStateException("Invalid party size");
