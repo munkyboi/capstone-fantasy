@@ -2,6 +2,10 @@
 
 A student-themed, turn-based Java RPG for Object-Oriented Programming at the University of San Jose–Recoletos. The project is in its foundation stage.
 
+## Inventory architecture
+
+The shared inventory holds `Item` objects in the project-defined generic `ItemBag<T>`. Consumables, key items, and equipment are represented by `Item` subclasses. Unknown equipment IDs raise `ItemNotFoundException`; save and load errors are reported through `SaveException`. Stable equipment IDs and consumable counts remain in save files for compatibility with earlier versions, and are converted back to item objects when loaded.
+
 ## Build and run
 
 Install JDK 17 or newer. From the project folder, run:

@@ -54,7 +54,7 @@ public final class Equipment extends Item {
             case "designer_leather_vest" -> new Equipment(id, "Designer Leather Vest", Slot.ARMOR, 0, 0, -1);
             case "ethereal_robe" -> new Equipment(id, "Ethereal Robe", Slot.ARMOR, 0, 0, -1);
             case "campus_medal" -> new Equipment(id, "Campus Medal", Slot.ACCESSORY, 5, 3, -1);
-            default -> throw new IllegalArgumentException("Unknown equipment: " + id);
+            default -> throw new ItemNotFoundException(id);
         };
     }
     /** Returns the starter weapon ID for a class.
