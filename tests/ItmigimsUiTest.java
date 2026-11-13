@@ -16,7 +16,7 @@ public final class ItmigimsUiTest {
             check(goblin.isLootGoblin(),"goblin is in the battle");goblin.takeDamage(1);
             @SuppressWarnings("unchecked") Map<Enemy,Double> points=(Map<Enemy,Double>)field(panel,"enemyPoints");
             Method advance=BattlePanel.class.getDeclaredMethod("advanceActionPoints",double.class);advance.setAccessible(true);
-            for(int action=0;action<13;action++){points.put(goblin,(double)goblin.getActionThreshold());advance.invoke(panel,0.001);}
+            for(int action=0;action<13;action++){((javax.swing.Timer)field(panel,"monsterTurnTimer")).stop();points.put(goblin,(double)goblin.getActionThreshold());advance.invoke(panel,0.001);}
             check(goblin.hasEscaped() && battle.isVictory(),"goblin escapes on battle clock");
             check(field(panel,"attackingSprite")==goblin && (boolean)field(panel,"showEffects"),"escape animation is active");
             Battle.AbilityAnnouncement alert=(Battle.AbilityAnnouncement)field(panel,"abilityAnnouncement");

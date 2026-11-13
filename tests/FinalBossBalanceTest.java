@@ -20,7 +20,7 @@ public class FinalBossBalanceTest {
     else if(weak.getHp()<weak.getMaxHp()*.25 && p.getKits()>0)b.useKit(weak);
     else if(s.getId()!=Student.ANGEL && s.getSp()>=s.getAbilitySpCost())b.ability(null,target);
     else b.attack(target);
-    int safety=0;while(b.isActionAnimating()&&safety++<20){if(b.hasPendingAngelAttack()&&!b.hasPendingLooperHits())b.advanceAngelAttack();else if(b.hasPendingLooperHits())b.advanceLooperHit();else if(b.hasPendingSecondCast())b.completeSecondCast();else if(b.hasPendingSparkExplosion())b.resolveSparkExplosion();}
+    int safety=0;while(b.isActionAnimating()&&safety++<20){if(b.hasPendingTwinShot())b.advanceTwinShot();else if(b.hasPendingAngelAttack()&&!b.hasPendingLooperHits())b.advanceAngelAttack();else if(b.hasPendingLooperHits())b.advanceLooperHit();else if(b.hasPendingSecondCast())b.completeSecondCast();else if(b.hasPendingSparkExplosion())b.resolveSparkExplosion();}
     ap.put(s,0.0);acted=true;break;
    }
    if(b.isOver())break;if(acted)continue;

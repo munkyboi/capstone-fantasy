@@ -39,7 +39,7 @@ public final class SelectionPanel extends JPanel {
         "Arcane Burst", "Cadet Strike", "Twin Shot", "Angel Hug"
     };
     private static final String[] EFFECTS = {
-        "Damages all enemies", "Strong sword attack", "Attacks twice", "Heals or revives an ally"
+        "Damages all enemies", "Strong sword attack", "Two shots; may hit again", "Heals or revives an ally"
     };
     private final Set<Integer> selected = new LinkedHashSet<>();
     private final JButton[] choices = new JButton[NAMES.length];

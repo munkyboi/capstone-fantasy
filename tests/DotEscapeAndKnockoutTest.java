@@ -10,8 +10,9 @@ public final class DotEscapeAndKnockoutTest {
     static void check(boolean ok,String msg){if(!ok)throw new AssertionError(msg);}
     static Object field(Object o,String n)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);return f.get(o);}
     @SuppressWarnings("unchecked") static void addDot(Battle b,GameCharacter s,int damage)throws Exception{
-        Class<?> type=Class.forName("game.model.Battle$DamageOverTime");Constructor<?> ctor=type.getDeclaredConstructor(GameCharacter.class,int.class);ctor.setAccessible(true);
-        ((List<Object>)field(b,"burns")).add(ctor.newInstance(s,damage));
+        Class<?> type=Class.forName("game.model.Battle$DamageOverTime");Constructor<?> ctor=type.getDeclaredConstructor(GameCharacter.class,GameCharacter.class,int.class);ctor.setAccessible(true);
+        GameCharacter source=s instanceof Student?b.getEnemies().get(0):b.getParty().get(0);
+        ((List<Object>)field(b,"burns")).add(ctor.newInstance(source,s,damage));
     }
     static void key(BattlePanel p,String name){p.getActionMap().get(name).actionPerformed(new ActionEvent(p,0,""));}
     static void stop(BattlePanel p)throws Exception{for(String n:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","looperHitTimer","angelAttackTimer","sparkExplosionTimer","abilityAlertTimer"))((javax.swing.Timer)field(p,n)).stop();}

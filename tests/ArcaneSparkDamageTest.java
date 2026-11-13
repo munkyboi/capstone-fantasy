@@ -18,7 +18,7 @@ public final class ArcaneSparkDamageTest {
         return before - target.getHp();
     }
     public static void main(String[] args) {
-        int[][] ranges = {{9,12},{12,16},{18,24},{24,32}};
+        int[][] ranges = {{6,8},{8,10},{12,15},{16,20}};
         GameSettings.Difficulty[] difficulties = GameSettings.Difficulty.values();
         for (int i=0;i<difficulties.length;i++) {
             check(thirdHit(difficulties[i],0)==ranges[i][0], difficulties[i] + " minimum");

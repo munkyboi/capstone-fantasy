@@ -36,7 +36,7 @@ public final class AbilityAndWhiteFlowerTest {
         check(bossBattle.getLastAbility()!=null && bossBattle.getLastAbility().skill().equals("Crystal Pulse"),"boss skill announcement");
         GameProgress stage2 = new GameProgress(List.of(1)); stage2.advance();
         Battle healing = new Battle(stage2, fixed(0)); Enemy sentinel=healing.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
-        Enemy ally=healing.getEnemies().stream().filter(e -> e!=sentinel).findFirst().orElseThrow(); ally.takeDamage(30);
+        Enemy ally=healing.getEnemies().stream().filter(e -> e!=sentinel).findFirst().orElseThrow(); ally.takeDamage(40);
         check(healing.enemyAttack(sentinel) && healing.getLastAbility().skill().equals("Stone Mend"),"sentinel heal announcement");
         Enemy dead=new Enemy("Library Wisp A"); dead.takeDamage(999);
         GameProgress loot=new GameProgress(List.of(0,1)); loot.getInventory().restoreWhiteFlowers(0);

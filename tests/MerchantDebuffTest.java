@@ -30,10 +30,12 @@ public final class MerchantDebuffTest {
         check(burn.tickDamageOverTime(hero)&&hero.getHp()==initial-22&&burn.hasDamageOverTime(hero),"two effects tick once on target turn");
         for(int i=0;i<4;i++)check(burn.tickDamageOverTime(hero),"remaining ticks");
         check(hero.getHp()==initial-112&&!burn.hasDamageOverTime(hero),"total 140 percent attack per effect over five turns");
-        GameProgress dual=party(0,1);Battle selected=fight(dual,rolls(.9,true));Enemy vendor=selected.getEnemies().get(0);
+        boolean[] allowTickHit={false};
+        Random selectedRolls=new Random(){public int nextInt(int n){return n-1;}public double nextDouble(){return allowTickHit[0]?0:.9;}};
+        GameProgress dual=party(0,1);Battle selected=fight(dual,selectedRolls);Enemy vendor=selected.getEnemies().get(0);
         Student tank=dual.getParty().stream().filter(s->s.getId()==Student.BOGART).findFirst().orElseThrow();
         selected.enemyAttack(vendor);dismissCopies(selected);selected.enemyAttack(vendor);selected.enemyAttack(vendor);selected.enemyAttack(vendor);
-        check(selected.hasDamageOverTime(tank),"heat stroke targets tank");tank.takeDamage(tank.getHp()-1);
+        check(selected.hasDamageOverTime(tank),"heat stroke targets tank");tank.takeDamage(tank.getHp()-1);allowTickHit[0]=true;
         check(selected.tickDamageOverTime(tank)&&!tank.isAlive()&&selected.getCurrent()==null&&!selected.isOver(),"DOT knockout does not end battle while an ally lives");
         check(MerchantDebuffTest.class.getResource("/assets/ui/damage-over-time-icon-v1.png")!=null,"DOT icon packaged");
         System.out.println("Merchant debuff and DOT checks passed");

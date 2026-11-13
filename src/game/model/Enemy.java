@@ -3,14 +3,14 @@ package game.model;
 /** An opponent in a battle. */
 public final class Enemy extends GameCharacter {
     private static final long serialVersionUID = 1L;
-    private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 105;
-    private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 20;
-    private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 9;
+    private static final int WISP_MAX_HP = 65, SENTINEL_MAX_HP = 110;
+    private static final int WISP_ATTACK = 16, SENTINEL_ATTACK = 13;
+    private static final int WISP_DEFENSE = 5, SENTINEL_DEFENSE = 12;
     private static final int WISP_SPEED = 3, SENTINEL_SPEED = 2;
     private static final int WISP_A_AP = 36;
     private static final int WISP_AP_STEP = 2;
     private static final int SENTINEL_AP = 32;
-    private static final int SENTINEL_BASE_SP = 200;
+    private static final int SENTINEL_BASE_SP = 900;
     private static final int[] STAGE_PETOT_BONUS = {0, 0, 3, 6, 4};
     private static final int[] STAGE_XP_BONUS = {0, 0, 3, 6, 10};
     private static final double[] STAGE_HP_MULTIPLIER = {1.0, 1.0, 1.08, 1.16, 1.25};
@@ -19,7 +19,7 @@ public final class Enemy extends GameCharacter {
     private static final double[] FINAL_HP = {1, .35, .595, .7225, .80};
     private static final double[] FINAL_DAMAGE = {1, .20, .595, .7225, .75};
     private static final double[] FINAL_AP_THRESHOLD = {1, 1.8, 1.62, 1.44, 1.35};
-    private static final int FINAL_MEND_COOLDOWN = 4;
+    private static final int STONE_MEND_COOLDOWN = 4;
     private final String name;
     private final int maxHp;
     private final int attack;
@@ -28,6 +28,7 @@ public final class Enemy extends GameCharacter {
     private final int agility, accuracy;
     private int hp;
     private final boolean sentinel;
+    private boolean attackSentinel;
     private final boolean boss;
     private final boolean lootGoblin;
     private final boolean merchant, mirror;
@@ -38,13 +39,16 @@ public final class Enemy extends GameCharacter {
     private final int experienceDrop;
     private final double difficultyMultiplier;
     private double finalDamageScale = 1.0;
-    private boolean finalEncounter;
     private int actionsTaken;
     private int skillPoints;
     private int mirrorCooldown, missileCooldown, drainCooldown, lifeDrainCooldown, recallCooldown, sparkCooldown, stoneMendCooldown;
 
+    private int stoneSkinCooldown, stoneSweepCooldown, stoneSmashCooldown, stoneSkinDefense, stoneSkinHits, twinDefensePenalty;
+    private double levelCurve;
+
     private Enemy(Enemy original, GameSettings.Difficulty difficulty, double partyLevel, boolean copy, int number) {
         double levels = partyLevel - 1, p = levels / 99.0, curve = p * p * (3.0 - 2.0 * p);
+        levelCurve = curve;
         difficultyMultiplier = copy ? original.difficultyMultiplier : difficulty.multiplier();
         merchant = !copy; mirror = copy; sentinel = false; boss = false; lootGoblin = false;
         name = copy ? "Mirror Image " + number : "Mysterious Merchant";
@@ -120,14 +124,31 @@ public final class Enemy extends GameCharacter {
         if (partySize < 1 || partySize > 4) throw new IllegalArgumentException("Invalid party size");
         return new Enemy(name, true, boss, false, difficulty, 4, partyLevel, partySize);
     }
+    public static Enemy sentinel(String name, boolean attack, GameSettings.Difficulty difficulty, int stage, double partyLevel, int partySize) {
+        if (partySize < 0 || partySize > 4) throw new IllegalArgumentException("Invalid party size");
+        return new Enemy(name, true, false, false, difficulty, stage, partyLevel, partySize, false, attack);
+    }
+    /** Opening-stage Wisp adjusted for a party of one. */
+    public static Enemy soloOpeningWisp(String name, GameSettings.Difficulty difficulty, double partyLevel) {
+        return new Enemy(name, false, false, false, difficulty, 0, partyLevel, 0, true);
+    }
     private Enemy(String name, boolean sentinel, boolean boss, boolean lootGoblin,
             GameSettings.Difficulty difficulty, int stage, double partyLevel, int finalPartySize) {
+        this(name, sentinel, boss, lootGoblin, difficulty, stage, partyLevel, finalPartySize, false);
+    }
+    private Enemy(String name, boolean sentinel, boolean boss, boolean lootGoblin,
+            GameSettings.Difficulty difficulty, int stage, double partyLevel, int finalPartySize, boolean soloOpening) {
+        this(name, sentinel, boss, lootGoblin, difficulty, stage, partyLevel, finalPartySize, soloOpening, false);
+    }
+    private Enemy(String name, boolean sentinel, boolean boss, boolean lootGoblin,
+            GameSettings.Difficulty difficulty, int stage, double partyLevel, int finalPartySize, boolean soloOpening, boolean attackVariant) {
         if (stage < 0 || stage > 4) throw new IllegalArgumentException("Invalid stage");
         if (!Double.isFinite(partyLevel) || partyLevel < 1 || partyLevel > 100) throw new IllegalArgumentException("Invalid party level");
         double levels = partyLevel - 1;
         // Smoothstep is a bounded S-curve: gentle at both ends, steepest at the midpoint.
         double progress = levels / 99.0;
         double curve = progress * progress * (3.0 - 2.0 * progress);
+        levelCurve = curve; attackSentinel = attackVariant;
         double healthScale = 1.0 + 7.92 * curve;
         double attackScale = 1.0 + 3.96 * curve;
         double defenseScale = 1.0 + 2.97 * curve;
@@ -137,19 +158,18 @@ public final class Enemy extends GameCharacter {
         this.sentinel = sentinel;
         this.boss = boss;
         this.lootGoblin = lootGoblin;
-        finalEncounter = finalPartySize > 0;
         this.merchant = false; this.mirror = false;
         difficultyMultiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
-        skillPoints = lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : !sentinel && !boss ? 80 : 0;
+        skillPoints = lootGoblin ? 100 : sentinel && !boss ? SENTINEL_BASE_SP : !sentinel && !boss ? 80 : 0;
         petotDrop = lootGoblin ? 5000 : boss && stage == 4 ? 110 : (boss ? 150 : sentinel ? 35 : 12) + STAGE_PETOT_BONUS[stage];
         experienceDrop = lootGoblin ? 0 : (int) Math.round((boss && stage == 4 ? 80 : (boss ? 120 : sentinel ? 35 : 20) + STAGE_XP_BONUS[stage]) * xpScale);
-        double partyHealth = FINAL_HP[finalPartySize];
-        finalDamageScale = FINAL_DAMAGE[finalPartySize];
-        double partyThreshold = FINAL_AP_THRESHOLD[finalPartySize];
-        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
+        double partyHealth = FINAL_HP[finalPartySize] * (soloOpening ? 0.50 : 1.0);
+        finalDamageScale = FINAL_DAMAGE[finalPartySize] * (soloOpening ? 0.50 : 1.0);
+        double partyThreshold = FINAL_AP_THRESHOLD[finalPartySize] * (soloOpening ? 1.6 : 1.0);
+        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 260 : sentinel ? attackSentinel ? 200 : SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
         hp = maxHp;
-        attack = (int) Math.round(((lootGoblin ? 1 : boss ? 24 : sentinel ? SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
-        defense = (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
+        attack = (int) Math.round(((lootGoblin ? 1 : boss ? 24 : sentinel ? attackSentinel ? 20 : SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
+        defense = (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? attackSentinel ? 9 : SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
         agility = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 10 : sentinel ? 5 : 9) + levels));
         accuracy = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 12 : sentinel ? 9 : 8) + levels));
         speed = Math.max(1, (int) Math.round((lootGoblin ? 15 : sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
@@ -161,16 +181,23 @@ public final class Enemy extends GameCharacter {
     public int getSp() { return skillPoints; }
     /** Removes up to the supplied amount of current SP. */
     int loseSp(int amount) { int lost = Math.min(skillPoints, Math.max(0, amount)); skillPoints -= lost; return lost; }
-    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : sentinel && !boss ? (int) Math.round(SENTINEL_BASE_SP * difficultyMultiplier) : !sentinel && !boss ? 80 : 0; }
+    public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : sentinel && !boss ? SENTINEL_BASE_SP : !sentinel && !boss ? 80 : 0; }
     boolean useArcaneSpark() {
         if (sparkCooldown > 0) { sparkCooldown--; return false; }
         if (actionsTaken < 2 || skillPoints < 12) return false;
         skillPoints -= 12; sparkCooldown = 3; return true;
     }
-    /** Stone Mend costs 10 SP at normal difficulty, scaled with monster difficulty. */
-    public int getHealSpCost() { return Math.max(1, (int) Math.round(10 * difficultyMultiplier)); }
+    /** Stone Mend costs 15 SP. */
+    public int getHealSpCost() { return 15; }
     boolean canUseStoneMend() { if (stoneMendCooldown > 0) { stoneMendCooldown--; return false; } return skillPoints >= getHealSpCost(); }
-    boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; if (finalEncounter) stoneMendCooldown = FINAL_MEND_COOLDOWN; return true; }
+    boolean spendHealSp() { int cost = getHealSpCost(); if (skillPoints < cost) return false; skillPoints -= cost; stoneMendCooldown = STONE_MEND_COOLDOWN; return true; }
+    void sentinelCooldowns() { if(stoneSkinCooldown>0) stoneSkinCooldown--; if(stoneSweepCooldown>0) stoneSweepCooldown--; if(stoneSmashCooldown>0) stoneSmashCooldown--; }
+    boolean castStoneSkin(Enemy target) { if(stoneSkinCooldown>0 || skillPoints<20 || target.stoneSkinHits>0) return false; skillPoints-=20; stoneSkinCooldown=6; target.stoneSkinDefense=(int)Math.ceil(10*(1+2.97*levelCurve)*difficultyMultiplier); target.stoneSkinHits=5; return true; }
+    int attackSkill() { if(stoneSweepCooldown==0 && skillPoints>=15){skillPoints-=15;stoneSweepCooldown=6;return 1;} if(stoneSmashCooldown==0 && skillPoints>=10){skillPoints-=10;stoneSmashCooldown=4;return 2;} return 0; }
+    public boolean isAttackSentinel() { return sentinel && !boss && attackSentinel; }
+    public int getStoneSkinHits() { return stoneSkinHits; }
+    int applyTwinDefensePenalty() { twinDefensePenalty = (int)Math.ceil(10 * (1 + 2.97 * levelCurve) * difficultyMultiplier); return twinDefensePenalty; }
+    void clearTwinDefensePenalty() { twinDefensePenalty = 0; }
     int healingPower(Enemy target) { return (target.getMaxHp() - target.getHp() + 4) / 5; }
     int heal(int amount) { if (lootGoblin) return 0; int healed = Math.min(maxHp - hp, Math.max(0, amount)); hp += healed; return healed; }
     /** Returns whether the next action uses this monster's skill. */
@@ -216,7 +243,7 @@ public final class Enemy extends GameCharacter {
      */ public int getAttack() { return attack; }
     /** Returns defense stat.
      * @return defense stat
-     */ public int getDefense() { return defense; }
+     */ public int getDefense() { return Math.max(-20, defense + (stoneSkinHits>0 ? stoneSkinDefense : 0) - twinDefensePenalty); }
     /** Returns speed stat.
      * @return speed stat
      */ public int getSpeed() { return speed; }
@@ -237,6 +264,7 @@ public final class Enemy extends GameCharacter {
         int actual = Math.min(hp, Math.max(0, amount));
         if (actual > 0 && lootGoblin && escapeCountdown < 0) escapeCountdown = 13;
         hp -= actual;
+        if (actual > 0 && stoneSkinHits > 0) stoneSkinHits--;
         return actual;
     }
 }

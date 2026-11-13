@@ -15,6 +15,7 @@ public final class LooperRingTest {
         GameProgress p = new GameProgress(List.of(Student.BOGART));
         p.getInventory().addEquipment("looper_ring");
         check(p.equip(p.getParty().get(0), Equipment.Slot.ACCESSORY, "looper_ring"), "equip");
+        p.advance(); // Keep the test target alive for all five hits.
         return p;
     }
     private static void proc(double chance, int percent) {

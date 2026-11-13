@@ -91,7 +91,6 @@ public final class Main {
                 if (!merchantBattle[0] && !replay) { progress.advance(); }
                 merchantBattle[0] = false;
                 boolean hasNext = progress.getEncounter() < 5;
-                for (game.model.Student student : progress.getParty()) { student.restoreAllSp(); }
                 camp.open(progress, !hasNext);
                 layout.show(screens, "camp");
                 camp.requestFocusInWindow();

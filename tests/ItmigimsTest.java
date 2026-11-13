@@ -55,7 +55,7 @@ public final class ItmigimsTest {
         check(goblin.getSp()==90 && battle.getLastAbility().skill().equals("Escape") && battle.isVictory(),"escape spends 10 SP and ends empty encounter");
         GameProgress group=stage(1);Battle support=new Battle(group,new Spawn(95),false,1);Enemy healer=support.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy immune=support.getEnemies().stream().filter(Enemy::isLootGoblin).findFirst().orElseThrow();immune.takeDamage(200);int immuneHp=immune.getHp(),healerSp=healer.getSp();
-        check(support.enemyAttack(healer)&&immune.getHp()==immuneHp&&healer.getSp()==healerSp,"sentinel does not waste a heal on Itmigims");
+        check(support.enemyAttack(healer)&&immune.getHp()==immuneHp && (support.getLastAbility()==null || !support.getLastAbility().skill().equals("Stone Mend")),"sentinel does not waste a heal on Itmigims");
         check(MonsterLoot.award(List.of(goblin),p,new LootRolls(0,0)).isEmpty(),"escaped goblin awards no loot");
         Enemy defeated=Enemy.itmigims(GameSettings.Difficulty.NORMAL,0,1);defeated.takeDamage(99999);
         LootRolls none=new LootRolls(.50);check(MonsterLoot.award(List.of(defeated),stage(0),none).isEmpty() && none.count==1,"50 percent boundary");

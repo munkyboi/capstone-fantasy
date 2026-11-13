@@ -19,10 +19,13 @@ public class AccuracyAgilityTest {
                     && s.getSpeed()==v[4] && s.getAgility()==v[5] && s.getAccuracy()==v[6], "starting stats " + id);
             s.gainExperience(100); check(s.getAgility()==v[5]+1 && s.getAccuracy()==v[6]+1, "level stats " + id);
         }
-        double dodge = 7.0 / (7.0 + 8.0 / 100.0);
-        double expected = (8.0 - dodge) / 8.0;
-        check(Math.abs(Battle.hitChance(7,8,100)-expected)<1e-12, "exact supplied formula");
-        check(Battle.hitChance(7,8,200) < Battle.hitChance(7,8,75), "difficulty scales factor");
+        double expected = 1.0 - 7.0 / (7.0 + 8.0);
+        check(Math.abs(Battle.hitChance(7,8,100)-expected)<1e-12, "agility and accuracy affect chance");
+        check(Battle.hitChance(7,8,200) > Battle.hitChance(7,8,75), "difficulty scales factor");
+        check(Battle.hitChance(14,8,100) < Battle.hitChance(7,8,100), "agility improves dodge");
+        check(Battle.hitChance(7,16,100) > Battle.hitChance(7,8,100), "accuracy improves hit chance");
+        check(Battle.hitChance(1000,8,100)==0.4, "dodge capped at 60 percent");
+        check(Battle.hitChance(23,18,600) < Battle.hitChance(13,18,600), "agility matters for solo insane Charice");
         Battle miss = new Battle(List.of(Student.ZACK), rolls(0.999999)); Student z=miss.getParty().get(0); Enemy e=miss.getEnemies().get(0);
         int hp=e.getHp(); check(miss.selectStudent(z) && miss.attack(e) && e.getHp()==hp, "student misses");
         check(miss.getEffects().stream().anyMatch(f -> f.getEnemy()==e && "Dodge".equals(f.getLabel())), "enemy dodge effect");
@@ -38,8 +41,8 @@ public class AccuracyAgilityTest {
         Battle multi = new Battle(List.of(Student.ANGEL), alternating); Student angel = multi.getParty().get(0);
         Enemy multiTarget = multi.getEnemies().get(0);
         check(multi.selectStudent(angel) && multi.attack(multiTarget), "multi-hit attack");
-        check(multi.getEffects().size() == 2 && multi.getEffects().get(0).getAmount() < 0
-                && "Dodge".equals(multi.getEffects().get(1).getLabel()), "each hit rolls independently");
+        check(multi.getEffects().stream().anyMatch(effect -> effect.getAmount() < 0), "first hit lands");
+        check(multi.advanceAngelAttack() && multi.getEffects().stream().anyMatch(effect -> "Dodge".equals(effect.getLabel())), "each delayed hit rolls independently");
         Path dir=Files.createTempDirectory("accuracy-saves-");
         try { GameProgress p=new GameProgress(List.of(0,1,2)); p.advance(); p.getParty().forEach(s -> s.gainExperience(300));
             SaveStore store=new SaveStore(dir); for (SaveStore.Format f: SaveStore.Format.values()) { store.save(1,f,p);

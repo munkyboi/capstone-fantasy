@@ -34,7 +34,7 @@ public final class WindowLayoutTest {
         var image = new java.awt.image.BufferedImage(info.getWidth(), info.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
         var graphics = image.createGraphics();
         try { info.paint(graphics); } finally { graphics.dispose(); }
-        check((image.getRGB(info.getWidth() - 12, 10) >>> 24) == 204, "panel background is 80 percent opaque");
+        check((image.getRGB(10, 10) >>> 24) == 204, "panel background is 80 percent opaque");
     }
     private static void checkFontScaling() throws Exception {
         BattlePanel battle = new BattlePanel(() -> { });

@@ -30,7 +30,7 @@ public final class HealthRegenerationTest {
         GameProgress z = new GameProgress(List.of(0)); equip(z, 0, "ethereal_robe");
         check(HealthRegeneration.amount(z.getParty().get(0)) == 24, "Zack armor bonus uses max HP basis");
         GameProgress b = new GameProgress(List.of(1)); equip(b, 1, "blade_mail");
-        check(HealthRegeneration.amount(b.getParty().get(0)) == 261, "blade bonus adds percentage points using max HP");
+        check(HealthRegeneration.amount(b.getParty().get(0)) == 147, "blade bonus adds percentage points using max HP");
         GameProgress c = new GameProgress(List.of(2)); equip(c, 2, "ultra_instinct_shirt");
         check(HealthRegeneration.amount(c.getParty().get(0)) == 32, "shirt bonus");
         GameProgress a = new GameProgress(List.of(3)); equip(a, 3, "designer_leather_vest");
@@ -60,8 +60,11 @@ public final class HealthRegenerationTest {
                 ringParty.getInventory().addEquipment("ring_of_power");
                 check(ringParty.equip(ringMage, Equipment.Slot.ACCESSORY, "ring_of_power"), "equip ring");
                 BattlePanel ringPanel = new BattlePanel(() -> {}, ignored -> {}, new GameSettings(), fixed(0)); ringPanel.start(ringParty, true, 0);
-                advance.invoke(ringPanel, 1.0); Battle ringBattle = (Battle) bf.get(ringPanel);
-                check(ringMage.getHp() == 13 && ringBattle.getCurrent() == ringMage, "ring refill causes one regeneration attempt");
+                Battle ringBattle = (Battle) bf.get(ringPanel);
+                @SuppressWarnings("unchecked") Map<Enemy, Double> ringEnemyPoints = (Map<Enemy, Double>) enemies.get(ringPanel);
+                for (Enemy e : ringEnemyPoints.keySet()) ringEnemyPoints.put(e, (double)e.getActionThreshold());
+                advance.invoke(ringPanel, 0.0); advance.invoke(ringPanel, 0.0);
+                check(ringMage.getHp() == 15 && ringBattle.getCurrent() == ringMage, "ring refill causes one regeneration attempt");
                 check(ringBattle.getEffects().stream().anyMatch(e -> e.getStudent() == ringMage && e.getAmount() == 3), "ring refill shows regeneration");
                 for (String name : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer", "secondCastTimer")) {
                     Field timer = BattlePanel.class.getDeclaredField(name); timer.setAccessible(true); ((javax.swing.Timer) timer.get(ringPanel)).stop();

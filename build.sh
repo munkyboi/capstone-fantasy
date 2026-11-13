@@ -39,6 +39,7 @@ assets/sprites/itmigims-v1.png
 assets/sprites/mysterious-merchant-v1.png
 assets/sprites/library-wisp-v3.png
 assets/sprites/stone-sentinel-v1.png
+assets/sprites/attack-sentinel-v1.png
 assets/sprites/student-party-idle-v1.png
 assets/ui/carbon-market-icon-v1.png
 assets/ui/carbon-market-locked-icons-v1.png

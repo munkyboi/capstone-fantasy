@@ -23,24 +23,24 @@ public final class PartySizeScalingTest {
         Enemy enemy = battle.getEnemies().get(0);
         double factor = battle.getAccuracyScalingFactor();
         check(Battle.hitChance(enemy.getEffectiveAgility(), hero.getEffectiveAccuracy(), factor)
-                        < Battle.hitChance(enemy.getEffectiveAgility(), hero.getEffectiveAccuracy(), 100),
-                "larger shared factor lowers hero hit chance");
+                        > Battle.hitChance(enemy.getEffectiveAgility(), hero.getEffectiveAccuracy(), 100),
+                "larger shared factor raises hero hit chance");
         check(Battle.hitChance(hero.getEffectiveAgility(), enemy.getEffectiveAccuracy(), factor)
-                        < Battle.hitChance(hero.getEffectiveAgility(), enemy.getEffectiveAccuracy(), 100),
-                "larger shared factor lowers enemy hit chance");
+                        > Battle.hitChance(hero.getEffectiveAgility(), enemy.getEffectiveAccuracy(), 100),
+                "larger shared factor raises enemy hit chance");
         for (int size : new int[] {1, 4}) {
             List<Integer> ids = java.util.stream.IntStream.range(0, size).boxed().toList();
             Random fixed = new Random() {
                 @Override public int nextInt(int bound) { return bound == 4 ? 1 : 0; }
-                @Override public double nextDouble() { return 0.8758; }
+                @Override public double nextDouble() { return 0.6; }
             };
             Battle actual = new Battle(new GameProgress(ids), fixed);
             Student zack = actual.getParty().stream().filter(s -> s.getId() == Student.ZACK).findFirst().orElseThrow();
             Enemy wisp = actual.getEnemies().get(0);
             int enemyHp = wisp.getHp(); check(actual.selectStudent(zack) && actual.attack(wisp), "hero attack");
-            check((wisp.getHp() < enemyHp) == (size == 4), "shared scaling affects hero hit roll");
+            check((wisp.getHp() < enemyHp) == (size == 1), "shared scaling affects hero hit roll");
             int heroHp = zack.getHp(); check(actual.enemyAttack(wisp), "enemy attack");
-            check((zack.getHp() < heroHp) == (size == 4), "shared scaling affects enemy hit roll");
+            check((zack.getHp() < heroHp) == (size == 1), "shared scaling affects enemy hit roll");
         }
         System.out.println("Party-size scaling checks passed");
     }

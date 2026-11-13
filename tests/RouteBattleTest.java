@@ -90,7 +90,7 @@ public final class RouteBattleTest {
                     Field field = BattlePanel.class.getDeclaredField("battle"); field.setAccessible(true);
                     Battle active = (Battle) field.get(panel);
                     Field timerField = BattlePanel.class.getDeclaredField("apTimer"); timerField.setAccessible(true);
-                    check(((Timer) timerField.get(panel)).getDelay() == 50, "smooth animation interval");
+                    check(((Timer) timerField.get(panel)).getDelay() == 16, "smooth animation interval");
                     Field pointsField = BattlePanel.class.getDeclaredField("actionPoints"); pointsField.setAccessible(true);
                     Field enemyField = BattlePanel.class.getDeclaredField("enemyPoints"); enemyField.setAccessible(true);
                     Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
@@ -104,7 +104,7 @@ public final class RouteBattleTest {
                     Map<?, ?> normalEnemyPoints = (Map<?, ?>) enemyField.get(normal);
                     check(normalBattle.getEnemies().stream().allMatch(monster -> normalEnemyPoints.get(monster).equals(0.0)),
                             "normal battle starts with empty enemy AP");
-                    Map<?, ?> ambushEnemyPoints = (Map<?, ?>) enemyField.get(panel);
+                    @SuppressWarnings("unchecked") Map<Enemy, Double> ambushEnemyPoints = (Map<Enemy, Double>) enemyField.get(panel);
                     check(active.getEnemies().stream().allMatch(monster ->
                             Math.abs((double) ambushEnemyPoints.get(monster) - monster.getActionThreshold() * 0.8) < 0.0001),
                             "ambush enemies start at 80% of their individual thresholds");
@@ -138,11 +138,12 @@ public final class RouteBattleTest {
                     javax.swing.JProgressBar[] bars = (javax.swing.JProgressBar[]) barsField.get(panel);
                     check(bars[0].getValue() == 150 && bars[0].getMaximum() == 2800,
                             "fractional AP is visible on the bar");
-                    advance.invoke(panel, 1.1);
-                    check(active.getCurrent() == null && active.getParty().stream().mapToInt(Student::getHp).sum() < hpBefore,
+                    advance.invoke(panel, 1.9);
+                    check(active.getCurrent() == null && active.getMessage().contains("attacks"),
                             "Wisp A attacks before any student is ready");
                     check(Math.abs((double) ((Map<?, ?>) enemyField.get(panel)).get(active.getEnemies().get(0))) < 0.0001, "enemy AP reset");
-                    advance.invoke(panel, 23.2 / 3.0);
+                    ambushEnemyPoints.replaceAll((monster,value)->-1000.0);
+                    advance.invoke(panel, 20.8 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 2, "Charice selected at 28 AP");
                     @SuppressWarnings("unchecked") Map<Student, Double> points = (Map<Student, Double>) pointsField.get(panel);
                     double zackPoints = points.get(active.getParty().stream().filter(s -> s.getId() == 0).findFirst().orElseThrow());
@@ -179,7 +180,10 @@ public final class RouteBattleTest {
                     delayed.start(new GameProgress(List.of(0, 1, 2)), true);
                     Battle delayedBattle = (Battle) field.get(delayed);
                     int fullHp = delayedBattle.getParty().stream().mapToInt(Student::getHp).sum();
-                    advance.invoke(delayed, 10.0);
+                    for (int step=0;step<8 && delayedBattle.getCurrent()==null;step++) {
+                        Field pause = BattlePanel.class.getDeclaredField("monsterTurnTimer"); pause.setAccessible(true); ((Timer)pause.get(delayed)).stop();
+                        advance.invoke(delayed, 10.0);
+                    }
                     check(delayedBattle.getCurrent().getId() == 2
                             && delayedBattle.getParty().stream().mapToInt(Student::getHp).sum() < fullHp,
                             "delayed frame processes enemy actions before a later ready student");

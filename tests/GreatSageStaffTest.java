@@ -25,17 +25,17 @@ public final class GreatSageStaffTest {
     }
     private static void outcome(double value, boolean twice) {
         GameProgress p = party(true); Student mage = p.getParty().get(0); Roll random = new Roll(value);
-        Battle b = new Battle(p, random, false, 0); List<Enemy> enemies = b.getEnemies(); int sp = mage.getSp();
+        Battle b = new Battle(p, random, false, 0, GameSettings.Difficulty.HARD); List<Enemy> enemies = b.getEnemies(); int sp = mage.getSp();
         check(b.selectStudent(mage) && b.ability(null, null), "cast succeeds");
         check(b.hasPendingSecondCast() == twice && random.rolls == 1 + enemies.size(), "probability boundary " + value);
         for (Enemy e : enemies) {
-            int hit = mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40) - e.getDefense();
+            int hit = Battle.damageAfterDefense(mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40), e.getDefense());
             check(e.getMaxHp() - e.getHp() == hit, "only first cast happens immediately");
         }
         if (twice) check(b.completeSecondCast() && b.getMessage().contains("casts Arcane Burst again"), "second cast resolves");
         check(mage.getSp() == sp - mage.getAbilitySpCost(), "SP charged once");
         for (Enemy e : enemies) {
-            int hit = mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40) - e.getDefense();
+            int hit = Battle.damageAfterDefense(mage.getAttack() + (int) Math.ceil(mage.getBaseAttack() * 0.40), e.getDefense());
             check(e.getMaxHp() - e.getHp() == Math.min(e.getMaxHp(), hit * (twice ? 2 : 1)), "damage applied for each cast");
         }
         check(b.getEffects().size() == enemies.size(), "latest cast produces one effect per target");
@@ -54,7 +54,7 @@ public final class GreatSageStaffTest {
                 && noStaff.rolls == noBonus.getEnemies().size() && !noBonus.getMessage().contains("casts Arcane Burst again"), "staff required");
         Random rolls = new Random(51773); int doubled = 0, attempts = 5000;
         for (int i = 0; i < attempts; i++) {
-            double roll = rolls.nextDouble(); GameProgress p = party(true); Battle b = new Battle(p, new Roll(roll), false, 0);
+            double roll = rolls.nextDouble(); GameProgress p = party(true); Battle b = new Battle(p, new Roll(roll), false, 0, GameSettings.Difficulty.HARD);
             b.selectStudent(p.getParty().get(0)); b.ability(null, null);
             if (b.hasPendingSecondCast()) { doubled++; b.completeSecondCast(); }
         }

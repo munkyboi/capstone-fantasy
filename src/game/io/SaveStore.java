@@ -190,15 +190,16 @@ public final class SaveStore {
                 int savedMax = Integer.parseInt(properties.getProperty(prefix + "maxHp"));
                 int oldMax = legacyMaxHp(expected, armor);
                 boolean oldStats = !currentStats(version) && savedMax == oldMax;
+                boolean oldEquipmentHp = compatibleEquipmentMaxHp(expected, armor, accessory, savedMax);
                 int savedHp = Integer.parseInt(properties.getProperty(prefix + "hp"));
                 if (!expected.getName().equals(properties.getProperty(prefix + "name"))
                         || (savedMax != newMax && !("sentinel_band".equals(accessory) && savedMax == newMax - 50)
                             && !("campus_vest".equals(armor) && savedMax == expected.statWithEquipment(Student.Stat.HP, Equipment.Slot.ARMOR, null)
-                                + ("sentinel_band".equals(accessory) ? 50 : 0)) && !oldStats) || savedHp < 0 || savedHp > savedMax
+                                + ("sentinel_band".equals(accessory) ? 50 : 0)) && !oldStats && !oldEquipmentHp) || savedHp < 0 || savedHp > savedMax
                         || expected.getLevel() != Integer.parseInt(properties.getProperty(prefix + "level"))) {
                     throw new IOException("Invalid student information");
                 }
-                ids.add(id); hp.add(oldStats ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
+                ids.add(id); hp.add(oldStats || oldEquipmentHp && savedMax != newMax ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
                 int oldMaxSp = !currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithEquipment(Equipment.Slot.ACCESSORY, accessory.isEmpty() ? null : accessory);
                 oldMaxSps.add(legacyLooper && "looper_ring".equals(accessory) ? oldMaxSp * 2 : oldMaxSp);
             }
@@ -268,6 +269,19 @@ public final class SaveStore {
     private static boolean modern(String version) { return "7".equals(version) || "8".equals(version) || "9".equals(version); }
     private static int scaleResource(int value, int oldMax, int newMax) {
         return value == 0 ? 0 : Math.max(1, Math.min(newMax, (int) Math.round((double) value * newMax / oldMax)));
+    }
+    /** Recognizes the earlier Blade Mail and Hero's Ring HP bonuses in text saves. */
+    private static boolean compatibleEquipmentMaxHp(Student student, String armor, String accessory, int savedMax) {
+        if (!"blade_mail".equals(armor) && !"heroes_ring".equals(accessory)) return false;
+        int base = student.maxHpWithEquipment(null, null);
+        double[] armorBonuses = "blade_mail".equals(armor) ? new double[]{2.0, 2.5}
+                : new double[]{"campus_vest".equals(armor) ? .05 : 0.0};
+        double[] ringBonuses = "heroes_ring".equals(accessory) ? new double[]{.1, .2} : new double[]{0.0};
+        for (double armorBonus : armorBonuses) for (double ringBonus : ringBonuses) {
+            if (savedMax == (int)Math.round((base + ("designer_leather_vest".equals(armor) ? 50 : "ethereal_robe".equals(armor) ? 100 : 0))
+                    * (1 + armorBonus + ringBonus) + 1e-9) + ("sentinel_band".equals(accessory) ? 50 : 0)) return true;
+        }
+        return false;
     }
     private static int legacyMaxSp(Student student) {
         int[] bases = {150, 50, 45, 30};

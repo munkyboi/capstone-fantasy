@@ -26,12 +26,12 @@ public final class ArmorEquipmentTest {
         check(market.getPetot() == 0, "armor costs 2500 each");
         GameProgress blade = new GameProgress(List.of(0)); Student zack = student(blade, 0); zack.takeDamage(20);
         equip(blade, 0, "blade_mail");
-        check(zack.getMaxHp() == 180 && zack.getHp() == 120 && zack.getDefense() == 2 && zack.getSpeed() == 14,
+        check(zack.getMaxHp() == 210 && zack.getHp() == 140 && zack.getDefense() == 0 && zack.getSpeed() == 14,
                 "blade stats and preserved health fraction");
         Battle reflect = new Battle(blade, fixed(0)); Enemy wisp = reflect.getEnemies().get(0);
         int heroBefore = zack.getHp(), enemyBefore = wisp.getHp(); reflect.enemyAttack(wisp);
         int damage = heroBefore - zack.getHp();
-        check(damage > 0 && enemyBefore - wisp.getHp() == Math.round(damage * 0.5) && status(reflect, zack, "Reflect"), "blade reflects actual damage and shows label");
+        check(damage > 0 && enemyBefore - wisp.getHp() == Math.min(enemyBefore, (int)Math.ceil(damage * 0.50 * (1 + HealthRegeneration.rate(zack)) - 1e-9)) && status(reflect, zack, "Reflect"), "blade reflects actual damage and shows label");
         wisp.takeDamage(wisp.getHp() - 1); reflect.enemyAttack(wisp);
         check(reflect.isVictory() && status(reflect, zack, "Reflect"), "reflection can finish the last enemy");
         check(blade.equip(zack, Equipment.Slot.ARMOR, null) && zack.getMaxHp() == 60 && zack.getHp() <= 60, "unequipping safely scales HP");
@@ -46,7 +46,7 @@ public final class ArmorEquipmentTest {
         Battle robe = new Battle(robeParty, fixed(0)); Enemy foe = robe.getEnemies().get(0); robe.enemyAttack(foe);
         check(mage.hasEtherealCharge(), "damage charges robe"); int beforeHp = foe.getHp();
         check(robe.selectStudent(mage) && robe.attack(foe), "empowered basic attack");
-        check(beforeHp - foe.getHp() == Math.min(beforeHp, mage.getAttack() * 4 - foe.getDefense()) && !mage.hasEtherealCharge(), "next basic attack uses 4x ATK once");
+        check(beforeHp - foe.getHp() == Math.min(beforeHp, Battle.damageAfterDefense(mage.getAttack() * 4, foe.getDefense())) && !mage.hasEtherealCharge(), "next basic attack uses 4x ATK once");
         GameProgress restore = new GameProgress(List.of(0, 1, 2)); restore.advance();
         equip(restore, 0, "blade_mail"); equip(restore, 1, "designer_leather_vest"); equip(restore, 2, "ethereal_robe");
         student(restore, 0).takeDamage(40); student(restore, 1).takeDamage(20); student(restore, 2).takeDamage(10);

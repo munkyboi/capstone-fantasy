@@ -2,7 +2,7 @@ import game.model.*;
 import java.util.List;
 import java.util.Random;
 
-/** Verifies percentage bonuses use level-adjusted base ATK, excluding equipment. */
+/** Verifies ability attack scaling with levels and equipment. */
 public final class HeroAbilityScalingTest {
     private static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }
     private static Random fixed() { return new Random() {
@@ -18,9 +18,11 @@ public final class HeroAbilityScalingTest {
         Battle battle = new Battle(progress, fixed());
         Enemy enemy = battle.getEnemies().get(0);
         int hp = enemy.getHp();
+        int defense = enemy.getDefense();
         check(battle.selectStudent(hero) && battle.ability(null, enemy), "cast " + id);
-        int first = Math.max(1, hero.getAttack() + (int) Math.ceil(hero.getBaseAttack() * rate) - enemy.getDefense());
-        int expected = first + (id == Student.CHARICE ? Math.max(1, hero.getAttack() - enemy.getDefense()) : 0);
+        int first = id == Student.CHARICE ? Battle.damageAfterDefense((int)Math.ceil(hero.getAttack() * 1.5), defense)
+                : Battle.damageAfterDefense(hero.getAttack() + (int) Math.ceil(hero.getBaseAttack() * rate), defense);
+        int expected = Math.min(hp, first);
         check(hp - enemy.getHp() == expected, "ability damage " + id + ": expected " + expected + " got " + (hp - enemy.getHp()));
     }
     private static void heal(int missing, int expected) {

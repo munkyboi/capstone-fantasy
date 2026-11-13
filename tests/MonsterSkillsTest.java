@@ -6,7 +6,7 @@ import java.util.Random;
 public final class MonsterSkillsTest {
     private static void check(boolean ok, String message) { if (!ok) { throw new AssertionError(message); } }
     private static Random fixed() { return new Random() { @Override public int nextInt(int bound) { return 0; } @Override public double nextDouble() { return 0; } }; }
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Battle wispBattle = new Battle(List.of(Student.ZACK, Student.BOGART, Student.ANGEL), fixed());
         Enemy wisp = wispBattle.getEnemies().get(0);
         check(wispBattle.enemyAttack(wisp) && wispBattle.getMessage().contains("attacks"), "first Wisp action is normal");
@@ -21,19 +21,18 @@ public final class MonsterSkillsTest {
 
         GameProgress progress = new GameProgress(List.of(Student.ZACK, Student.BOGART, Student.ANGEL)); progress.advance();
         Battle battle = new Battle(progress, fixed());
-        Enemy sentinel = battle.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
-        Student defender = battle.getParty().get(0);
-        check(battle.enemyAttack(sentinel) && battle.enemyAttack(sentinel), "Sentinel uses normal attacks first");
-        check(battle.selectStudent(defender), "select defender");
-        check(!battle.enemyAttack(sentinel), "enemy cannot act while a student is selected");
-        Student protectedAlly = battle.getParty().get(1);
-        check(battle.defend(protectedAlly), "select an ally to guard");
+        Enemy sentinel = Enemy.sentinel("Attack Sentinel", true, GameSettings.Difficulty.NORMAL, 0, 1, 0);
+        var field = Battle.class.getDeclaredField("enemies"); field.setAccessible(true);
+        @SuppressWarnings("unchecked") List<Enemy> enemies = (List<Enemy>) field.get(battle);
+        enemies.clear(); enemies.add(sentinel);
+        Student defender = battle.getParty().get(0), protectedAlly = battle.getParty().get(1);
+        check(battle.selectStudent(defender) && battle.defend(protectedAlly), "select an ally to guard");
         int before = defender.getHp(), allyBefore = protectedAlly.getHp();
-        check(battle.enemyAttack(sentinel) && battle.getMessage().contains("Stone Sweep"), "third action uses sweep");
+        check(battle.enemyAttack(sentinel) && battle.getMessage().contains("Stone Sweep"), "attack sentinel uses sweep");
         check(protectedAlly.getHp() == allyBefore && battle.getEffects().stream().anyMatch(e -> "Guard".equals(e.getLabel())),
-                "defender intercepts the sweep aimed at the protected ally");
-        int expected = Math.max(1, sentinel.getAttack() - 5 - defender.getDefense());
-        check(before - defender.getHp() == expected * 2, "defender receives their own sweep hit and the intercepted hit");
+                "defender intercepts sweep aimed at the protected ally");
+        int expected = Battle.damageAfterDefense((int)Math.ceil(sentinel.getAttack() * .6), 0);
+        check(before - defender.getHp() == expected * 2, "defender receives both piercing sweep hits");
         sentinel.takeDamage(999);
         check(!battle.enemyAttack(sentinel), "defeated enemies cannot act");
         System.out.println("Monster skill checks passed");

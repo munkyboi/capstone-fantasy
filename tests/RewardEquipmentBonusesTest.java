@@ -30,8 +30,8 @@ public final class RewardEquipmentBonusesTest {
         near(a.getEffectiveSpeed(),5.25,"speed bonus retains fraction"); check(HealthRegeneration.amount(b)==20,"cadet regeneration adds five percentage points");
         GameProgress tank = new GameProgress(List.of(1)); equip(tank,1,Equipment.Slot.WEAPON,"cadet_blade");
         equip(tank,1,Equipment.Slot.ARMOR,"blade_mail");
-        check(HealthRegeneration.amount(member(tank,1))==284,"weapon and armor regeneration bonuses stack");
-        Random hitRoll = new Random() {public int nextInt(int bound) {return 0;} public double nextDouble() {return 0.88;}};
+        check(HealthRegeneration.amount(member(tank,1))==173,"weapon and armor regeneration bonuses stack");
+        Random hitRoll = new Random() {public int nextInt(int bound) {return 0;} public double nextDouble() {return 0.735;}};
         GameProgress unarmed = new GameProgress(List.of(0)); Battle plain = new Battle(unarmed,hitRoll);
         Student plainMage=member(unarmed,0); Enemy plainEnemy=plain.getEnemies().get(0);
         check(plain.selectStudent(plainMage) && plain.attack(plainEnemy) && plainEnemy.getHp()==plainEnemy.getMaxHp(),"base accuracy misses");
@@ -39,7 +39,7 @@ public final class RewardEquipmentBonusesTest {
         equip(boosted,0,Equipment.Slot.ACCESSORY,"focus_charm"); Battle accurate = new Battle(boosted,hitRoll);
         Enemy accurateEnemy=accurate.getEnemies().get(0);
         check(accurate.selectStudent(member(boosted,0)) && accurate.attack(accurateEnemy) && accurateEnemy.getHp()<accurateEnemy.getMaxHp(),"bonus changes hit outcome");
-        near(Battle.hitChance(c.getEffectiveAgility(),z.getEffectiveAccuracy(),100), (8.8 - 13.65/(13.65+8.8/100))/8.8,"precise hit formula");
+        near(Battle.hitChance(c.getEffectiveAgility(),z.getEffectiveAccuracy(),100), 1 - Math.min(.60,13.65/(13.65+8.8)),"precise hit formula");
         near(z.accuracyWithEquipment(Equipment.Slot.WEAPON,null),8.4,"preview removal keeps charm");
         near(c.agilityWithEquipment(Equipment.Slot.WEAPON,null),13,"preview removes crossbows");
         near(a.effectiveSpeedWithEquipment(Equipment.Slot.WEAPON,null),5,"preview removes wraps");
@@ -56,7 +56,7 @@ public final class RewardEquipmentBonusesTest {
         SwingUtilities.invokeAndWait(() -> { try {
             game.view.BattlePanel battleUi = new game.view.BattlePanel(() -> {}, ignored -> {});
             Method rate = game.view.BattlePanel.class.getDeclaredMethod("studentRate",Student.class,double.class); rate.setAccessible(true);
-            near((double)rate.invoke(battleUi,a,10.0),10.5,"speed bonus increases AP fill rate");
+            near((double)rate.invoke(battleUi,a,10.0),10.125,"speed bonus increases AP fill rate");
             Method format = InventoryPanel.class.getDeclaredMethod("formatStat",double.class); format.setAccessible(true);
             check("14".equals(format.invoke(null,13.65)),"stats display the ceiling without decimals");
             InventoryPanel ui=new InventoryPanel(()->{}); ui.open(p); ui.setSize(960,540); layout(ui);

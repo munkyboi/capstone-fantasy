@@ -34,21 +34,24 @@ public final class SpecialCombatEquipmentTest {
                 && boss.getBossCountdown() == 3, "boss fourth action damages all and resets countdown");
         for (BattleEffect effect : b.getEffects()) {
             Student target = effect.getStudent();
-            int expected = boss.scaleDamage(Math.max(1, boss.getAttack() - target.getDefense())) * 2;
+            int expected = boss.scaleDamage(Battle.damageAfterDefense(boss.getAttack(), target.getDefense())) * 2;
             check(-effect.getAmount() == Math.min(expected, target.getHp() - effect.getAmount()), "boss 2x difficulty damage");
         }
         GameProgress support = new GameProgress(List.of(0, 1, 2)); support.advance();
         Battle sb = new Battle(support, fixed(), false, 1); Enemy sentinel = sb.getEnemies().stream().filter(Enemy::isSentinel).findFirst().orElseThrow();
         Enemy ally = sb.getEnemies().stream().filter(e -> !e.isSentinel()).findFirst().orElseThrow();
         ally.takeDamage(40); int before = ally.getHp();
-        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 8 && sentinel.getSp() == 190,
+        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals") && ally.getHp() == before + 8 && sentinel.getSp() == 885,
                 "Sentinel heals 20 percent of the ally's missing HP and spends SP");
         check(sb.getEffects().get(0).getAmount() == 8 && sb.getEffects().get(0).getEnemy() == ally, "healing indicator targets ally");
-        for (int i = 0; i < 19; i++) { ally.takeDamage(ally.getHp() - 25); check(sb.enemyAttack(sentinel), "Sentinel uses Stone Mend"); }
+        Field sentinelSp = Enemy.class.getDeclaredField("skillPoints"); sentinelSp.setAccessible(true); sentinelSp.setInt(sentinel, 15);
+        for (int i = 0; i < 4; i++) { support.getParty().forEach(s -> s.heal(999)); check(sb.enemyAttack(sentinel), "Sentinel waits during cooldown"); }
+        ally.takeDamage(Math.max(0, ally.getHp() - 25));
+        check(sb.enemyAttack(sentinel) && sb.getMessage().contains("heals"), "Sentinel uses remaining SP after cooldown");
         check(sentinel.getSp() == 0, "Sentinel spends available SP");
         check(sb.enemyAttack(sentinel) && !sb.getMessage().contains("heals"), "Sentinel cannot heal without SP");
         Enemy hardSentinel = new Enemy("Stone Sentinel", true, false, GameSettings.Difficulty.HARD);
-        check(hardSentinel.getMaxSp() == 300 && hardSentinel.getSp() == 300, "difficulty scales Sentinel SP");
+        check(hardSentinel.getMaxSp() == 900 && hardSentinel.getSp() == 900, "Sentinel SP is fixed across difficulties");
         GameProgress market = new GameProgress(List.of(0, 1, 2, 3)); market.addPetot(13000);
         for (int i = 2; i < 7; i++) check(CarbonMarket.buy(market, i).startsWith("Purchased"), "buy market item " + i);
         check(market.getPetot() == 500 && market.getInventory().getEquipmentIds().contains("light_saber"), "purchase price and items");
@@ -88,7 +91,10 @@ public final class SpecialCombatEquipmentTest {
             try {
                 GameProgress speedParty = new GameProgress(List.of(0, 1, 2)); equip(speedParty, 2, "demon_hunter");
                 BattlePanel panel = new BattlePanel(() -> {}, ignored -> {}, new GameSettings(), fixed()); panel.start(speedParty, true, 0);
-                Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true); advance.invoke(panel, 1.0);
+                Method advance = BattlePanel.class.getDeclaredMethod("advanceActionPoints", double.class); advance.setAccessible(true);
+                Field speedEnemies = BattlePanel.class.getDeclaredField("enemyPoints"); speedEnemies.setAccessible(true);
+                @SuppressWarnings("unchecked") Map<Enemy, Double> speedEnemyBars = (Map<Enemy, Double>) speedEnemies.get(panel); speedEnemyBars.replaceAll((e,v)->-1000.0);
+                advance.invoke(panel, 1.0);
                 Field points = BattlePanel.class.getDeclaredField("actionPoints"); points.setAccessible(true);
                 @SuppressWarnings("unchecked") Map<Student, Double> values = (Map<Student, Double>) points.get(panel);
                 check(Math.abs(values.get(student(speedParty, 2)) - 17.0) < 0.001, "speed equipment accelerates AP");
@@ -97,7 +103,9 @@ public final class SpecialCombatEquipmentTest {
                 equip(ringProgress, 2, "ring_of_power");
                 BattlePanel ringPanel = new BattlePanel(() -> {}, ignored -> {}, new GameSettings(), fixed());
                 ringPanel.start(ringProgress, true, 0);
-                advance.invoke(ringPanel, 1.0);
+                @SuppressWarnings("unchecked") Map<Enemy, Double> ringEnemies = (Map<Enemy, Double>) speedEnemies.get(ringPanel);
+                ringEnemies.replaceAll((e,v)->(double)e.getActionThreshold());
+                advance.invoke(ringPanel, 0.0); advance.invoke(ringPanel, 0.0);
                 Field battleField = BattlePanel.class.getDeclaredField("battle"); battleField.setAccessible(true);
                 check(((Battle) battleField.get(ringPanel)).getCurrent() == student(ringProgress, 2), "ring refill selects character immediately");
                 for (String timer : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer")) { Field f = BattlePanel.class.getDeclaredField(timer); f.setAccessible(true); ((javax.swing.Timer) f.get(ringPanel)).stop(); }

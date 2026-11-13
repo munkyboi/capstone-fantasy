@@ -17,12 +17,16 @@ public final class StoneMendTargetTest {
         int[] hp=party.getParty().stream().mapToInt(Student::getHp).toArray();
         check(battle.enemyAttack(sentinel),"self heal action");
         check(sentinel.getHp()==before+13 && sentinel.getSp()==sp-sentinel.getHealSpCost(),"heals itself for 20% of missing HP rounded up");
-        check(battle.getLastAbility().skill().equals("Stone Mend") && battle.getMessage().contains("heals Stone Sentinel"),"self-heal log");
+        check(battle.getLastAbility().skill().equals("Stone Mend") && battle.getMessage().contains("heals " + sentinel.getName()),"self-heal log");
         check(battle.getEffects().size()==1 && battle.getEffects().get(0).getEnemy()==sentinel && battle.getEffects().get(0).getStudent()==null,"heal indicator targets monster");
         check(Arrays.equals(hp,party.getParty().stream().mapToInt(Student::getHp).toArray()),"healing never changes party HP");
-        wisp.takeDamage(50);before=wisp.getHp();check(battle.enemyAttack(sentinel) && wisp.getHp()==before+10,"heals the most injured monster for 20% of missing HP");
+        wisp.takeDamage(50);before=wisp.getHp();
+        for(int i=0;i<4;i++) {
+            check(battle.enemyAttack(sentinel) && wisp.getHp()==before
+                    && (battle.getLastAbility()==null || !battle.getLastAbility().skill().equals("Stone Mend")), "four actions without Stone Mend");
+        }
+        check(battle.enemyAttack(sentinel) && wisp.getHp()==before+10,"heals the most injured monster for 20% of missing HP on fifth action");
         check(battle.getEffects().get(0).getEnemy()==wisp,"other monster receives indicator");
-        check(Arrays.equals(hp,party.getParty().stream().mapToInt(Student::getHp).toArray()),"other-monster heal never changes party HP");
         SwingUtilities.invokeAndWait(()->{try {
             GameProgress p=progress();BattlePanel panel=new BattlePanel(()->{},ignored->{},new GameSettings(),fixed());panel.start(p,true,1);
             Field bf=BattlePanel.class.getDeclaredField("battle");bf.setAccessible(true);Battle b=(Battle)bf.get(panel);

@@ -46,7 +46,7 @@ public class Student extends GameCharacter {
     private static final int[] MAX_SP = {180, 35, 60, 30};
     private static final int[] STARTING_AGILITY = {7, 4, 13, 10};
     private static final int[] STARTING_ACCURACY = {8, 9, 12, 10};
-    private static final int[] ABILITY_SP_COST = {15, 5, 6, 10};
+    private static final int[] ABILITY_SP_COST = {15, 5, 5, 10};
     private static final int[] ACTION_THRESHOLDS = {35, 30, 28, 50};
     private final int id;
     private final String name;
@@ -111,7 +111,7 @@ public class Student extends GameCharacter {
      * @return defense value
      */ public int getDefense() {
         int value = statWithEquipment(Stat.DEF, null, null);
-        return defending ? (int) Math.round(value * 1.2) : value;
+        return Math.max(-20, defending ? (int) Math.round(value * 1.2) : value);
     }
     /** Returns defense before equipment bonuses.
      * @return base defense
@@ -190,17 +190,17 @@ public class Student extends GameCharacter {
         double multiplier = stat != Stat.HP && "ring_of_power".equals(accessory) ? 1.5 : 1.0;
         if (stat == Stat.HP && ("campus_vest".equals(armor)
                 || (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped))) multiplier += 0.05;
-        if (stat == Stat.HP && "heroes_ring".equals(accessory)) multiplier += 0.1;
-        if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.0;
+        if (stat == Stat.HP && "heroes_ring".equals(accessory)) multiplier += 0.2;
+        if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.5;
         if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
         if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
-        if (stat == Stat.DEF && "heroes_ring".equals(accessory)) multiplier += 0.1;
+        if (stat == Stat.DEF && "heroes_ring".equals(accessory)) multiplier += 0.2;
         if (stat == Stat.DEF && "looper_ring".equals(accessory)) multiplier -= 0.2;
-        if (stat == Stat.DEF && "blade_mail".equals(armor)) multiplier -= 0.5;
+        if (stat == Stat.DEF && "blade_mail".equals(armor)) return 0;
         if (stat == Stat.DEF && "ultra_instinct_shirt".equals(armor)) multiplier -= 0.2;
         if (stat == Stat.DEF && "designer_leather_vest".equals(armor)) multiplier += 0.1;
         if (stat == Stat.DEF && "ethereal_robe".equals(armor)) multiplier += 0.15;
-        if (stat == Stat.SPD && "heroes_ring".equals(accessory)) multiplier -= 0.3;
+        if (stat == Stat.SPD && "heroes_ring".equals(accessory)) multiplier -= 0.4;
         if (stat == Stat.SPD && "looper_ring".equals(accessory)) multiplier += 0.1;
         if (stat == Stat.SPD && "blade_mail".equals(armor)) multiplier -= 0.2;
         if (stat == Stat.SPD && "ultra_instinct_shirt".equals(armor)) multiplier += 0.2;

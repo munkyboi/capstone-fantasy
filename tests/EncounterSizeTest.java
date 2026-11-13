@@ -18,6 +18,7 @@ public final class EncounterSizeTest {
     private static Random roll(int offset) {
         return new Random(12) {
             @Override public int nextInt(int bound) { return Math.min(offset, bound - 1); }
+            @Override public double nextDouble() { return 0; }
         };
     }
     private static void key(BattlePanel panel, String action) {

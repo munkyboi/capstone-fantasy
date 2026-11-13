@@ -26,6 +26,7 @@ public final class BattlePanel extends JPanel {
     private static final int EFFECT_MILLIS = 1600;
     private static final int SECOND_CAST_DELAY_MILLIS = 700;
     private static final int LOOPER_HIT_DELAY_MILLIS = 300;
+    private static final int MONSTER_TURN_DELAY_MILLIS = 400;
     private static final int AMBUSH_ALERT_MILLIS = 3000;
     private static final double AMBUSH_ENEMY_AP_FRACTION = 0.8;
     private static final int ANIMATION_FRAME_MILLIS = 16;
@@ -79,7 +80,9 @@ public final class BattlePanel extends JPanel {
     private final Timer secondCastTimer;
     private final Timer looperHitTimer;
     private final Timer angelAttackTimer;
+    private final Timer twinShotTimer;
     private final Timer sparkExplosionTimer;
+    private final Timer monsterTurnTimer;
     private long victoryStartedNanos;
     private boolean showAmbush;
     private boolean showEffects;
@@ -185,8 +188,12 @@ public final class BattlePanel extends JPanel {
         looperHitTimer = new Timer(LOOPER_HIT_DELAY_MILLIS, event -> advanceLooperHit());
         angelAttackTimer = new Timer(300, event -> advanceAngelAttack());
         angelAttackTimer.setRepeats(false);
+        twinShotTimer = new Timer(300, event -> advanceTwinShot());
+        twinShotTimer.setRepeats(false);
         sparkExplosionTimer = new Timer(300, event -> resolveSparkExplosion());
         sparkExplosionTimer.setRepeats(false);
+        monsterTurnTimer = new Timer(MONSTER_TURN_DELAY_MILLIS, event -> { });
+        monsterTurnTimer.setRepeats(false);
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, escape, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
@@ -226,9 +233,10 @@ public final class BattlePanel extends JPanel {
                     if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
                     else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
                     else if (battle.hasPendingAngelAttack()) scheduleAngelAttack();
+                    else if (battle.hasPendingTwinShot()) scheduleTwinShot();
                     else if (battle.hasPendingSecondCast()) secondCastTimer.restart();
                 }
-                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); sparkExplosionTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
+                else { apTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); twinShotTimer.stop(); sparkExplosionTimer.stop(); monsterTurnTimer.stop(); abilityAlertTimer.stop(); abilityAnnouncement = null; abilityAlerts.clear(); }
             }
         });
     }
@@ -297,7 +305,7 @@ public final class BattlePanel extends JPanel {
         targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
         abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
-        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); sparkExplosionTimer.stop();
+        apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); twinShotTimer.stop(); sparkExplosionTimer.stop(); monsterTurnTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
         showAmbush = ambushed;
@@ -366,7 +374,7 @@ public final class BattlePanel extends JPanel {
             if (selectReadyStudent()) { changed = true; break; }
             boolean enemyActed = false;
             for (Enemy enemy : battle.getEnemies()) {
-                if (enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
+                if (!monsterTurnTimer.isRunning() && enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
                     boolean dotTicked = tickReadyDot(enemy);
                     List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : readyEnemyDotEffects.getOrDefault(enemy, List.of());
                     if (!enemy.isAlive() || battle.isOver()) {
@@ -379,10 +387,11 @@ public final class BattlePanel extends JPanel {
                         for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
                         applyApRefills();
                         Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
-                        boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
+                        boolean healing = enemyAbility != null && ("Stone Mend".equals(enemyAbility.skill()) || "Stone Skin".equals(enemyAbility.skill()) || "Recall".equals(enemyAbility.skill()));
                         showActionEffects(healing ? null : enemy);
                         announceAbility();
                         if (battle.hasPendingSparkExplosion()) sparkExplosionTimer.restart();
+                        if (!battle.isOver()) monsterTurnTimer.restart();
                         enemyActed = true;
                         changed = true;
                     }
@@ -390,7 +399,7 @@ public final class BattlePanel extends JPanel {
                 }
             }
             if (battle.hasPendingSparkExplosion()) break;
-            if (enemyActed) { continue; }
+            if (enemyActed) { break; }
             if (remaining <= 0.0) { break; }
             double untilReady = Double.POSITIVE_INFINITY;
             for (Student student : battle.getParty()) {
@@ -399,7 +408,9 @@ public final class BattlePanel extends JPanel {
                 }
             }
             for (Enemy enemy : battle.getEnemies()) {
-                if (enemy.isAlive()) { untilReady = Math.min(untilReady, (enemy.getActionThreshold() - enemyPoints.get(enemy)) / rate); }
+                if (enemy.isAlive() && (!monsterTurnTimer.isRunning() || enemyPoints.get(enemy) + AP_EPSILON < enemy.getActionThreshold())) {
+                    untilReady = Math.min(untilReady, (enemy.getActionThreshold() - enemyPoints.get(enemy)) / rate);
+                }
             }
             double step = Math.min(remaining, untilReady);
             if (step <= 0.0 || !Double.isFinite(step)) { break; }
@@ -483,7 +494,11 @@ public final class BattlePanel extends JPanel {
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         Student actor = battle.getCurrent();
         action.run();
-        if (battle.hasPendingAngelAttack()) {
+        if (battle.hasPendingTwinShot()) {
+            resetStudentAp(actor);
+            showActionEffects(attacking ? actor : null);
+            scheduleTwinShot();
+        } else if (battle.hasPendingAngelAttack()) {
             resetStudentAp(actor);
             showActionEffects(attacking ? actor : null);
             scheduleAngelAttack();
@@ -534,6 +549,22 @@ public final class BattlePanel extends JPanel {
         refresh();
     }
 
+    private void scheduleTwinShot() {
+        twinShotTimer.setInitialDelay(battle.twinShotDelayMillis());
+        twinShotTimer.restart();
+    }
+    private void advanceTwinShot() {
+        if (battle == null || !battle.hasPendingTwinShot()) return;
+        Student actor = battle.getCurrent();
+        battle.advanceTwinShot();
+        showActionEffects(actor);
+        if (battle.hasPendingTwinShot()) scheduleTwinShot();
+        else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
+        else if (!battle.isOver()) selectReadyStudent();
+        if (battle.isOver()) apTimer.stop();
+        lastTickNanos = System.nanoTime();
+        refresh();
+    }
     private void scheduleAngelAttack() {
         angelAttackTimer.setInitialDelay(300);
         angelAttackTimer.restart();
@@ -563,7 +594,9 @@ public final class BattlePanel extends JPanel {
         if (battle == null || battle.isOver() || battle.isActionAnimating()) { return; }
         if (choosingItem) { itemChoice = Math.floorMod(itemChoice + direction, 2); refresh(); return; }
         if (targeting != TargetAction.NONE) { moveTarget(direction); return; }
-        commandIndex = Math.floorMod(commandIndex + direction, commands.length);
+        if (java.util.Arrays.stream(commands).noneMatch(JButton::isEnabled)) return;
+        do { commandIndex = Math.floorMod(commandIndex + direction, commands.length); }
+        while (!commands[commandIndex].isEnabled());
         updateCommandDisplay();
     }
 
@@ -691,7 +724,10 @@ public final class BattlePanel extends JPanel {
         BattleControls.updateParty(battle, partyStatus);
         BattleControls.updateBars(battle, apBars, actionPoints);
         boolean canChoose = !over && !battle.isActionAnimating() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
-        attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose); escape.setEnabled(canChoose && !battle.isEscaping());
+        attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose);
+        defend.setEnabled(canChoose && battle.canUseDefendOrEscape());
+        escape.setEnabled(canChoose && !battle.isEscaping() && battle.canUseDefendOrEscape());
+        if (canChoose && !commands[commandIndex].isEnabled()) commandIndex = 0;
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
         updateCommandDisplay();

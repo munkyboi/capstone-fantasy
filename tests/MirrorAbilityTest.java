@@ -10,7 +10,7 @@ public final class MirrorAbilityTest {
         check(b.enemyAttack(merchant),"summon copies");Enemy copy=b.getEnemies().stream().filter(Enemy::isMirror).findFirst().orElseThrow();
         int hp=hero.getHp();check(b.enemyAttack(copy)&&b.getLastAbility().skill().equals("Magic Missiles"),"copy uses missile");
         check(b.getEffects().stream().filter(e->e.getStudent()==hero).count()==1+(hits?1:0),"one missile and optional stun");
-        if(hits){int power=(int)Math.ceil(copy.getAttack()*(80+amountRoll)/100.0);check(hero.getHp()==hp-Math.max(1,power-hero.getDefense())&&b.getStunTurns(hero)==1,"copy power and one-turn stun");}
+        if(hits){int power=(int)Math.ceil(copy.getAttack()*(80+amountRoll)/100.0);check(hero.getHp()==hp-Battle.damageAfterDefense(power,hero.getDefense())&&b.getStunTurns(hero)==1,"copy power and one-turn stun");}
         else check(hero.getHp()==hp&&b.getStunTurns(hero)==0,"copy miss at 50 percent boundary");
         for(int i=0;i<5;i++){hero.heal(999);check(b.enemyAttack(copy),"copy acts");check(b.getLastAbility()==null||b.getLastAbility().skill().equals("Magic Missiles"),"copy never casts forbidden abilities");}
         for(int i=0;i<6;i++){hero.heal(999);check(b.enemyAttack(merchant),"merchant acts with copies");check(b.getLastAbility()==null||!b.getLastAbility().skill().equals("Magic Missiles"),"merchant cannot cast missiles with living copies");}

@@ -18,7 +18,7 @@ public final class DefendMechanicsTest {
         check(battle.selectStudent(bogart) && !battle.canDefend(bogart) && battle.defend(zack), "choose ally to protect");
         check(bogart.isDefending() && bogart.getDefense()==19 && HealthRegeneration.amount(bogart)==42, "defense and regeneration bonuses");
         int zhp=zack.getHp(), bhp=bogart.getHp();
-        check(battle.enemyAttack(enemy) && zack.getHp()==zhp && bogart.getHp()==bhp-1, "protector takes hit using boosted defense");
+        check(battle.enemyAttack(enemy) && zack.getHp()==zhp && bogart.getHp()==bhp-Battle.damageAfterDefense(enemy.getAttack(),bogart.getDefense()), "protector takes hit using boosted defense");
         check(battle.getBlockingStudent()==bogart && battle.getProtectedStudent()==zack && battle.getMessage().contains("protects"), "interception communicated");
         check(battle.selectStudent(zack), "another ally takes turn"); battle.defend(bogart);
         check(bogart.isDefending() && battle.getGuardedAlly(bogart)==zack, "guard persists across ally actions");
@@ -34,7 +34,7 @@ public final class DefendMechanicsTest {
         victory.getEnemies().forEach(e -> e.takeDamage(e.getHp()-1));
         check(victory.selectStudent(ward) && victory.attack(victory.getEnemies().get(0)) && victory.isVictory(), "finish encounter");
         check(!protector.isDefending() && HealthRegeneration.amount(protector)==12, "guard bonuses end after battle");
-        int[] costs={15,5,6,10}; for(int id=0;id<4;id++){Student s=new Student(id);check(s.getAbilitySpCost()==costs[id],"initial ability cost");
+        int[] costs={15,5,5,10}; for(int id=0;id<4;id++){Student s=new Student(id);check(s.getAbilitySpCost()==costs[id],"initial ability cost");
             s.gainExperience(300); check(s.getAbilitySpCost()==costs[id]+3,"ability cost grows by one per level");
             s.restoreSp(s.getAbilitySpCost()-1); check(!s.spendAbilitySp(),"cannot use an ability below the level-scaled cost");}
         Path saveDir = Files.createTempDirectory("defend-sp-");

@@ -106,6 +106,7 @@ final class BattleScene extends JPanel {
         private final BufferedImage dotIcon = trimIcon(image("/assets/ui/damage-over-time-icon-v1.png"));
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v3.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
+        private final BufferedImage attackSentinel = image("/assets/sprites/attack-sentinel-v1.png");
         private final BufferedImage boss = image("/assets/sprites/crystal-guardian-v1.png");
         private final BufferedImage goblin = trimIcon(image("/assets/sprites/itmigims-v1.png"));
         private final BufferedImage merchant = trimIcon(image("/assets/sprites/mysterious-merchant-v1.png"));
@@ -230,7 +231,7 @@ final class BattleScene extends JPanel {
                     Enemy enemy = battle.getEnemies().get(enemyIndex);
                     int slot = enemySlot(enemyIndex, battle.getEnemies());
                     int x = enemyX(slot, slotWidth);
-                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
                     boolean escaping = enemy.hasEscaped() && state.attackingSprite() == enemy
                             && state.showEffects() && state.effectProgress() < 1.0;
                     if (enemyImage != null && (enemy.isAlive() || escaping) && !(enemy.isMirror() && battle.isVictory())) {
@@ -299,7 +300,7 @@ final class BattleScene extends JPanel {
                         output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    String label = (enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " HP"
+                    String label = (enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Support Sentinel ", "Support ").replace("Attack Sentinel ", "Attack ").replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " HP"
                             + (enemy.hasEscaped() ? " ESC" : enemy.isAlive() ? "" : " KO");
                     java.awt.Font normalFont = output.getFont();
                     float labelSize = normalFont.getSize2D();
@@ -479,7 +480,7 @@ final class BattleScene extends JPanel {
                     x = enemyX(slot, slotWidth) + slotWidth / 2;
                     ground = enemyFootY(h, slot);
                     Enemy enemy = (Enemy) entry.getKey();
-                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                    BufferedImage enemyImage = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
                     int boxWidth = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                     int boxHeight = enemy.isMerchant() || enemy.isMirror() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : enemy.isSentinel() ? spriteHeight * 3 / 2 : spriteHeight;
                     height = enemyImage != null ? fittedHeight(enemyImage, enemyImage.getWidth(), boxWidth, boxHeight) : boxHeight;
@@ -518,7 +519,7 @@ final class BattleScene extends JPanel {
                 if (index < 0) continue;
                 int slot = enemySlot(index, battle.getEnemies());
                 int spriteWidth = Math.max(20, slotWidth * 3 / 4);
-                BufferedImage art = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? sentinel : wisp;
+                BufferedImage art = enemy.isMerchant() || enemy.isMirror() ? merchant : enemy.isLootGoblin() ? goblin : enemy.isBoss() ? boss : enemy.isSentinel() ? (enemy.isAttackSentinel() ? attackSentinel : sentinel) : wisp;
                 int width = enemy.isMerchant() || enemy.isMirror() ? slotWidth + 8 : enemy.isBoss() ? slotWidth + (state.encounterStage() == 4 ? 40 : 25) : enemy.isSentinel() ? slotWidth + 6 : spriteWidth;
                 int boxHeight = enemy.isMerchant() || enemy.isMirror() || enemy.isSentinel() && !enemy.isBoss() ? spriteHeight * 3 / 2 : enemy.isBoss() ? spriteHeight * 2 : spriteHeight;
                 int height = art != null ? fittedHeight(art, art.getWidth(), width, boxHeight) : boxHeight;

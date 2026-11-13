@@ -12,11 +12,11 @@ public final class CarbonMarket {
             new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD."),
             new Offer("great_sage_staff", "Great Sage Staff", 2500, "Mage: +20% ATK; 50% chance to cast twice."),
             new Offer("giant_slayer_gloves", "Giant Slayer Gloves", 2500, "Monk: +50% ATK, +15 SPD, two extra hits."),
-            new Offer("blade_mail", "Blade Mail", 2500, "-50% DEF, -20% SPD, +200% HP; 50% reflect; +50% regen."),
+            new Offer("blade_mail", "Blade Mail", 2500, "0 DEF; +250% HP; +20% regen; -20% SPD; reflect 50% x (1 + regen rate)."),
             new Offer("ultra_instinct_shirt", "Ultra Instinct Shirt", 2500, "-20% DEF, +20% SPD; 50% dodge; +30% regen."),
             new Offer("designer_leather_vest", "Designer Leather Vest", 2500, "+10% DEF, +20% SPD, +50 HP; 2x XP; +10% regen."),
             new Offer("ethereal_robe", "Ethereal Robe", 2500, "+15% DEF, +100 HP; +10% regen; damage empowers next attack."),
-            new Offer("heroes_ring", "Hero’s Ring", 2500, "+10% HP/DEF/regen; -30% SPD; 50% auto defend."),
+            new Offer("heroes_ring", "Hero’s Ring", 2500, "+20% HP/DEF/regen; -40% SPD; 50% auto defend; no Defend/Escape."),
             new Offer("looper_ring", "Looper Ring", 2500, "+10% ability cost; -20% DEF; +10% SPD; hits leak 5–10% max SP; 50% chance of 5 extra hits."));
     private CarbonMarket() { }
     /** Returns the items stocked at Carbon Market. */

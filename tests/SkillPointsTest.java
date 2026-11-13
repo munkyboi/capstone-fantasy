@@ -8,7 +8,7 @@ public final class SkillPointsTest {
     private static void check(boolean ok, String message) { if (!ok) { throw new AssertionError(message); } }
     public static void main(String[] args) throws Exception {
         int[] hp = {60,150,90,125}, atk = {24,16,11,25}, def = {4,16,5,10}, speed = {17,15,19,5};
-        int[] sp = {180,35,60,30}, cost = {15,5,6,10};
+        int[] sp = {180,35,60,30}, cost = {15,5,5,10};
         for (int id = 0; id < 4; id++) {
             Student s = new Student(id);
             check(s.getMaxHp() == hp[id] && s.getBaseAttack() == atk[id] && s.getBaseDefense() == def[id]

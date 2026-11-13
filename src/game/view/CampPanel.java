@@ -128,6 +128,7 @@ public final class CampPanel extends JPanel {
         int healed = 0;
         healingAnimation.stop(); healingNumbers.clear();
         if (regenerate) for (Student student : progress.getParty()) {
+            student.restoreAllSp();
             int studentHealed = 0;
             for (int attempt = 0; attempt < 5; attempt++) studentHealed += game.model.HealthRegeneration.attempt(student, regenerationRandom);
             if (studentHealed > 0) { healingNumbers.put(student.getId(), studentHealed); healed += studentHealed; }
@@ -314,7 +315,17 @@ public final class CampPanel extends JPanel {
     private void drawCharacter(Graphics2D g, Student student, int center) {
         BufferedImage fallen = student.isAlive() ? null : FallenSprites.forStudent(student.getId());
         if (fallen != null) {
-            double scale = Math.min(125.0 / fallen.getWidth(), 65.0 / fallen.getHeight());
+            double desiredWidth = student.getId() == Student.ANGEL ? 184.0 : 164.0;
+            double widthLimit = desiredWidth;
+            if (progress != null) for (Student neighbor : progress.getParty()) {
+                if (neighbor == student) continue;
+                double otherWidth = campSpriteWidth(neighbor);
+                int distance = Math.abs(POSITIONS[student.getId()] - POSITIONS[neighbor.getId()]);
+                double space = 2.0 * Math.max(0, distance - 6);
+                double allowed = neighbor.isAlive() ? space - otherWidth : desiredWidth * Math.min(1.0, space / (desiredWidth + otherWidth));
+                widthLimit = Math.min(widthLimit, Math.max(1, allowed));
+            }
+            double scale = Math.min(widthLimit / fallen.getWidth(), 100.0 / fallen.getHeight());
             int width = (int) Math.round(fallen.getWidth() * scale), height = (int) Math.round(fallen.getHeight() * scale);
             g.drawImage(fallen, center - width / 2, 429 - height, width, height, null);
             return;
@@ -331,6 +342,13 @@ public final class CampPanel extends JPanel {
         } else {
             g.drawImage(image, left, 429 - height, width, height, null);
         }
+    }
+    private double campSpriteWidth(Student student) {
+        if (!student.isAlive() && FallenSprites.forStudent(student.getId()) != null) return student.getId() == Student.ANGEL ? 184 : 164;
+        BufferedImage image = characters[student.getId()];
+        if (image == null) return 0;
+        boolean angel = student.getId() == Student.ANGEL;
+        return image.getWidth() * Math.min((angel ? 150.0 : 125.0) / image.getWidth(), (angel ? 190.0 : 160.0) / image.getHeight());
     }
     private static String formatStat(double value) {
         return Long.toString((long) Math.ceil(value - 1e-9));
