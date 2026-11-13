@@ -111,17 +111,13 @@ public final class SpecialCombatEquipmentTest {
                 Method perform = BattlePanel.class.getDeclaredMethod("performAction", Runnable.class, boolean.class); perform.setAccessible(true);
                 perform.invoke(dotPanel, (Runnable) () -> dotBattle.attack(guardian), true);
                 check(dotBattle.selectStudent(student(timed, 1)), "select while damage over time is active");
-                Field lastTick = BattlePanel.class.getDeclaredField("lastTickNanos"); lastTick.setAccessible(true);
-                lastTick.setLong(dotPanel, System.nanoTime() - 5_100_000_000L);
-                Method tick = BattlePanel.class.getDeclaredMethod("tickActionPoints"); tick.setAccessible(true); tick.invoke(dotPanel);
-                check(!dotBattle.isVictory() && dotBattle.hasDamageOverTime(guardian), "time passing while selecting does not tick DOT");
-                check(dotBattle.defend(student(timed, 1)), "finish command before the enemy turn");
                 guardian.takeDamage(guardian.getHp() - 1);
-                Field enemyPoints = BattlePanel.class.getDeclaredField("enemyPoints"); enemyPoints.setAccessible(true);
-                @SuppressWarnings("unchecked") Map<Enemy, Double> enemyBars = (Map<Enemy, Double>) enemyPoints.get(dotPanel);
-                enemyBars.put(guardian, (double) guardian.getActionThreshold());
-                advance.invoke(dotPanel, 0.0);
-                check(dotBattle.isVictory() && timed.getPetot() > 0, "DOT ticks on the enemy turn and awards victory");
+                Field lastDot = BattlePanel.class.getDeclaredField("lastDotNanos"); lastDot.setAccessible(true);
+                lastDot.setLong(dotPanel, System.nanoTime() - 1_010_000_000L);
+                Field lastTick = BattlePanel.class.getDeclaredField("lastTickNanos"); lastTick.setAccessible(true);
+                lastTick.setLong(dotPanel, System.nanoTime());
+                Method tick = BattlePanel.class.getDeclaredMethod("tickActionPoints"); tick.setAccessible(true); tick.invoke(dotPanel);
+                check(dotBattle.isVictory() && timed.getPetot() > 0, "DOT ticks during selection and awards victory");
                 for (String timer : List.of("effectTimer", "ambushAlertTimer", "victoryTimer", "apTimer")) { Field f = BattlePanel.class.getDeclaredField(timer); f.setAccessible(true); ((javax.swing.Timer) f.get(dotPanel)).stop(); }
             } catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
         });

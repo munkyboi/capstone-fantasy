@@ -40,7 +40,7 @@ public final class ItmigimsTest {
             }
         }
         GameProgress hitParty=stage(0); Battle hits=new Battle(hitParty,new Spawn(95)); Enemy hitGoblin=hits.getEnemies().get(0);
-        Student attacker=hits.getParty().get(0); check(hits.selectStudent(attacker) && hits.attack(hitGoblin),"player hits goblin");
+        Student attacker=hits.getParty().stream().filter(s -> s.getId() == Student.ZACK).findFirst().orElseThrow(); check(hits.selectStudent(attacker) && hits.attack(hitGoblin),"player hits goblin");
         check(hitGoblin.getEscapeCountdown()==13,"player hit starts countdown");
         check(hits.selectStudent(attacker) && hits.attack(hitGoblin) && hitGoblin.getEscapeCountdown()==13,"other characters' actions do not advance countdown");
         GameProgress p=stage(0); Battle battle=new Battle(p,new Spawn(95)); Enemy goblin=battle.getEnemies().get(0);

@@ -19,8 +19,8 @@ public final class HeroAbilityScalingTest {
         Enemy enemy = battle.getEnemies().get(0);
         int hp = enemy.getHp();
         int defense = enemy.getDefense();
-        check(battle.selectStudent(hero) && battle.ability(null, enemy), "cast " + id);
-        int first = id == Student.CHARICE ? Battle.damageAfterDefense((int)Math.ceil(hero.getAttack() * 1.5), defense)
+        check(battle.selectStudent(hero) && (id == Student.CHARICE ? battle.attack(enemy) : battle.ability(null, enemy)), "cast " + id);
+        int first = id == Student.CHARICE ? Battle.damageAfterDefense((int)Math.ceil(hero.getAttack() * 0.8), defense)
                 : Battle.damageAfterDefense(hero.getAttack() + (int) Math.ceil(hero.getBaseAttack() * rate), defense);
         int expected = Math.min(hp, first);
         check(hp - enemy.getHp() == expected, "ability damage " + id + ": expected " + expected + " got " + (hp - enemy.getHp()));

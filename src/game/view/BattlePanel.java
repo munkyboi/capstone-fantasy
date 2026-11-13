@@ -72,10 +72,9 @@ public final class BattlePanel extends JPanel {
     private int encounterStage;
     private final Map<Student, Double> actionPoints = new HashMap<>();
     private final Map<Enemy, Double> enemyPoints = new HashMap<>();
-    private final java.util.Set<GameCharacter> processedDotCycles = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-    private final Map<Enemy, List<game.model.BattleEffect>> readyEnemyDotEffects = new java.util.IdentityHashMap<>();
     private final Timer apTimer = new Timer(AP_FRAME_MILLIS, event -> tickActionPoints());
     private long lastTickNanos;
+    private long lastDotNanos;
     private final Timer effectTimer;
     private final Timer ambushAlertTimer;
     private final Timer victoryTimer;
@@ -92,6 +91,9 @@ public final class BattlePanel extends JPanel {
     private int effectSequence;
     private long effectStartedNanos;
     private Object attackingSprite;
+    private Student rainShooter;
+    private List<Enemy> rainTargets = List.of();
+    private long rainStartedNanos;
 
     /** Creates the battle screen.
      * @param returnToMenu returns to the title screen
@@ -165,6 +167,9 @@ public final class BattlePanel extends JPanel {
             }
             @Override public double enemyPoints(Enemy enemy) { return enemyPoints.getOrDefault(enemy, 0.0); }
             @Override public Object attackingSprite() { return attackingSprite; }
+            @Override public Student rainShooter() { return rainShooter; }
+            @Override public List<Enemy> rainTargets() { return rainTargets; }
+            @Override public double rainElapsedMillis() { return (System.nanoTime() - rainStartedNanos) / 1_000_000.0; }
             @Override public Student blockingStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getBlockingStudent(); }
             @Override public Student protectedStudent() { return battle == null || !(attackingSprite instanceof Enemy) ? null : battle.getProtectedStudent(); }
             @Override public double effectProgress() {
@@ -193,7 +198,8 @@ public final class BattlePanel extends JPanel {
             effectBatches.removeIf(batch -> now - batch.startedNanos() >= EFFECT_MILLIS * 1_000_000L);
             showEffects = !effectBatches.isEmpty();
             if ((now - effectStartedNanos) / 1_000_000.0 >= EFFECT_MILLIS) attackingSprite = null;
-            if (!showEffects && attackingSprite == null) effectTimerStop();
+            if (rainShooter != null && (now - rainStartedNanos) / 1_000_000.0 >= 800) rainShooter = null;
+            if (!showEffects && attackingSprite == null && rainShooter == null) effectTimerStop();
             scene.repaint();
         });
         secondCastTimer = new Timer(SECOND_CAST_DELAY_MILLIS, event -> completeSecondCast());
@@ -209,7 +215,13 @@ public final class BattlePanel extends JPanel {
         monsterTurnTimer.setRepeats(false);
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
                 attack, ability, item, defend, escape, finish);
-        attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
+        attack.addActionListener(e -> {
+            Student actor = battle.getCurrent();
+            if (actor != null && actor.getId() == Student.CHARICE && actor.getSp() < 2) {
+                notice = "Not enough SP. Twin Shot needs 2 SP."; refresh(); return;
+            }
+            beginTargeting(TargetAction.ATTACK);
+        });
         escape.addActionListener(e -> performAction(() -> battle.beginEscape(), false));
         defend.addActionListener(e -> beginTargeting(TargetAction.DEFEND));
         ability.addActionListener(e -> {
@@ -241,7 +253,7 @@ public final class BattlePanel extends JPanel {
         addHierarchyListener(event -> {
             if ((event.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0) {
                 if (isShowing() && battle != null && !battle.isOver()) {
-                    lastTickNanos = System.nanoTime();
+                    lastTickNanos = System.nanoTime(); lastDotNanos = lastTickNanos;
                     apTimer.start();
                     if (battle.hasPendingSparkExplosion() || battle.hasPendingGuardianLoop()) sparkExplosionTimer.restart();
                     else if (battle.hasPendingLooperHits()) looperHitTimer.restart();
@@ -328,40 +340,33 @@ public final class BattlePanel extends JPanel {
         victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of(); victoryChoice = 1;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); twinShotTimer.stop(); sparkExplosionTimer.stop(); monsterTurnTimer.stop();
         victoryStartedNanos = 0;
-        showEffects = false; attackingSprite = null; effectBatches.clear(); effectSequence = 0;
+        showEffects = false; attackingSprite = null; rainShooter = null; rainTargets = List.of(); effectBatches.clear(); effectSequence = 0;
         showAmbush = ambushed;
         if (ambushed) { ambushAlertTimer.restart(); }
         resetActionPoints(ambushed);
         if (!ambushed) { selectReadyStudent(); }
-        if (isShowing()) { lastTickNanos = System.nanoTime(); apTimer.start(); }
+        if (isShowing()) { lastTickNanos = System.nanoTime(); lastDotNanos = lastTickNanos; apTimer.start(); }
         refresh();
     }
 
     private void resetActionPoints(boolean ambushed) {
-        actionPoints.clear(); enemyPoints.clear(); processedDotCycles.clear(); readyEnemyDotEffects.clear();
+        actionPoints.clear(); enemyPoints.clear();
         for (Student student : battle.getParty()) {
             actionPoints.put(student, ambushed || !student.isAlive() ? 0.0 : (double) student.getActionThreshold());
-            if (!ambushed && student.isAlive()) processedDotCycles.add(student);
         }
         for (Enemy enemy : battle.getEnemies()) {
             enemyPoints.put(enemy, ambushed ? enemy.getActionThreshold() * AMBUSH_ENEMY_AP_FRACTION : 0.0);
         }
     }
 
-    /** Processes DOT once per AP fill, even if the participant must wait to act. */
-    private boolean tickReadyDot(GameCharacter participant) {
-        if (!processedDotCycles.add(participant)) return false;
-        return battle.tickDamageOverTime(participant);
-    }
-    private void resetStudentAp(Student student) { actionPoints.put(student, 0.0); processedDotCycles.remove(student); }
-    private void resetEnemyAp(Enemy enemy) { enemyPoints.put(enemy, 0.0); processedDotCycles.remove(enemy); readyEnemyDotEffects.remove(enemy); }
+    private void resetStudentAp(Student student) { actionPoints.put(student, 0.0); }
+    private void resetEnemyAp(Enemy enemy) { enemyPoints.put(enemy, 0.0); }
     private void applyApRefills() {
         java.util.List<game.model.BattleEffect> combined = new java.util.ArrayList<>(battle.getEffects());
         java.util.List<Student> refilled = new java.util.ArrayList<>();
         for (Student student : battle.consumeApRefills()) {
             if (!student.isAlive()) continue;
             if (actionPoints.get(student) + AP_EPSILON < student.getActionThreshold()) {
-                if (tickReadyDot(student)) combined.addAll(battle.getEffects());
                 if (student.isAlive()) refilled.add(student);
             }
             if (student.isAlive()) actionPoints.put(student, (double) student.getActionThreshold());
@@ -375,7 +380,15 @@ public final class BattlePanel extends JPanel {
     private void tickActionPoints() {
         long now = System.nanoTime();
         double seconds = Math.max(0.0, (now - lastTickNanos) / 1_000_000_000.0);
-        lastTickNanos = now;
+        double dotSeconds = Math.max(0.0, (now - lastDotNanos) / 1_000_000_000.0);
+        lastTickNanos = now; lastDotNanos = now;
+        Student selected = battle == null ? null : battle.getCurrent();
+        if (battle != null && battle.advanceDamageOverTime(dotSeconds)) {
+            battle.cancelEscapeIfKnockedOut();
+            if (selected != null && !selected.isAlive()) { resetStudentAp(selected); targeting = TargetAction.NONE; choosingItem = false; }
+            showActionEffects(null);
+            refresh();
+        }
         advanceActionPoints(seconds);
     }
 
@@ -396,18 +409,10 @@ public final class BattlePanel extends JPanel {
             boolean enemyActed = false;
             for (Enemy enemy : battle.getEnemies()) {
                 if (!monsterTurnTimer.isRunning() && enemy.isAlive() && enemyPoints.get(enemy) + AP_EPSILON >= enemy.getActionThreshold()) {
-                    boolean dotTicked = tickReadyDot(enemy);
-                    List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : readyEnemyDotEffects.getOrDefault(enemy, List.of());
-                    if (!enemy.isAlive() || battle.isOver()) {
-                        resetEnemyAp(enemy); showActionEffects(null); enemyActed = true; changed = true; break;
-                    }
                     if (battle.enemyAttack(enemy)) {
                         battle.cancelEscapeIfKnockedOut();
-                        battle.prependEffects(dotEffects);
                         resetEnemyAp(enemy);
                         enemyPoints.keySet().retainAll(battle.getEnemies());
-                        readyEnemyDotEffects.keySet().retainAll(battle.getEnemies());
-                        processedDotCycles.removeIf(participant -> participant instanceof Enemy && !battle.getEnemies().contains(participant));
                         for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
                         applyApRefills();
                         Battle.AbilityAnnouncement enemyAbility = battle.getLastAbility();
@@ -447,26 +452,16 @@ public final class BattlePanel extends JPanel {
                     if (before + AP_EPSILON < student.getActionThreshold() && after + AP_EPSILON >= student.getActionThreshold()) newlyReady.add(student);
                 }
             }
-            java.util.List<Enemy> newlyReadyEnemies = new java.util.ArrayList<>();
             for (Enemy enemy : battle.getEnemies()) {
                 if (enemy.isAlive()) {
                     double before = enemyPoints.get(enemy);
                     double after = Math.min(enemy.getActionThreshold(), before + rate * step);
                     enemyPoints.put(enemy, after);
-                    if (before + AP_EPSILON < enemy.getActionThreshold() && after + AP_EPSILON >= enemy.getActionThreshold()) newlyReadyEnemies.add(enemy);
                 }
             }
-            boolean dotChanged = false;
-            java.util.List<game.model.BattleEffect> dotEffects = new java.util.ArrayList<>();
-            for (Student student : newlyReady) if (tickReadyDot(student)) { dotEffects.addAll(battle.getEffects()); dotChanged = true; }
-            for (Enemy enemy : newlyReadyEnemies) if (tickReadyDot(enemy)) {
-                List<game.model.BattleEffect> enemyEffects = battle.getEffects();
-                readyEnemyDotEffects.put(enemy, enemyEffects); dotEffects.addAll(enemyEffects); dotChanged = true;
-            }
-            if (dotChanged) { battle.replaceEffects(dotEffects); showActionEffects(null); changed = true; }
             battle.cancelEscapeIfKnockedOut();
             newlyReady.removeIf(student -> !student.isAlive());
-            if (!newlyReady.isEmpty() && !battle.isOver() && battle.regenerate(newlyReady, dotChanged)) {
+            if (!newlyReady.isEmpty() && !battle.isOver() && battle.regenerate(newlyReady, false)) {
                 showActionEffects(null); changed = true;
             }
             remaining = Math.max(0.0, remaining - step);
@@ -487,18 +482,10 @@ public final class BattlePanel extends JPanel {
         for (Student student : battle.getParty()) {
             if (battle.isOver()) return false;
             if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
-                boolean dotTicked = tickReadyDot(student);
-                List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : List.of();
-                if (dotTicked) {
-                    showActionEffects(null);
-                    if (!student.isAlive() || battle.isOver()) { resetStudentAp(student); battle.cancelEscapeIfKnockedOut(); refresh(); continue; }
-                }
-                // Waiting heroes still complete AP cycles and take DOT, without acting.
                 if (battle.isEscaping() && student != battle.getEscapeInitiator()) {
-                    resetStudentAp(student); if (dotTicked) refresh(); continue;
+                    resetStudentAp(student); continue;
                 }
                 if (battle.consumeStunTurn(student)) {
-                    battle.prependEffects(dotEffects);
                     resetStudentAp(student); showActionEffects(null); refresh(); continue;
                 }
                 if (student == battle.getEscapeInitiator()) {
@@ -518,6 +505,10 @@ public final class BattlePanel extends JPanel {
                 || actionPoints.get(battle.getCurrent()) + AP_EPSILON < battle.getCurrent().getActionThreshold()) { return; }
         Student actor = battle.getCurrent();
         action.run();
+        if (attacking && actor.getId() == Student.CHARICE && battle.getLastAbility() != null
+                && "Rain of Arrows".equals(battle.getLastAbility().skill())) {
+            rainShooter = actor; rainTargets = battle.getRainArrowTargets(); rainStartedNanos = System.nanoTime();
+        }
         if (battle.hasPendingTwinShot()) {
             resetStudentAp(actor);
             showActionEffects(attacking ? actor : null);
@@ -631,6 +622,7 @@ public final class BattlePanel extends JPanel {
     private void updateCommandDisplay() {
         BattleControls.updateCommands(commands, commandIndex);
         if (battle != null && battle.getCurrent() != null && !battle.isOver()) {
+            if (battle.getCurrent().getId() == Student.CHARICE) attack.setText("Twin Shot 2 SP");
             ability.setText("Ability " + battle.getCurrent().getAbilitySpCost() + " SP");
         }
     }
@@ -641,7 +633,8 @@ public final class BattlePanel extends JPanel {
     }
 
     private boolean targetsAllEnemies() {
-        return targeting == TargetAction.ABILITY && battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST;
+        return targeting == TargetAction.ABILITY && (battle.getCurrent().getAbilityType() == Student.AbilityType.ARCANE_BURST
+                || battle.getCurrent().getAbilityType() == Student.AbilityType.RAIN_OF_ARROWS);
     }
 
     private void beginTargeting(TargetAction action) {

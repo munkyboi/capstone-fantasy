@@ -155,6 +155,7 @@ public final class RouteBattleTest {
                     check(active.getEnemies().get(0).getHp() == firstHp && (active.getEnemies().get(1).getHp() < secondHp || active.getEffects().stream().anyMatch(e -> e.getEnemy() == active.getEnemies().get(1) && "Dodge".equals(e.getLabel()))),
                             "keyboard targets selected enemy");
                     check(points.get(active.getParty().get(0)) == 0.0, "only acting student's AP resets");
+                    while (active.hasPendingTwinShot()) active.advanceTwinShot();
                     advance.invoke(panel, 2.0 / 3.0);
                     check(active.getCurrent() != null && active.getCurrent().getId() == 1, "Bogart selected immediately at 30 AP");
                     BattlePanel tied = TestBattles.twoEnemies(() -> { });

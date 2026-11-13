@@ -36,10 +36,10 @@ public final class SelectionPanel extends JPanel {
     // The bars compare the four starting characters within each stat.
     private static final int[] STAT_MAXIMA = {150, 180, 25, 16, 19, 13, 12};
     private static final String[] ABILITIES = {
-        "Arcane Burst", "Cadet Strike", "Twin Shot", "Angel Hug"
+        "Arcane Burst", "Cadet Strike", "Rain of Arrows", "Angel Hug"
     };
     private static final String[] EFFECTS = {
-        "Damages all enemies", "Strong sword attack", "Two shots; may hit again", "Heals or revives an ally"
+        "Damages all enemies", "Strong sword attack", "12 arrows; may apply DOT", "Heals or revives an ally"
     };
     private final Set<Integer> selected = new LinkedHashSet<>();
     private final JButton[] choices = new JButton[NAMES.length];

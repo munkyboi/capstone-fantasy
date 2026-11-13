@@ -28,10 +28,11 @@ public final class Battle {
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
     private final java.util.List<DamageOverTime> burns = new java.util.ArrayList<>();
     private static final class DamageOverTime {
-        final GameCharacter source, target; final int total, duration; final boolean manaLeak; int ticks;
+        final GameCharacter source, target; final int total, duration, spRecovery; final boolean manaLeak; int ticks; double elapsedSeconds;
         DamageOverTime(GameCharacter source, GameCharacter target, int damage) { this(source, target, damage, false); }
         DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak) { this(source, target, damage, manaLeak, 5); }
-        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak, int duration) { this.source = source; this.target = target; total = damage; this.manaLeak = manaLeak; this.duration = duration; }
+        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak, int duration) { this(source, target, damage, manaLeak, duration, 0); }
+        DamageOverTime(GameCharacter source, GameCharacter target, int damage, boolean manaLeak, int duration, int spRecovery) { this.source = source; this.target = target; total = damage; this.manaLeak = manaLeak; this.duration = duration; this.spRecovery = spRecovery; }
     }
     private int turn = -1;
     private boolean pendingSecondCast;
@@ -40,6 +41,7 @@ public final class Battle {
     private int twinStage;
     private Enemy twinTarget;
     private Student twinActor;
+    private int twinAttackMultiplier = 1;
     private Student looperActor;
     private Enemy lastHeroHitTarget, looperTarget;
     private int lastHeroHitDamage, looperBaseDamage, looperPreviousDamage;
@@ -49,6 +51,8 @@ public final class Battle {
     private Enemy angelTarget;
     private Enemy sparkCaster;
     private Student sparkTarget;
+    private final List<Enemy> rainArrowTargets = new ArrayList<>();
+    public List<Enemy> getRainArrowTargets() { return List.copyOf(rainArrowTargets); }
     private Enemy pulseCaster;
     private int pulseLoops;
     private final java.util.Map<Student, Integer> pulseInitial = new java.util.HashMap<>(), pulsePrevious = new java.util.HashMap<>();
@@ -241,12 +245,13 @@ public final class Battle {
         burns.removeIf(burn -> burn.target == hero);
         guards.remove(hero); hero.endDefend();
     }
-    /** Applies one tick to effects on a participant whose action bar has filled. */
-    public boolean tickDamageOverTime(GameCharacter participant) {
+    /** Applies one tick to the effects on a participant. */
+    public boolean tickDamageOverTime(GameCharacter participant) { return tickDamageOverTime(participant, null); }
+    private boolean tickDamageOverTime(GameCharacter participant, DamageOverTime only) {
         if (participant == null || isOver() || !participant.isAlive() || burns.isEmpty()) return false;
         boolean changed = false, damaged = false;
         for (DamageOverTime burn : new java.util.ArrayList<>(burns)) {
-            if (!burns.contains(burn)) continue;
+            if (!burns.contains(burn) || (only != null && burn != only)) continue;
             GameCharacter target = burn.target;
             if (target != participant || !target.isAlive() || burn.ticks >= burn.duration) continue;
                 int before = (int) ((long) burn.total * burn.ticks / burn.duration);
@@ -269,6 +274,10 @@ public final class Battle {
                         effects.add(new BattleEffect(student, -taken));
                         if (!student.isAlive()) { guards.remove(student); student.endDefend(); if (getCurrent() == student) turn = -1; }
                     }
+                    if (burn.spRecovery > 0 && burn.source instanceof Student hero && hero.isAlive()) {
+                        int recovered = Math.min(burn.spRecovery, hero.getMaxSp() - hero.getSp());
+                        if (recovered > 0) { hero.restoreSp(hero.getSp() + recovered); effects.add(BattleEffect.status(hero, "+" + recovered + " SP")); }
+                    }
                     changed = true; damaged = true;
                 }
         }
@@ -277,6 +286,23 @@ public final class Battle {
             message = isVictory() ? "Damage over time defeats the last enemy! Victory!" : isDefeat() ? "Damage over time defeats the party!" : damaged ? "Damage over time strikes!" : "Damage over time was dodged!";
             if (isOver()) clearGuards();
         }
+        return changed;
+    }
+    /** Advances each active DOT by real battle time; each effect has its own one-second clock. */
+    public boolean advanceDamageOverTime(double seconds) {
+        if (!Double.isFinite(seconds) || seconds < 0) throw new IllegalArgumentException("Invalid elapsed time");
+        if (isOver() || burns.isEmpty()) return false;
+        java.util.List<BattleEffect> combined = new java.util.ArrayList<>();
+        boolean changed = false;
+        for (DamageOverTime burn : new java.util.ArrayList<>(burns)) {
+            if (!burns.contains(burn) || !burn.target.isAlive() || isOver()) continue;
+            burn.elapsedSeconds += seconds;
+            while (burn.elapsedSeconds >= 1.0 && burns.contains(burn) && burn.target.isAlive() && !isOver()) {
+                burn.elapsedSeconds -= 1.0;
+                if (tickDamageOverTime(burn.target, burn)) { combined.addAll(getEffects()); changed = true; }
+            }
+        }
+        if (changed) replaceEffects(combined);
         return changed;
     }
     /** Keeps DOT indicators when the participant also performs an action. */
@@ -352,8 +378,17 @@ public final class Battle {
         if (isActionAnimating() || isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
         effects.clear();
         Student actor = getCurrent();
+        if (actor.getId() == Student.CHARICE && actor.getSp() < 2) return false;
+        lastAbility = null; rainArrowTargets.clear();
         lastHeroHitDamage = 0; lastHeroHitTarget = null;
-        int attackPower = actor.getAttack() * (actor.consumeEtherealCharge() ? 4 : 1);
+        int multiplier = actor.consumeEtherealCharge() ? 4 : 1;
+        int attackPower = actor.getAttack() * multiplier;
+        if (actor.getId() == Student.CHARICE) {
+            actor.restoreSp(actor.getSp() - 2);
+            twinAttackMultiplier = multiplier;
+            beginTwinShot(actor, target);
+            return true;
+        }
         if (actor.getId() == Student.ANGEL) {
             angelActor = actor; angelAttackPower = attackPower; angelTarget = target;
             angelHitsRemaining = 3 + ("giant_slayer_gloves".equals(actor.getEquipmentId(Equipment.Slot.WEAPON)) ? 2 : 0);
@@ -374,15 +409,16 @@ public final class Battle {
     public boolean ability(Student ally, Enemy enemy) {
         if (isActionAnimating() || isOver() || getCurrent() == null) { return false; }
         Student actor = getCurrent();
+        rainArrowTargets.clear();
         lastHeroHitDamage = 0; lastHeroHitTarget = null;
         if (actor.getSp() < actor.getAbilitySpCost()) { return false; }
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS && (ally == null || !party.contains(ally))) { return false; }
         if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
-                && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && !validEnemy(enemy)) { return false; }
+                && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && actor.getAbilityType() != Student.AbilityType.RAIN_OF_ARROWS && !validEnemy(enemy)) { return false; }
         if (!actor.spendAbilitySp()) { return false; }
         String skillName = switch (actor.getAbilityType()) {
             case ARCANE_BURST -> "Arcane Burst"; case CADET_STRIKE -> "Cadet Strike";
-            case TWIN_SHOT -> "Twin Shot"; case HEALING_KISS -> "Angel Hug";
+            case RAIN_OF_ARROWS -> "Rain of Arrows"; case HEALING_KISS -> "Angel Hug";
         };
         lastAbility = new AbilityAnnouncement(actor.getName(), skillName);
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
@@ -402,30 +438,50 @@ public final class Battle {
             } else {
                 finish(text);
             }
-        } else if (actor.getAbilityType() == Student.AbilityType.TWIN_SHOT) {
+        } else if (actor.getAbilityType() == Student.AbilityType.RAIN_OF_ARROWS) {
             effects.clear();
-            int damage = hurt(enemy, (int)Math.ceil(actor.getAttack() * 1.5));
-            boolean reducedDefense = damage > 0 && enemy.isAlive() && random.nextDouble() < 0.5;
-            int defenseBefore = enemy.getDefense();
-            if (reducedDefense) enemy.applyTwinDefensePenalty();
-            int defensePenalty = defenseBefore - enemy.getDefense();
-            message = actor.getName() + " uses Twin Shot on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy);
-            if (reducedDefense && defensePenalty > 0) {
-                effects.add(BattleEffect.status(enemy, "DEF -" + defensePenalty));
-                message += "\n" + enemy.getName() + " loses " + defensePenalty + " DEF for Twin Shot.";
+            java.util.Set<Enemy> struck = new java.util.LinkedHashSet<>();
+            StringBuilder text = new StringBuilder(actor.getName() + " uses Rain of Arrows!");
+            for (int arrow = 0; arrow < 12 && actor.isAlive(); arrow++) {
+                List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
+                if (living.isEmpty()) break;
+                Enemy target = living.get(random.nextInt(living.size()));
+                rainArrowTargets.add(target);
+                int power = (int)Math.ceil(actor.getAttack() * (40 + random.nextInt(21)) / 100.0);
+                int damage = hurt(target, power);
+                if (damage > 0) struck.add(target);
+                text.append("\n").append(target.getName()).append(" takes ").append(damage).append(" damage.").append(defeated(target));
             }
-            if (enemy.isAlive() && actor.isAlive()) { twinActor = actor; twinTarget = enemy; twinStage = 1; }
-            else { enemy.clearTwinDefensePenalty(); finish(looperHits(actor, message)); }
+            for (Enemy target : struck) if (target.isAlive() && random.nextDouble() < .5) {
+                burns.removeIf(burn -> burn.source == actor && burn.target == target && burn.spRecovery > 0);
+                burns.add(new DamageOverTime(actor, target, actor.getAttack(), hasManaLeak(actor), 5, 5));
+                effects.add(BattleEffect.status(target, "DOT"));
+            }
+            finish(looperHits(actor, text.toString()));
         } else {
             if (!validEnemy(enemy)) { return false; }
             effects.clear();
-            double bonusRate = actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? 0.60 : 0.50;
+            double bonusRate = 0.60;
             int damage = hurt(enemy, actor.getAttack() + (int) Math.ceil(actor.getBaseAttack() * bonusRate));
             applyLightSaber(actor, enemy, damage);
-            String ability = actor.getAbilityType() == Student.AbilityType.CADET_STRIKE ? "Cadet Strike" : "Twin Shot";
+            String ability = "Cadet Strike";
             finish(looperHits(actor, actor.getName() + " uses " + ability + " on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy)));
         }
         return true;
+    }
+    private void beginTwinShot(Student actor, Enemy enemy) {
+        int damage = hurt(enemy, (int)Math.ceil(actor.getAttack() * twinAttackMultiplier * (80 + random.nextInt(21)) / 100.0));
+        boolean reducedDefense = damage > 0 && enemy.isAlive() && random.nextDouble() < 0.5;
+        int defenseBefore = enemy.getDefense();
+        if (reducedDefense) enemy.applyTwinDefensePenalty();
+        int defensePenalty = defenseBefore - enemy.getDefense();
+        message = actor.getName() + " uses Twin Shot on " + enemy.getName() + " for " + damage + " damage." + defeated(enemy);
+        if (reducedDefense && defensePenalty > 0) {
+            effects.add(BattleEffect.status(enemy, "DEF -" + defensePenalty));
+            message += "\n" + enemy.getName() + " loses " + defensePenalty + " DEF for Twin Shot.";
+        }
+        if (enemy.isAlive() && actor.isAlive()) { twinActor = actor; twinTarget = enemy; twinStage = 1; }
+        else { enemy.clearTwinDefensePenalty(); finish(looperHits(actor, message)); }
     }
     /** Resolves the second shot, then the optional third shot, without another action or SP cost. */
     public boolean advanceTwinShot() {
@@ -433,9 +489,9 @@ public final class Battle {
         Student actor = twinActor; Enemy target = twinTarget;
         if (!target.isAlive() || !actor.isAlive() || isOver()) { target.clearTwinDefensePenalty(); twinStage = 0; twinTarget = null; twinActor = null; finish(message); return false; }
         effects.clear();
-        int damage = hurt(target, actor.getAttack(), true);
+        int damage = hurt(target, (int)Math.ceil(actor.getAttack() * twinAttackMultiplier * 0.8), true);
         message = actor.getName() + " hits " + target.getName() + " for " + damage + " damage." + defeated(target);
-        if (twinStage == 1 && target.isAlive() && actor.isAlive() && random.nextDouble() < .5) { twinStage = 2; }
+        if (twinStage == 1 && target.isAlive() && actor.isAlive() && random.nextDouble() < .7) { twinStage = 2; }
         else {
             target.clearTwinDefensePenalty(); twinStage = 0; twinTarget = null; twinActor = null;
             finish(looperHits(actor, message));

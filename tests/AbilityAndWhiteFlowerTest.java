@@ -22,7 +22,7 @@ public final class AbilityAndWhiteFlowerTest {
         for (int id=0;id<4;id++) {
             GameProgress p = new GameProgress(List.of(id)); Battle b = new Battle(p,fixed(0)); Student actor=student(p,id); b.selectStudent(actor);
             check(b.ability(actor,b.getEnemies().get(0)),"ability succeeds " + id);
-            String[] names={"Arcane Burst","Cadet Strike","Twin Shot","Angel Hug"};
+            String[] names={"Arcane Burst","Cadet Strike","Rain of Arrows","Angel Hug"};
             check(b.getLastAbility().caster().equals(actor.getName()) && b.getLastAbility().skill().equals(names[id]),"hero announcement " + id);
         }
         Battle monsters=new Battle(List.of(1),fixed(0)); Enemy w=monsters.getEnemies().get(0);

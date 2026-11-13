@@ -53,6 +53,9 @@ final class BattleScene extends JPanel {
         double victoryProgress();
         double enemyPoints(Enemy enemy);
         Object attackingSprite();
+        default Student rainShooter() { return null; }
+        default java.util.List<Enemy> rainTargets() { return java.util.List.of(); }
+        default double rainElapsedMillis() { return 800; }
         default Student blockingStudent() { return null; }
         default Student protectedStudent() { return null; }
         double effectProgress();
@@ -283,6 +286,41 @@ final class BattleScene extends JPanel {
                         if (enemy.isAlive() && state.enemyTarget(enemyIndex)) {
                             int drawnHeight = fittedHeight(enemyImage, enemyImage.getWidth(), enemyWidth, enemyHeight);
                             drawCursor(g, x + slotWidth / 2, enemyFootY(h, slot) - drawnHeight - 3);
+                        }
+                    }
+                }
+                if (state.rainShooter() != null) {
+                    Student shooter = state.rainShooter();
+                    double elapsed = state.rainElapsedMillis();
+                    int shooterIndex = battle.getParty().indexOf(shooter);
+                    if (shooterIndex >= 0 && elapsed < 800) {
+                        int startX = partyX(shooterIndex, slotWidth) + slotWidth / 2;
+                        int startY = partyFootY(h, shooterIndex) - spriteHeight / 2;
+                        java.util.List<Enemy> arrows = state.rainTargets();
+                        for (int i = 0; i < arrows.size(); i++) {
+                            int enemyIndex = battle.getEnemies().indexOf(arrows.get(i));
+                            if (enemyIndex < 0) continue;
+                            int slot = enemySlot(enemyIndex, battle.getEnemies());
+                            int endX = enemyX(slot, slotWidth) + slotWidth / 2;
+                            int endY = enemyFootY(h, slot) - spriteHeight / 2;
+                            int spread = (i % 5 - 2) * 5;
+                            int x, y, direction;
+                            if (elapsed < 350) {
+                                double progress = elapsed / 350.0;
+                                x = startX + spread + (int)Math.round((i / 5 - 2) * 5 * progress);
+                                y = (int)Math.round(startY + (-12 - startY) * progress);
+                                direction = -1;
+                            } else {
+                                double progress = Math.min(1.0, (elapsed - 350) / 450.0);
+                                x = endX + spread + (i / 5 - 2) * 3;
+                                y = (int)Math.round(-12 + (endY + 12) * progress);
+                                direction = 1;
+                            }
+                            g.setColor(new Color(47, 27, 36));
+                            g.drawLine(x + 1, y - direction * 6, x + 1, y + direction * 2);
+                            g.setColor(new Color(255, 225, 145));
+                            g.drawLine(x, y - direction * 6, x, y + direction * 2);
+                            g.drawLine(x - 1, y + direction, x + 1, y + direction);
                         }
                     }
                 }

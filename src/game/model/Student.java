@@ -14,7 +14,7 @@ public class Student extends GameCharacter {
     public enum AbilityType {
         /** Mage ability. */ ARCANE_BURST,
         /** Warrior ability. */ CADET_STRIKE,
-        /** Hunter ability. */ TWIN_SHOT,
+        /** Hunter ability. */ RAIN_OF_ARROWS,
         /** Monk ability. */ HEALING_KISS
     }
     /** Stats that can receive level-up points. */

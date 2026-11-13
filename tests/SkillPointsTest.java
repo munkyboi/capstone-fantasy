@@ -17,8 +17,8 @@ public final class SkillPointsTest {
             Battle b = new Battle(p, new Random(3));
             Student actor = b.getParty().stream().filter(x -> x.getId() == s.getId()).findFirst().orElseThrow();
             Enemy enemy = b.getEnemies().get(0); check(b.selectStudent(actor), "select actor");
-            check(!b.ability(null, null) || id == Student.ZACK, "invalid targets cannot spend SP");
-            if (id == Student.ZACK) { check(actor.getSp() == sp[id] - cost[id], "all-target cost"); continue; }
+            check(!b.ability(null, null) || id == Student.ZACK || id == Student.CHARICE, "invalid targets cannot spend SP");
+            if (id == Student.ZACK || id == Student.CHARICE) { check(actor.getSp() == sp[id] - cost[id], "all-target cost"); continue; }
             check(actor.getSp() == sp[id], "invalid target preserves SP");
             actor.restoreSp(cost[id] - 1);
             check(!b.ability(actor, enemy) && actor.getSp() == cost[id] - 1 && b.getCurrent() == actor,

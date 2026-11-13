@@ -20,11 +20,11 @@ public abstract class Hero extends Student {
         /** Creates Bogart. */ public Warrior() { super(BOGART); }
         @Override public AbilityType getAbilityType() { return AbilityType.CADET_STRIKE; }
     }
-    /** Hunter specializing in two attacks. */
+    /** Hunter specializing in multi-shot attacks. */
     public static final class Hunter extends Hero {
         private static final long serialVersionUID = 1L;
         /** Creates Charice. */ public Hunter() { super(CHARICE); }
-        @Override public AbilityType getAbilityType() { return AbilityType.TWIN_SHOT; }
+        @Override public AbilityType getAbilityType() { return AbilityType.RAIN_OF_ARROWS; }
     }
     /** Monk specializing in healing. */
     public static final class Monk extends Hero {
