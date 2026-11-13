@@ -219,6 +219,8 @@ public class Student extends GameCharacter {
     }
     /** Speed before equipment, used to calculate equipment AP bonuses. */
     public int getUnmodifiedSpeed() { return speed + allocatedSpeed + (getLevel() - 1) / 5; }
+    /** Starting class speed, used as the baseline for action-point charging. */
+    public int getStartingSpeed() { return STARTING_SPEED[id]; }
     /** Returns current level.
      * @return current level
     */ public int getLevel() {
@@ -241,6 +243,12 @@ public class Student extends GameCharacter {
     }
     /** XP earned toward the next level. */
     public long getXpProgress() { return getXpRequired() == 0 ? 0 : getExperience() - experienceForLevel(getLevel(), experienceGrowth); }
+    /** Loses up to ten percent of the next level's XP requirement without losing a level. */
+    public long applyEscapeXpPenalty() {
+        long loss = Math.min(getXpProgress(), (getXpRequired() + 9) / 10);
+        setExperience(getExperience() - loss);
+        return loss;
+    }
     public int getExperienceGrowth() { return experienceGrowth; }
     public int getLevelCap() { return configuredLevelCap == 0 ? 30 : configuredLevelCap; }
     /** Change progression while preserving level and fraction of progress toward the next level. */

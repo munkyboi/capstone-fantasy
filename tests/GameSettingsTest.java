@@ -60,7 +60,7 @@ public final class GameSettingsTest {
                     var values = (Map<?, ?>) points.get(panel);
                     check(progress.getParty().stream().allMatch(s -> Math.abs((double) values.get(s) - 2.0) < 0.0001), "ultra fills 2 AP in 0.1 seconds");
                     var timer = BattlePanel.class.getDeclaredField("apTimer"); timer.setAccessible(true);
-                    check(((javax.swing.Timer) timer.get(panel)).getDelay() == 50, "ultra preserves animation frame interval");
+                    check(((javax.swing.Timer) timer.get(panel)).getDelay() == 16, "ultra preserves roughly 60 FPS animation interval");
                     ((javax.swing.Timer) timer.get(panel)).stop();
                 } catch (ReflectiveOperationException ex) { throw new RuntimeException(ex); }
             });

@@ -110,6 +110,10 @@ public final class Main {
                 camp.requestFocusInWindow();
             }, showMenu);
             mapHolder[0] = map;
+            battle.setEscapeAction(progress -> {
+                merchantBattle[0] = false;
+                map.open(progress); layout.show(screens, "map"); map.requestFocusInWindow();
+            });
             ShopPanel shop = new ShopPanel(() -> {
                 if (shopFromCamp[0]) { camp.resume(camp.getProgress(), false); layout.show(screens, "camp"); camp.requestFocusInWindow(); }
                 else { map.open(campHolder[0].getProgress()); layout.show(screens, "map"); map.requestFocusInWindow(); }

@@ -9,6 +9,7 @@ import javax.swing.SwingUtilities;
 public final class DifficultySettingsTest {
     private static void check(boolean ok, String text) { if (!ok) throw new AssertionError(text); }
     private static void key(SettingsPanel panel, String action) { panel.getActionMap().get(action).actionPerformed(new ActionEvent(panel, 0, "")); }
+    private static Random stable() { return new Random() { @Override public int nextInt(int bound) { return 0; } @Override public double nextDouble() { return .5; } }; }
     public static void main(String[] args) throws Exception {
         int[] hp = {49, 65, 98, 130}, speed = {2, 3, 5, 6}, threshold = {48, 36, 24, 18};
         int[] xp = {15, 20, 30, 40}, damage = {9, 12, 18, 24};
@@ -23,8 +24,8 @@ public final class DifficultySettingsTest {
         }
         GameProgress normalProgress = new GameProgress(List.of(0));
         GameProgress hardProgress = new GameProgress(List.of(0));
-        Battle normal = new Battle(normalProgress, new Random(8), false, 0, GameSettings.Difficulty.NORMAL);
-        Battle hard = new Battle(hardProgress, new Random(8), false, 0, GameSettings.Difficulty.HARD);
+        Battle normal = new Battle(normalProgress, stable(), false, 0, GameSettings.Difficulty.NORMAL);
+        Battle hard = new Battle(hardProgress, stable(), false, 0, GameSettings.Difficulty.HARD);
         int before = normalProgress.getParty().get(0).getHp(); normal.enemyAttack(normal.getEnemies().get(0));
         int normalDamage = before - normalProgress.getParty().get(0).getHp();
         before = hardProgress.getParty().get(0).getHp(); hard.enemyAttack(hard.getEnemies().get(0));

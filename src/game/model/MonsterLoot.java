@@ -19,12 +19,17 @@ public final class MonsterLoot {
     }
     /** Awards rolled drops only when inventory limits and uniqueness permit them. */
     public static List<String> award(List<Enemy> enemies, GameProgress progress, Random random) {
+        return award(enemies, progress, random, GameSettings.Difficulty.NORMAL);
+    }
+    /** Rolls defeated-enemy loot using the current difficulty's reward multiplier. */
+    public static List<String> award(List<Enemy> enemies, GameProgress progress, Random random, GameSettings.Difficulty difficulty) {
+        double multiplier = java.util.Objects.requireNonNull(difficulty).multiplier();
         List<String> drops = new ArrayList<>();
         for (Enemy enemy : enemies) {
             if (!enemy.isDefeated()) { continue; }
-            if (enemy.isLootGoblin()) { awardGoblinLoot(progress, random, drops); continue; }
+            if (enemy.isLootGoblin()) { awardGoblinLoot(progress, random, drops, multiplier); continue; }
             for (Drop drop : tableFor(enemy)) {
-                if (random.nextDouble() >= drop.chance()) { continue; }
+                if (random.nextDouble() >= Math.min(1.0, drop.chance() * multiplier)) { continue; }
                 if ("first_aid_kit".equals(drop.itemId())) {
                     if (progress.getInventory().addKit()) { drops.add(drop.itemId()); }
                 } else if ("white_flower".equals(drop.itemId())) {
@@ -36,9 +41,9 @@ public final class MonsterLoot {
         }
         return List.copyOf(drops);
     }
-    private static void awardGoblinLoot(GameProgress progress, Random random, List<String> drops) {
-        if (random.nextDouble() >= 0.50) return;
-        int amount = random.nextDouble() < 0.25 ? 2 : 1;
+    private static void awardGoblinLoot(GameProgress progress, Random random, List<String> drops, double multiplier) {
+        if (random.nextDouble() >= Math.min(1.0, 0.50 * multiplier)) return;
+        int amount = random.nextDouble() < Math.min(1.0, 0.25 * multiplier) ? 2 : 1;
         java.util.List<String> available = new ArrayList<>();
         for (CarbonMarket.Offer offer : CarbonMarket.offers()) {
             if ("first_aid_kit".equals(offer.id())) {

@@ -163,7 +163,7 @@ public final class Enemy extends GameCharacter {
     /** Scales outgoing damage, including monster skills. */
     public int scaleDamage(int damage) { return Math.max(1, (int) Math.round(damage * difficultyMultiplier)); }
     /** Returns the Petot awarded for defeating this enemy. */
-    public int getPetotDrop() { return petotDrop; }
+    public int getPetotDrop() { return (int) Math.round(petotDrop * difficultyMultiplier); }
     public boolean isLootGoblin() { return lootGoblin; }
     public boolean hasEscaped() { return escaped; }
     public boolean isDefeated() { return hp <= 0 && !escaped; }

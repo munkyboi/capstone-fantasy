@@ -20,17 +20,18 @@ import javax.swing.Timer;
 
 /** Displays the campus entrance encounter and its controls. */
 public final class BattlePanel extends JPanel {
-    private static final int AP_FRAME_MILLIS = 50;
+    private static final int AP_FRAME_MILLIS = 16;
     private static final double AP_EPSILON = 0.0000001;
     private static final int EFFECT_MILLIS = 1600;
     private static final int SECOND_CAST_DELAY_MILLIS = 700;
     private static final int LOOPER_HIT_DELAY_MILLIS = 300;
     private static final int AMBUSH_ALERT_MILLIS = 3000;
     private static final double AMBUSH_ENEMY_AP_FRACTION = 0.8;
-    private static final int ANIMATION_FRAME_MILLIS = 50;
+    private static final int ANIMATION_FRAME_MILLIS = 16;
     private static final int VICTORY_ANIMATION_MILLIS = 1800;
     private final Runnable returnToMenu;
     private final Consumer<GameProgress> onVictory;
+    private Consumer<GameProgress> onEscape;
     private final GameSettings settings;
     private final Random battleRandom;
     private final JLabel status = new JLabel();
@@ -42,12 +43,13 @@ public final class BattlePanel extends JPanel {
     private final JButton ability = new JButton("Ability");
     private final JButton item = new JButton("Item");
     private final JButton defend = new JButton("Defend");
+    private final JButton escape = new JButton("Escape");
     private final JButton finish = new JButton("Return to Menu");
     private final BattleScene scene;
     private Battle battle;
     private GameProgress progress;
     private int commandIndex;
-    private final JButton[] commands = {attack, ability, item, defend};
+    private final JButton[] commands = {attack, ability, item, defend, escape};
     private enum TargetAction { NONE, ATTACK, ABILITY, ITEM, WHITE_FLOWER, DEFEND }
     private TargetAction targeting = TargetAction.NONE;
     private int targetIndex;
@@ -114,6 +116,7 @@ public final class BattlePanel extends JPanel {
     public BattlePanel(Runnable returnToMenu, Consumer<GameProgress> onVictory, GameSettings settings, Random random) {
         this.returnToMenu = returnToMenu;
         this.onVictory = onVictory;
+        this.onEscape = ignored -> returnToMenu.run();
         this.settings = settings;
         this.battleRandom = random;
         scene = new BattleScene(new BattleScene.State() {
@@ -132,6 +135,7 @@ public final class BattlePanel extends JPanel {
             @Override public List<String> leveledStudents() { return leveledStudents; }
             @Override public List<String> bonusXpStudents() { return bonusXpStudents; }
             @Override public boolean showEffects() { return showEffects; }
+            @Override public boolean escaping() { return battle != null && battle.isEscaping(); }
             @Override public boolean showAmbush() { return showAmbush; }
             @Override public Battle.AbilityAnnouncement abilityAnnouncement() { return abilityAnnouncement; }
             @Override public boolean choosingItem() { return choosingItem; }
@@ -181,8 +185,9 @@ public final class BattlePanel extends JPanel {
         sparkExplosionTimer = new Timer(300, event -> resolveSparkExplosion());
         sparkExplosionTimer.setRepeats(false);
         BattleControls.build(this, scene, status, partyStatus, apBars, log, logScroll,
-                attack, ability, item, defend, finish);
+                attack, ability, item, defend, escape, finish);
         attack.addActionListener(e -> beginTargeting(TargetAction.ATTACK));
+        escape.addActionListener(e -> performAction(() -> battle.beginEscape(), false));
         defend.addActionListener(e -> beginTargeting(TargetAction.DEFEND));
         ability.addActionListener(e -> {
             Student actor = battle.getCurrent();
@@ -224,6 +229,8 @@ public final class BattlePanel extends JPanel {
             }
         });
     }
+    /** Sets the destination for a successful party escape. */
+    public void setEscapeAction(Consumer<GameProgress> action) { onEscape = java.util.Objects.requireNonNull(action); }
 
     private void effectTimerStop() { effectTimer.stop(); }
 
@@ -317,10 +324,11 @@ public final class BattlePanel extends JPanel {
 
     private void advanceActionPoints(double seconds) {
         if (battle == null || battle.isOver()) { apTimer.stop(); return; }
+        if (battle.cancelEscapeIfKnockedOut()) refresh();
         if (battle.hasPendingSparkExplosion()) return;
         // Wait mode: freeze clocks while a ready student chooses a command or target.
         if (battle.getCurrent() != null) {
-            if (battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
+            if (battle.isEscaping() || battle.getParty().stream().anyMatch(student -> student.isAlive() && battle.getStunTurns(student) > 0)) scene.repaint();
             return;
         }
         boolean changed = false;
@@ -337,6 +345,7 @@ public final class BattlePanel extends JPanel {
                         enemyPoints.put(enemy, 0.0); showActionEffects(null); enemyActed = true; changed = true; break;
                     }
                     if (battle.enemyAttack(enemy)) {
+                        battle.cancelEscapeIfKnockedOut();
                         battle.prependEffects(dotEffects);
                         enemyPoints.put(enemy, 0.0);
                         for (Enemy spawned : battle.getEnemies()) enemyPoints.putIfAbsent(spawned, 0.0);
@@ -362,7 +371,9 @@ public final class BattlePanel extends JPanel {
             if (remaining <= 0.0) { break; }
             double untilReady = Double.POSITIVE_INFINITY;
             for (Student student : battle.getParty()) {
-                if (student.isAlive()) { untilReady = Math.min(untilReady, (student.getActionThreshold() - actionPoints.get(student)) / studentRate(student, rate)); }
+                if (student.isAlive() && (!battle.isEscaping() || actionPoints.get(student) + AP_EPSILON < student.getActionThreshold())) {
+                    untilReady = Math.min(untilReady, (student.getActionThreshold() - actionPoints.get(student)) / studentRate(student, rate));
+                }
             }
             for (Enemy enemy : battle.getEnemies()) {
                 if (enemy.isAlive()) { untilReady = Math.min(untilReady, (enemy.getActionThreshold() - enemyPoints.get(enemy)) / rate); }
@@ -394,23 +405,29 @@ public final class BattlePanel extends JPanel {
     }
 
     private double studentRate(Student student, double baseRate) {
-        return baseRate * student.getEffectiveSpeed() / student.getUnmodifiedSpeed();
+        return baseRate * student.getEffectiveSpeed() / student.getStartingSpeed();
     }
 
     private boolean selectReadyStudent() {
         if (battle.isOver() || battle.getCurrent() != null) { return false; }
         for (Student student : battle.getParty()) {
             if (battle.isOver()) return false;
+            if (battle.isEscaping() && student != battle.getEscapeInitiator()) continue;
             if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
                 boolean dotTicked = battle.tickDamageOverTime(student);
                 List<game.model.BattleEffect> dotEffects = dotTicked ? battle.getEffects() : List.of();
                 if (dotTicked) {
                     showActionEffects(null);
-                    if (!student.isAlive() || battle.isOver()) { actionPoints.put(student, 0.0); refresh(); continue; }
+                    if (!student.isAlive() || battle.isOver()) { actionPoints.put(student, 0.0); battle.cancelEscapeIfKnockedOut(); refresh(); continue; }
                 }
                 if (battle.consumeStunTurn(student)) {
                     battle.prependEffects(dotEffects);
                     actionPoints.put(student, 0.0); showActionEffects(null); refresh(); continue;
+                }
+                if (student == battle.getEscapeInitiator()) {
+                    actionPoints.put(student, 0.0);
+                    if (battle.advanceEscape(student)) { apTimer.stop(); onEscape.accept(progress); return true; }
+                    refresh(); continue;
                 }
                 actionPoints.put(student, (double) student.getActionThreshold());
                 return battle.selectStudent(student);
@@ -594,7 +611,7 @@ public final class BattlePanel extends JPanel {
             if (battle.isVictory() && !rewardRecorded) {
                 java.util.List<String> rewards = new java.util.ArrayList<>();
                 if (battle.isMerchantEncounter()) progress.unlockCarbonMarket();
-                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom)); }
+                else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom, settings.getDifficulty())); }
                 victoryRewardItems = List.copyOf(rewards);
                 int earned = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getPetotDrop).sum();
                 victoryPetot = progress.addPetot(earned * (settings.isGreedIsGood() ? 10 : 1));
@@ -632,7 +649,7 @@ public final class BattlePanel extends JPanel {
         BattleControls.updateParty(battle, partyStatus);
         BattleControls.updateBars(battle, apBars, actionPoints);
         boolean canChoose = !over && !battle.isActionAnimating() && targeting == TargetAction.NONE && !choosingItem && battle.getCurrent() != null;
-        attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose);
+        attack.setEnabled(canChoose); ability.setEnabled(canChoose); item.setEnabled(canChoose); defend.setEnabled(canChoose); escape.setEnabled(canChoose && !battle.isEscaping());
         finish.setVisible(over);
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
         updateCommandDisplay();
@@ -646,7 +663,8 @@ public final class BattlePanel extends JPanel {
                 : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
         status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")
                 : (battle.getCurrent() == null ? "Waiting for AP" : battle.getCurrent().getName() + " is ready")
-                + "  |  Kits: " + battle.getKits() + "  Flowers: " + progress.getInventory().getWhiteFlowers() + "  |  " + hint);
+                + (battle.isEscaping() ? "  |  Escaping: " + battle.getEscapeInitiator().getName() + " (" + battle.getEscapeTurnsRemaining() + ")"
+                    : "  |  Kits: " + battle.getKits() + "  Flowers: " + progress.getInventory().getWhiteFlowers()) + "  |  " + hint);
     }
 
 

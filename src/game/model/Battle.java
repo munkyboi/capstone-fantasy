@@ -36,6 +36,35 @@ public final class Battle {
     private Enemy angelTarget;
     private Enemy sparkCaster;
     private Student sparkTarget;
+    private Student escapeInitiator;
+    private int escapeTurnsRemaining;
+    public boolean isEscaping() { return escapeInitiator != null; }
+    public Student getEscapeInitiator() { return escapeInitiator; }
+    public int getEscapeTurnsRemaining() { return escapeTurnsRemaining; }
+    /** Starts a three-turn escape; selecting the command consumes the first turn. */
+    public boolean beginEscape() {
+        if (isOver() || isActionAnimating() || isEscaping() || getCurrent() == null) return false;
+        escapeInitiator = getCurrent(); escapeTurnsRemaining = 2;
+        finish(escapeInitiator.getName() + " leads the party's escape! Turns remaining: 2.");
+        return true;
+    }
+    /** Cancels escape if its initiator is no longer able to lead. */
+    public boolean cancelEscapeIfKnockedOut() {
+        if (escapeInitiator == null || escapeInitiator.isAlive()) return false;
+        message = escapeInitiator.getName() + " was knocked out. Escape failed.";
+        escapeInitiator = null; escapeTurnsRemaining = 0; return true;
+    }
+    /** Consumes an initiator's ready turn and returns true when escape completes. */
+    public boolean advanceEscape(Student student) {
+        if (student == null || student != escapeInitiator || !student.isAlive() || escapeTurnsRemaining <= 0) return false;
+        escapeTurnsRemaining--;
+        if (escapeTurnsRemaining > 0) { message = "Escaping... Turns remaining: " + escapeTurnsRemaining + "."; return false; }
+        escapeInitiator = null;
+        for (Student hero : party) hero.applyEscapeXpPenalty();
+        progress.spendPetot((progress.getPetot() + 9) / 10);
+        message = "The party escaped!";
+        return true;
+    }
     public boolean hasPendingSparkExplosion() { return sparkCaster != null; }
     public boolean hasPendingLooperHits() { return pendingLooperHits > 0; }
     public boolean hasPendingAngelAttack() { return angelHitsRemaining > 0 || angelExplosion; }
@@ -106,7 +135,7 @@ public final class Battle {
             message = "The Mysterious Merchant challenges the party!";
             return;
         }
-        int count = EncounterRules.rollMonsterCount(encounter, random);
+        int count = EncounterRules.rollMonsterCount(encounter, random, difficulty);
         boolean finalEncounter = encounter == GameProgress.FINAL_BOSS_ENCOUNTER;
         ambushed = ambushed && !finalEncounter;
         int sentinels = finalEncounter ? 5 : encounter == 3 ? 1 + random.nextInt(3) : encounter >= 1 ? 1 : 0;
@@ -231,7 +260,7 @@ public final class Battle {
      */
     public boolean selectStudent(Student student) {
         int index = party.indexOf(student);
-        if (isOver() || isActionAnimating() || getCurrent() != null || index < 0 || !student.isAlive()) { return false; }
+        if (isOver() || isEscaping() || isActionAnimating() || getCurrent() != null || index < 0 || !student.isAlive()) { return false; }
         guards.remove(student);
         student.endDefend();
         turn = index;

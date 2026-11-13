@@ -50,6 +50,7 @@ final class BattleScene extends JPanel {
         default Student blockingStudent() { return null; }
         default Student protectedStudent() { return null; }
         double effectProgress();
+        default boolean escaping() { return false; }
     }
     private final State state;
     BattleScene(State state) { this.state = state; }
@@ -191,7 +192,13 @@ final class BattleScene extends JPanel {
                         spriteTop = y + lift + spriteHeight - fittedHeight(sprites, slice, spriteWidth, spriteHeight);
                         java.awt.Composite previousComposite = g.getComposite();
                         if (student.hasEtherealCharge()) g.setComposite(java.awt.AlphaComposite.SrcOver.derive(0.5f));
-                        drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
+                        if (state.escaping() && student.isAlive()) {
+                            int sway = (int) Math.round(2 * Math.sin(System.nanoTime() / 120_000_000.0));
+                            Graphics2D flipped = (Graphics2D) g.create();
+                            try { flipped.translate(2 * (left + sway) + spriteWidth, 0); flipped.scale(-1, 1);
+                                drawFit(flipped, sprites, id * slice, slice, left + sway, y + lift, spriteWidth, spriteHeight);
+                            } finally { flipped.dispose(); }
+                        } else drawFit(g, sprites, id * slice, slice, left, y + lift, spriteWidth, spriteHeight);
                         g.setComposite(previousComposite);
                     }
                     if (student.isAlive() && !battle.isOver() && battle.getStunTurns(student) > 0 && stunIcon != null) {

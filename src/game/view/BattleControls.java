@@ -24,7 +24,7 @@ final class BattleControls {
 
     static void build(JPanel owner, BattleScene scene, JLabel status, JLabel[] partyStatus,
             JProgressBar[] apBars, JTextArea log, JScrollPane logScroll, JButton attack,
-            JButton ability, JButton item, JButton defend, JButton finish) {
+            JButton ability, JButton item, JButton defend, JButton escape, JButton finish) {
         owner.setPreferredSize(new Dimension(960, 540));
         owner.setFocusable(true);
         owner.setLayout(new BorderLayout());
@@ -70,10 +70,10 @@ final class BattleControls {
         info.add(members, BorderLayout.SOUTH);
         bottom.add(info, BorderLayout.CENTER);
         JPanel actions = frame();
-        actions.setLayout(new GridLayout(5, 1, 0, 1));
+        actions.setLayout(new GridLayout(6, 1, 0, 1));
         actions.setPreferredSize(new Dimension(190, 160));
         ViewportFonts.scalePreferredSize(actions);
-        for (JButton button : new JButton[] {attack, ability, item, defend, finish}) {
+        for (JButton button : new JButton[] {attack, ability, item, defend, escape, finish}) {
             button.setFocusable(false);
             button.setForeground(Color.WHITE);
             button.setBackground(new Color(18, 39, 111));
@@ -83,13 +83,13 @@ final class BattleControls {
             button.setOpaque(false);
             button.setContentAreaFilled(false);
         }
-        actions.add(attack); actions.add(ability); actions.add(item); actions.add(defend); actions.add(finish);
+        actions.add(attack); actions.add(ability); actions.add(item); actions.add(defend); actions.add(escape); actions.add(finish);
         bottom.add(actions, BorderLayout.WEST);
         owner.add(new AspectRatioPanel(new BattleOverlay(scene, bottom)), BorderLayout.CENTER);
     }
 
     static void updateCommands(JButton[] commands, int commandIndex) {
-        String[] names = {"Attack", "Ability", "Item", "Defend"};
+        String[] names = {"Attack", "Ability", "Item", "Defend", "Escape"};
         for (int i = 0; i < commands.length; i++) {
             commands[i].setText(names[i]);
             ViewportFonts.setScaledIcon(commands[i], i == commandIndex && commands[i].isEnabled() ? PixelPointer.HAND : PixelPointer.EMPTY);
