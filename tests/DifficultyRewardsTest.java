@@ -17,11 +17,11 @@ public final class DifficultyRewardsTest {
             }
             Enemy w=new Enemy("Wisp",false,false,d);check(w.getPetotDrop()==Math.round(12*d.multiplier()),"Petot per difficulty " + d);
             Enemy g=Enemy.itmigims(d,0,1);check(g.getPetotDrop()==Math.round(5000*d.multiplier())&&g.getExperienceDrop()==0,"goblin Petot " + d);
-            Enemy defeated=new Enemy("Wisp");defeated.takeDamage(9999);double threshold=.30*d.multiplier();
+            Enemy defeated=new Enemy("Wisp");defeated.takeDamage(9999);double threshold=.15*d.multiplier();
             GameProgress party=new GameProgress(List.of(Student.ZACK));
-            check(MonsterLoot.award(List.of(defeated),party,rolls(threshold-0.0001,1),d).contains("first_aid_kit"),"drop below threshold " + d);
+            check(MonsterLoot.award(List.of(defeated),party,rolls(threshold-0.0001,1),d).contains("white_flower"),"drop below threshold " + d);
             party=new GameProgress(List.of(Student.ZACK));
-            check(!MonsterLoot.award(List.of(defeated),party,rolls(threshold,1),d).contains("first_aid_kit"),"drop threshold " + d);
+            check(!MonsterLoot.award(List.of(defeated),party,rolls(threshold,1),d).contains("white_flower"),"drop threshold " + d);
             Enemy goblin=Enemy.itmigims(d,0,1);goblin.takeDamage(999999);
             double first=Math.min(1,.5*d.multiplier()), second=.25*d.multiplier();
             party=new GameProgress(List.of(Student.ZACK));List<String> two=MonsterLoot.award(List.of(goblin),party,rolls(first-.0001,second-.0001),d);

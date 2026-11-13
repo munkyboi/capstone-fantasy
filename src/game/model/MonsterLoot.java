@@ -9,9 +9,18 @@ import java.util.Random;
 public final class MonsterLoot {
     /** One possible item and its probability for each defeated monster of a type. */
     public record Drop(String itemId, double chance) { }
-    private static final Map<String, List<Drop>> TABLES = Map.of(
-            "wisp", List.of(new Drop("first_aid_kit", 0.30), new Drop("white_flower", 0.05)),
-            "sentinel", List.of(new Drop("sentinel_band", 0.25), new Drop("white_flower", 0.05)));
+    private static final List<String> NON_SHOP_GEAR = List.of(
+            "student_staff", "cadet_sword", "hand_crossbows", "monk_wraps",
+            "scholar_staff", "cadet_blade", "hunter_crossbows", "champion_wraps",
+            "campus_vest", "focus_charm", "training_uniform", "sentinel_band",
+            "guardian_band", "courage_charm", "campus_medal");
+    private static List<Drop> table() {
+        List<Drop> drops = new ArrayList<>();
+        drops.add(new Drop("white_flower", 0.15));
+        for (String id : NON_SHOP_GEAR) drops.add(new Drop(id, 0.15));
+        return List.copyOf(drops);
+    }
+    private static final Map<String, List<Drop>> TABLES = Map.of("wisp", table(), "sentinel", table());
     private MonsterLoot() { }
     /** Returns the immutable drop table for an enemy. */
     public static List<Drop> tableFor(Enemy enemy) {
@@ -57,7 +66,7 @@ public final class MonsterLoot {
             drops.add(id);
         }
     }
-    private static boolean owns(GameProgress progress, String id) {
+    static boolean owns(GameProgress progress, String id) {
         return progress.getInventory().getEquipmentIds().contains(id)
                 || progress.getRoster().stream().anyMatch(s -> java.util.Arrays.stream(Equipment.Slot.values())
                         .anyMatch(slot -> id.equals(s.getEquipmentId(slot))));

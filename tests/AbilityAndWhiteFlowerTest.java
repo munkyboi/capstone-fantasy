@@ -40,8 +40,8 @@ public final class AbilityAndWhiteFlowerTest {
         check(healing.enemyAttack(sentinel) && healing.getLastAbility().skill().equals("Stone Mend"),"sentinel heal announcement");
         Enemy dead=new Enemy("Library Wisp A"); dead.takeDamage(999);
         GameProgress loot=new GameProgress(List.of(0,1)); loot.getInventory().restoreWhiteFlowers(0);
-        check(MonsterLoot.award(List.of(dead),loot,fixed(.049)).contains("white_flower"),"rare drop succeeds below 5 percent");
-        check(!MonsterLoot.award(List.of(dead),loot,fixed(.05)).contains("white_flower"),"rare drop fails at 5 percent");
+        check(MonsterLoot.award(List.of(dead),loot,fixed(.149)).contains("white_flower"),"rare drop succeeds below 15 percent");
+        check(!MonsterLoot.award(List.of(dead),loot,fixed(.15)).contains("white_flower"),"rare drop fails at 15 percent");
         check(loot.getInventory().getWhiteFlowers()==1,"drop added to inventory");
         Student fallen=student(loot,1), alive=student(loot,0); fallen.takeDamage(9999);
         Battle fight=new Battle(loot,fixed(0)); check(fight.selectStudent(alive),"reviver ready");

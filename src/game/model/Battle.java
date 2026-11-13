@@ -29,6 +29,7 @@ public final class Battle {
     private int turn = -1;
     private boolean pendingSecondCast;
     private int pendingLooperHits;
+    private static final double LOOPER_LOOP_CHANCE = 0.70;
     private int twinStage;
     private Enemy twinTarget;
     private Student twinActor;
@@ -453,7 +454,7 @@ public final class Battle {
     /** Starts a chain based on the last hit of an attack or damaging cast. */
     private String looperHits(Student actor, String message) {
         if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
-                || lastHeroHitDamage <= 0 || isVictory() || random.nextDouble() >= 0.50) return message;
+                || lastHeroHitDamage <= 0 || isVictory() || random.nextDouble() >= LOOPER_LOOP_CHANCE) return message;
         pendingLooperHits = 5; looperActor = actor; looperTarget = lastHeroHitTarget;
         looperBaseDamage = lastHeroHitDamage; looperPreviousDamage = 0;
         return message + "\nLooper Ring activates!";
@@ -472,7 +473,7 @@ public final class Battle {
         effects.clear(); effects.add(new BattleEffect(target, -damage)); applyManaLeak(true, target, damage);
         message = "Looper Ring hits " + target.getName() + " for " + damage + " damage." + defeated(target);
         pendingLooperHits--;
-        if (pendingLooperHits > 0 && random.nextDouble() >= 0.5) pendingLooperHits = 0;
+        if (pendingLooperHits > 0 && random.nextDouble() >= LOOPER_LOOP_CHANCE) pendingLooperHits = 0;
         if (isVictory()) { pendingLooperHits = 0; pendingSecondCast = false; angelExplosion = false; finish(message); }
         else if (pendingLooperHits == 0 && !pendingSecondCast && !angelExplosion) finish(message);
         return true;

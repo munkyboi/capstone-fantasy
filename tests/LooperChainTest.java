@@ -16,9 +16,9 @@ public class LooperChainTest {
         int[] expected={50,60,62,63,63};
         for(int value:expected){int before=target.getHp(); check(b.advanceLooperHit(),"loop executes"); check(before-target.getHp()==value,"loop damage "+value);}
         check(!b.hasPendingLooperHits(),"five-loop limit");
-        set(b,"lastHeroHitTarget",target); set(b,"lastHeroHitDamage",100); rng.roll=0; start.invoke(b,s,""); rng.roll=.5;
+        set(b,"lastHeroHitTarget",target); set(b,"lastHeroHitDamage",100); rng.roll=0; start.invoke(b,s,""); rng.roll=.7;
         check(b.advanceLooperHit() && !b.hasPendingLooperHits(),"failed second roll ends chain");
-        rng.roll=.5; start.invoke(b,s,""); check(!b.hasPendingLooperHits(),"failed first roll");
+        rng.roll=.7; start.invoke(b,s,""); check(!b.hasPendingLooperHits(),"failed first roll");
         rng.roll=0; set(target,"hp",1); set(b,"lastHeroHitTarget",target); set(b,"lastHeroHitDamage",100); start.invoke(b,s,"");
         check(b.advanceLooperHit() && !target.isAlive(),"loop defeats original target"); int before=other.getHp(); check(b.advanceLooperHit(),"retarget"); check(before-other.getHp()==51,"retarget uses actual previous damage");
         System.out.println("Looper chain checks passed");

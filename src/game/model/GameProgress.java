@@ -180,9 +180,12 @@ public final class GameProgress implements java.io.Serializable {
         String[] rewards = {"focus_charm", "training_uniform", "guardian_band", "courage_charm", "campus_medal"};
         if (stage < 0 || stage >= rewards.length || getInventory().isRewardClaimed(stage)) { return null; }
         String id = rewards[stage];
-        getInventory().addEquipment(id);
+        if (!MonsterLoot.owns(this, id)) getInventory().addEquipment(id);
         if (stage == 0) {
-            for (Student student : party) { getInventory().addEquipment(Equipment.upgradedWeapon(student.getId())); }
+            for (Student student : party) {
+                String weapon = Equipment.upgradedWeapon(student.getId());
+                if (!MonsterLoot.owns(this, weapon)) getInventory().addEquipment(weapon);
+            }
         }
         getInventory().markRewardClaimed(stage);
         return stage == 0 ? "Focus Charm and party weapon upgrades" : Equipment.fromId(id).getName();

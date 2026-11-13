@@ -23,8 +23,8 @@ public final class LooperRingTest {
         Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
         int before=e.getHp(); check(b.selectStudent(s) && b.attack(e), "attack"); int original=before-e.getHp();
         long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null && !x.isManaLeak()).count();
-        check(count==1 && b.hasPendingLooperHits()==(chance < .5), "proc boundary " + chance);
-        if (chance < .5) {
+        check(count==1 && b.hasPendingLooperHits()==(chance < .7), "proc boundary " + chance);
+        if (chance < .7) {
             int previous=0;
             for(int i=0;i<5;i++) { int bonus=(int)Math.ceil(original * 0.5 + previous * 0.2 - 1e-9); check(b.advanceLooperHit(), "queued hit " + i); final int expected=bonus; check(b.getEffects().stream().anyMatch(x -> x.getAmount()==-expected), "loop damage " + i); previous=bonus; }
             check(!b.hasPendingLooperHits(), "sequence finishes after five hits");
@@ -43,7 +43,7 @@ public final class LooperRingTest {
             check(loaded.getSp()==35 && loaded.getMaxSp()==35 && "looper_ring".equals(loaded.getEquipmentId(Equipment.Slot.ACCESSORY)),"save " + f);
         }} finally {try(var paths=Files.walk(path)){for(Path item:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(item);}}
         check(p.equip(s,Equipment.Slot.ACCESSORY,null) && s.getMaxSp()==35 && s.getSp()==35,"unequip preserves SP");
-        proc(0,0); proc(.499999,20); proc(.5,0);
+        proc(0,0); proc(.699999,20); proc(.7,0);
         GameProgress abilityParty=equipped(); Student attacker=abilityParty.getParty().get(0);
         Battle ability=new Battle(abilityParty,new Rolls(0,0)); Enemy target=ability.getEnemies().get(0);
         check(ability.selectStudent(attacker) && ability.ability(null,target),"ability with ring");

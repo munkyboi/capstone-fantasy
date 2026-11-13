@@ -50,8 +50,8 @@ public final class SkillPointsTest {
         } finally {
             try (var files = Files.walk(dir)) { for (Path f : files.sorted(Comparator.reverseOrder()).toList()) { Files.deleteIfExists(f); } }
         }
-        check(MonsterLoot.tableFor(new Enemy("Wisp")).get(0).chance() == 0.30, "Wisp loot table");
-        check(MonsterLoot.tableFor(new Enemy("Sentinel", true)).get(0).chance() == 0.25, "Sentinel loot table");
+        check(MonsterLoot.tableFor(new Enemy("Wisp")).get(0).chance() == 0.15, "Wisp loot table");
+        check(MonsterLoot.tableFor(new Enemy("Sentinel", true)).get(0).chance() == 0.15, "Sentinel loot table");
         System.out.println("Skill points and loot table checks passed");
     }
 }
