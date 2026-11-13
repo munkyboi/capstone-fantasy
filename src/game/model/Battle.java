@@ -273,6 +273,18 @@ public final class Battle {
                 text.append(student.getName()).append(" regenerated ").append(healed).append(" HP.");
                 restored = true;
             }
+            if (student.isAlive() && student.getSp() < student.getMaxSp()
+                    && "scholars_ward".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))
+                    && random.nextDouble() < 0.25) {
+                int before = student.getSp();
+                student.restoreSp(Math.min(student.getMaxSp(), before + (student.getMaxSp() + 9) / 10));
+                int recovered = student.getSp() - before;
+                if (!restored && !keepCurrentEffects) effects.clear();
+                effects.add(BattleEffect.status(student, "+" + recovered + " SP"));
+                if (text.length() > 0) text.append("  ");
+                text.append(student.getName()).append(" recovered ").append(recovered).append(" SP.");
+                restored = true;
+            }
         }
         if (restored) message = keepCurrentEffects ? message + "\n" + text : text.toString();
         return restored;

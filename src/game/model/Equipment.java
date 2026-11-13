@@ -36,6 +36,7 @@ public final class Equipment extends Item {
             case "champion_wraps" -> new Equipment(id, "Champion Wraps", Slot.WEAPON, 3, 0, Student.ANGEL);
             case "campus_vest" -> new Equipment();
             case "focus_charm" -> new Equipment(id, "Focus Charm", Slot.ACCESSORY, 2, 0, -1);
+            case "scholars_ward" -> new Equipment(id, "Scholar’s Ward", Slot.ACCESSORY, 0, 0, Student.ZACK);
             case "training_uniform" -> new Equipment(id, "Training Uniform", Slot.ARMOR, 0, 6, -1);
             case "market_charm" -> new Equipment(id, "Market Charm", Slot.ACCESSORY, 1, 1, -1);
             case "sentinel_band" -> new Equipment(id, "Sentinel Band", Slot.ACCESSORY, 0, 2, -1);
@@ -106,6 +107,7 @@ public final class Equipment extends Item {
             case "training_uniform" -> "+5% ACC; +5% AGI";
             case "sentinel_band" -> "+50 HP; +8% HP regeneration";
             case "focus_charm", "scholar_staff" -> "+5% ACC";
+            case "scholars_ward" -> "Zack only; +30% HP; +20% DEF; 25% chance to restore 10% max SP when AP fills";
             case "hunter_crossbows" -> "+5% AGI";
             case "cadet_blade" -> "+5% HP regeneration";
             case "champion_wraps" -> "+5% SPD";

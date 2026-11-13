@@ -191,10 +191,12 @@ public class Student extends GameCharacter {
         if (stat == Stat.HP && ("campus_vest".equals(armor)
                 || (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped))) multiplier += 0.05;
         if (stat == Stat.HP && "heroes_ring".equals(accessory)) multiplier += 0.2;
+        if (stat == Stat.HP && "scholars_ward".equals(accessory)) multiplier += 0.3;
         if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.5;
         if (stat == Stat.HP && "designer_leather_vest".equals(armor)) value += 50;
         if (stat == Stat.HP && "ethereal_robe".equals(armor)) value += 100;
         if (stat == Stat.DEF && "heroes_ring".equals(accessory)) multiplier += 0.2;
+        if (stat == Stat.DEF && "scholars_ward".equals(accessory)) multiplier += 0.2;
         if (stat == Stat.DEF && "looper_ring".equals(accessory)) multiplier -= 0.2;
         if (stat == Stat.DEF && "blade_mail".equals(armor)) return 0;
         if (stat == Stat.DEF && "ultra_instinct_shirt".equals(armor)) multiplier -= 0.2;
