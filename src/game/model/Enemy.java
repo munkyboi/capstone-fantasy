@@ -56,7 +56,7 @@ public final class Enemy extends GameCharacter {
         maxHp = copy ? Math.max(1, (int) Math.ceil(original.maxHp * 0.75)) : (int)Math.round(350 * difficultyMultiplier * (1 + 7.92 * curve));
         attack = copy ? (int)Math.ceil(original.attack / 2.0) : (int)Math.round(40 * (1 + 3.96 * curve));
         defense = copy ? (int)Math.ceil(original.defense / 2.0) : (int)Math.round(10 * (1 + 2.97 * curve));
-        agility = copy ? (int)Math.ceil(original.agility / 2.0) : (int)Math.round(10 + levels);
+        agility = copy ? (int)Math.ceil(original.agility / 2.0) : (int)Math.round(10 + levels * 0.5);
         accuracy = copy ? (int)Math.ceil(original.accuracy / 2.0) : (int)Math.round(8 + levels);
         speed = copy ? original.speed : Math.max(1,(int)Math.round(4 * difficultyMultiplier * (1 + curve)));
         actionThreshold = copy ? original.actionThreshold : Math.max(1,(int)Math.round(40 / (difficultyMultiplier * (1 + curve))));
@@ -171,7 +171,7 @@ public final class Enemy extends GameCharacter {
         hp = maxHp;
         attack = (int) Math.round(((lootGoblin ? 1 : boss ? 32 : sentinel ? attackSentinel ? 20 : SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
         defense = (int) Math.round((lootGoblin ? 18 : boss ? 24 : sentinel ? attackSentinel ? 9 : SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
-        agility = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 14 : sentinel ? 5 : 9) + levels));
+        agility = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 14 : sentinel ? 5 : 9) + levels * 0.5));
         accuracy = Math.max(1, (int) Math.round((lootGoblin ? 18 : boss ? 20 : sentinel ? 9 : 8) + levels));
         speed = Math.max(1, (int) Math.round((lootGoblin ? 15 : boss ? 1 : sentinel ? SENTINEL_SPEED : WISP_SPEED) * difficultyMultiplier * speedScale));
         char suffix = name.isEmpty() ? 'A' : name.charAt(name.length() - 1);

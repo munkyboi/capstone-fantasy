@@ -20,6 +20,7 @@ public final class Battle {
     private final java.util.Map<Student, Student> guards = new java.util.HashMap<>();
     private Student blockingStudent, protectedStudent, lastDamageRecipient;
     private final double accuracyScalingFactor;
+    private final double heroAccuracyScalingFactor;
     private final GameProgress progress;
     private final List<BattleEffect> effects = new ArrayList<>();
     private final java.util.Map<Student, Integer> stuns = new java.util.HashMap<>();
@@ -142,6 +143,7 @@ public final class Battle {
             default -> throw new IllegalArgumentException("Invalid party size");
         };
         this.accuracyScalingFactor = 100.0 * java.util.Objects.requireNonNull(difficulty).multiplier() * partyMultiplier;
+        this.heroAccuracyScalingFactor = 100.0 * partyMultiplier / difficulty.multiplier();
         for (Student student : party) { student.clearDefense(); }
         party.sort(Comparator.comparingDouble(Student::getEffectiveSpeed).reversed());
         if (party.stream().noneMatch(Student::isAlive)) {
@@ -186,8 +188,10 @@ public final class Battle {
         if (ambushed) { message = "You have been ambushed!\n" + message; }
         enemies.sort(Comparator.comparingInt(Enemy::getSpeed).reversed());
     }
-    /** The shared hit/dodge scaling factor, fixed from the party size at battle start. */
+    /** Returns the monster accuracy factor, fixed from difficulty and starting party size. */
     public double getAccuracyScalingFactor() { return accuracyScalingFactor; }
+    /** Returns the difficulty and party-size accuracy factor for heroes. */
+    public double getHeroAccuracyScalingFactor() { return heroAccuracyScalingFactor; }
     public boolean isMerchantEncounter() { return merchantEncounter; }
     public int getStunTurns(Student student) { return stuns.getOrDefault(student, 0); }
     public boolean consumeStunTurn(Student student) {
@@ -870,7 +874,8 @@ public final class Battle {
         return 1.0 - Math.min(0.60, dodge);
     }
     private boolean hits(GameCharacter attacker, GameCharacter defender) {
-        return random.nextDouble() < hitChance(defender.getEffectiveAgility(), attacker.getEffectiveAccuracy(), accuracyScalingFactor);
+        double factor = attacker instanceof Student ? heroAccuracyScalingFactor : accuracyScalingFactor;
+        return random.nextDouble() < hitChance(defender.getEffectiveAgility(), attacker.getEffectiveAccuracy(), factor);
     }
     private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier) {
         return enemyDamage(enemy, target, bonus, multiplier, false);
