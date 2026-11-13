@@ -796,7 +796,12 @@ public final class Battle {
     }
     private int hurt(Enemy target, int attack, boolean guaranteedHit) {
         if (!guaranteedHit && !hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
-        int damage = target.takeDamage(damageAfterDefense(attack, target.getDefense()) + random.nextInt(DAMAGE_VARIATION));
+        int defense = target.getDefense();
+        Student actor = getCurrent();
+        if (defense > 0 && actor != null && "demon_hunter".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
+            defense -= (int)Math.ceil(defense * 0.25);
+        }
+        int damage = target.takeDamage(damageAfterDefense(attack, defense) + random.nextInt(DAMAGE_VARIATION));
         effects.add(new BattleEffect(target, -damage));
         applyManaLeak(hasManaLeak(getCurrent()), target, damage);
         return damage;

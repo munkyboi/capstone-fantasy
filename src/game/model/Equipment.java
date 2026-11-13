@@ -115,7 +115,7 @@ public final class Equipment extends Item {
             case "looper_ring" -> "+10% ability cost; -20% DEF; +10% SPD; damaging hits leak 5–10% max SP; 50% chance of 5 random hits";
             case "ring_of_power" -> "+50% ATK/DEF/SPD; 50% AP refill when hit";
             case "light_saber" -> "+20% SPD; 100% hit damage over 5 turns";
-            case "demon_hunter" -> "+20% ATK; +75% SPD";
+            case "demon_hunter" -> "+20% ATK; +75% SPD; Piercing Bolts ignore 25% of positive DEF";
             case "great_sage_staff" -> "+20% ATK; 50% chance to cast twice";
             case "giant_slayer_gloves" -> "+50% ATK; +15 SPD; two extra basic hits";
             case "blade_mail" -> "0 DEF; +250% HP; +20% regen; -20% SPD; reflect 50% x (1 + regen rate)";

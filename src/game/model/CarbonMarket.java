@@ -9,7 +9,7 @@ public final class CarbonMarket {
             new Offer("market_charm", "Market Charm", 60, "+1 ATK and +1 DEF."),
             new Offer("ring_of_power", "Ring of Power", 2500, "+50% ATK/DEF/SPD; 50% chance to refill AP when hit."),
             new Offer("light_saber", "Light Saber", 2500, "Warrior: +100 ATK, +20% SPD; 100% hit damage over 5 turns."),
-            new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD."),
+            new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD; Piercing Bolts ignore 25% of positive DEF."),
             new Offer("great_sage_staff", "Great Sage Staff", 2500, "Mage: +20% ATK; 50% chance to cast twice."),
             new Offer("giant_slayer_gloves", "Giant Slayer Gloves", 2500, "Monk: +50% ATK, +15 SPD, two extra hits."),
             new Offer("blade_mail", "Blade Mail", 2500, "0 DEF; +250% HP; +20% regen; -20% SPD; reflect 50% x (1 + regen rate)."),
