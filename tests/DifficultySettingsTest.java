@@ -19,7 +19,7 @@ public final class DifficultySettingsTest {
                     && wisp.getActionThreshold() == threshold[i] && wisp.getExperienceDrop() == xp[i]
                     && wisp.scaleDamage(12) == damage[i], "monster scaling " + difficulty);
             Enemy boss = new Enemy("Crystal Guardian", true, true, difficulty);
-            check(boss.getMaxHp() == Math.round(2000 * difficulty.multiplier())
+            check(boss.getMaxHp() == Math.round(1000 * difficulty.multiplier())
                     && boss.getExperienceDrop() == Math.round(120 * difficulty.multiplier()), "boss scaling " + difficulty);
         }
         GameProgress normalProgress = new GameProgress(List.of(0));

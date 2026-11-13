@@ -41,7 +41,7 @@ public class FinalBossBalanceTest {
    check(battle.getEnemies().size()==6 && battle.getEnemies().stream().filter(Enemy::isBoss).count()==1 && battle.getEnemies().stream().filter(e->e.isSentinel()&&!e.isBoss()).count()==5,"final composition " + d + " " + size);
    Enemy boss=battle.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow();
    double hpFactor=new double[]{0,.35,.595,.7225,.80}[size],thresholdFactor=new double[]{0,1.8,1.62,1.44,1.35}[size];
-   check(boss.getMaxHp()==Math.round(2500*d.multiplier()*hpFactor) && boss.getActionThreshold()==Math.round(40*thresholdFactor/d.multiplier()),"party and difficulty stats " + d + " " + size);
+   check(boss.getMaxHp()==Math.round(1250*d.multiplier()*hpFactor) && boss.getActionThreshold()==Math.round(40*thresholdFactor/d.multiplier()),"party and difficulty stats " + d + " " + size);
    double damageFactor=new double[]{0,.20,.595,.7225,.75}[size];
    check(boss.scaleDamage(100)==Math.round(100*d.multiplier()*damageFactor),"damage honors difficulty and party size " + d + " " + size);
    check(battle.getEnemies().stream().mapToInt(Enemy::getPetotDrop).sum()==5*Math.round(39*d.multiplier())+Math.round(50000*d.multiplier()),"rewards still use difficulty " + d);

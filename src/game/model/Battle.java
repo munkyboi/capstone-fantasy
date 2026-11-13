@@ -198,6 +198,11 @@ public final class Battle {
         message = student.getName() + " is stunned and misses a turn.";
         return true;
     }
+    private void applyStun(Student student, int turns) {
+        stuns.merge(student, turns, Math::max);
+        guards.remove(student); student.endDefend();
+        effects.add(BattleEffect.status(student, "Stunned"));
+    }
     /** Returns party in speed order.
      * @return party in speed order
      */ public List<Student> getParty() { return List.copyOf(party); }
@@ -316,7 +321,7 @@ public final class Battle {
      */
     public boolean selectStudent(Student student) {
         int index = party.indexOf(student);
-        if (isOver() || isEscaping() || isActionAnimating() || getCurrent() != null || index < 0 || !student.isAlive()) { return false; }
+        if (isOver() || isEscaping() || isActionAnimating() || getCurrent() != null || index < 0 || !student.isAlive() || getStunTurns(student) > 0) { return false; }
         guards.remove(student);
         student.endDefend();
         turn = index;
@@ -588,8 +593,9 @@ public final class Battle {
         effects.clear(); blockingStudent = null; protectedStudent = null; lastAbility = null;
         List<Student> living = party.stream().filter(Student::isAlive).toList();
         if (enemy.isBoss()) {
-            boolean companionsAlive = enemies.stream().anyMatch(other -> other != enemy && other.isAlive());
-            int action = enemy.guardianAction(companionsAlive); enemy.recordAction();
+            long defeatedCompanions = enemies.stream().filter(other -> other != enemy && other.isDefeated()).count();
+            boolean missingSupport = enemies.stream().anyMatch(other -> other != enemy && other.isDefeated() && other.isSentinel() && !other.isAttackSentinel());
+            int action = enemy.guardianAction(defeatedCompanions >= 3 && missingSupport); enemy.recordAction();
             if (action == 1) {
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Crystal Pulse");
                 message = enemy.getName() + " begins charging Crystal Pulse!";
@@ -604,7 +610,7 @@ public final class Battle {
                     Student recipient = lastDamageRecipient;
                     pulseInitial.merge(recipient, damage, Integer::sum);
                     if (damage > 0 && recipient.isAlive() && random.nextDouble() < GUARDIAN_PULSE_STUN_CHANCE) {
-                        stuns.merge(recipient, 1, Math::max); effects.add(BattleEffect.status(recipient, "Stunned"));
+                        applyStun(recipient, 1);
                     }
                     text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
                 }
@@ -613,15 +619,19 @@ public final class Battle {
                 else { enemy.finishPulse(); pulseCaster = null; }
             } else if (action == 4) {
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Crystal Mesh");
-                for (Enemy other : enemies) if (other != enemy && other.isDefeated()) defeatedEarlier.add(other);
-                burns.removeIf(burn -> burn.target instanceof Enemy other && other != enemy && !other.isAlive());
-                enemies.removeIf(other -> other != enemy && !other.isAlive());
-                for (int index = 0; index < 5; index++) {
-                    boolean attack = index >= 2;
-                    String name = (attack ? "Attack Sentinel " : "Support Sentinel ") + (char)('A' + (attack ? index - 2 : index));
-                    enemies.add(Enemy.sentinel(name, attack, encounterDifficulty, 4, encounterPartyLevel, party.size()));
+                List<Integer> missing = new ArrayList<>();
+                for (int i = 0; i < enemies.size(); i++) if (enemies.get(i) != enemy && enemies.get(i).isDefeated()) missing.add(i);
+                double roll = random.nextDouble();
+                int count = Math.min(missing.size(), roll < .15 ? 3 : roll < .40 ? 2 : 1);
+                List<Integer> supports = missing.stream().filter(slot -> !enemies.get(slot).isAttackSentinel()).toList();
+                for (int i = 0; i < count; i++) {
+                    int slot = i == 0 ? supports.get(random.nextInt(supports.size())) : missing.get(random.nextInt(missing.size()));
+                    missing.remove(Integer.valueOf(slot));
+                    Enemy old = enemies.get(slot); defeatedEarlier.add(old);
+                    burns.removeIf(burn -> burn.target == old);
+                    enemies.set(slot, Enemy.sentinel(old.getName(), old.isAttackSentinel(), encounterDifficulty, 4, encounterPartyLevel, party.size()));
                 }
-                message = enemy.getName() + " uses Crystal Mesh! Five Sentinels appear!";
+                message = enemy.getName() + " uses Crystal Mesh! " + count + " Sentinel" + (count == 1 ? "" : "s") + " appear!";
             } else if (action == 3) {
                 lastAbility = new AbilityAnnouncement(enemy.getName(), "Crushing Grip");
                 Student target = living.get(random.nextInt(living.size()));
@@ -678,7 +688,7 @@ public final class Battle {
                     int power = (int)Math.ceil(enemy.getAttack() * (enemy.isMirror() ? 80 + random.nextInt(21) : 100 + random.nextInt(41)) / 100.0);
                     int damage = enemyDamage(enemy, target, power - enemy.getAttack(), 1, true);
                     Student recipient = lastDamageRecipient;
-                    if (damage > 0 && recipient.isAlive()) { stuns.merge(recipient, enemy.isMirror() ? 1 : 2, Math::max); effects.add(BattleEffect.status(recipient, "Stunned")); }
+                    if (damage > 0 && recipient.isAlive()) { applyStun(recipient, enemy.isMirror() ? 1 : 2); }
                     text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
                 }
                 message = text.toString();
@@ -752,7 +762,7 @@ public final class Battle {
                         Student recipient = lastDamageRecipient;
                         text.append("\n").append(recipient.getName()).append(" takes ").append(damage).append(" damage.");
                         if (attackSkill == 2 && damage > 0 && recipient.isAlive() && random.nextDouble() < .30) {
-                            stuns.merge(recipient, 3, Math::max); effects.add(BattleEffect.status(recipient, "Stunned"));
+                            applyStun(recipient, 3);
                         }
                     }
                     message = text.toString();
@@ -871,9 +881,9 @@ public final class Battle {
     private int enemyDamage(Enemy enemy, Student target, int bonus, int multiplier, boolean guaranteedHit, boolean ignoreDefense) {
         Student intended = target;
         Student protector = party.stream().filter(candidate -> candidate != intended && candidate.isDefending()
-                && candidate.isAlive() && guards.get(candidate) == intended).findFirst().orElse(null);
+                && candidate.isAlive() && getStunTurns(candidate) == 0 && guards.get(candidate) == intended).findFirst().orElse(null);
         if (protector == null) {
-            Student ringBearer = party.stream().filter(candidate -> candidate != intended && candidate.isAlive()
+            Student ringBearer = party.stream().filter(candidate -> candidate != intended && candidate.isAlive() && getStunTurns(candidate) == 0
                     && "heroes_ring".equals(candidate.getEquipmentId(Equipment.Slot.ACCESSORY))).findFirst().orElse(null);
             if (ringBearer != null && random.nextDouble() < 0.5) protector = ringBearer;
         }

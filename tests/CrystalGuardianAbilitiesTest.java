@@ -8,7 +8,7 @@ public final class CrystalGuardianAbilitiesTest {
  static void restore(GameProgress p){p.getParty().forEach(h->h.heal(99999));}
  public static void main(String[]a)throws Exception {
   Enemy raw=Enemy.finalOpponent("Guardian",true,GameSettings.Difficulty.NORMAL,1,4);
-  check(raw.getMaxHp()==2000 && raw.getMaxSp()==2000 && raw.getSp()==2000 && raw.getAttack()==35 && raw.getDefense()==24 && raw.getSpeed()==1 && raw.getAgility()==14 && raw.getAccuracy()==20 && raw.getActionThreshold()==54,"scaled base stats");
+  check(raw.getMaxHp()==1000 && raw.getMaxSp()==2000 && raw.getSp()==2000 && raw.getAttack()==35 && raw.getDefense()==24 && raw.getSpeed()==1 && raw.getAgility()==14 && raw.getAccuracy()==20 && raw.getActionThreshold()==54,"scaled base stats");
   GameProgress p=new GameProgress(List.of(Student.BOGART,Student.CHARICE));for(int i=0;i<4;i++)p.advance();Fixed rng=new Fixed();Battle b=new Battle(p,rng,false,4);Enemy boss=b.getEnemies().stream().filter(Enemy::isBoss).findFirst().orElseThrow();
   check(boss.getBossCountdown()==0 && b.enemyAttack(boss) && boss.getBossCountdown()==5 && boss.getSp()==1950,"charge costs 50 and starts at five");
   for(int i=4;i>=1;i--){restore(p);check(b.enemyAttack(boss) && boss.getBossCountdown()==i,"countdown "+i);if(i==4)check(b.getLastAbility()!=null && b.getLastAbility().skill().equals("Crushing Grip") && boss.getSp()==1935,"grip cast and SP cost during charge");}

@@ -20,7 +20,7 @@ public class CrystalMeshUiTest {
   for(Enemy e:b.getEnemies())if(!e.isBoss())check(enemyAp.get(e)==0.0,"new sentinel starts at zero AP");
   JPanel scene=(JPanel)field(panel,"scene");scene.setSize(960,540);scene.paint(new BufferedImage(960,540,BufferedImage.TYPE_INT_ARGB).getGraphics());
   b.getEnemies().forEach(e->e.takeDamage(999999));Method refresh=BattlePanel.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(panel);
-  check(p.getPetot()==50390,"Petot includes boss and both defeated waves");check(((Integer)field(panel,"victoryExperience"))==10450,"XP includes boss and both defeated waves");refresh.invoke(panel);check(p.getPetot()==50390,"victory paid only once");
+  check(p.getPetot()==50234,"Petot includes boss and both defeated waves");check(((Integer)field(panel,"victoryExperience"))==10270,"XP includes boss and both defeated waves");refresh.invoke(panel);check(p.getPetot()==50234,"victory paid only once");
   for(String n:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","looperHitTimer","angelAttackTimer","twinShotTimer","sparkExplosionTimer","monsterTurnTimer","abilityAlertTimer"))((javax.swing.Timer)field(panel,n)).stop();
   System.out.println("Crystal Mesh battle screen checks passed");
  }catch(Exception e){throw new RuntimeException(e);}});}

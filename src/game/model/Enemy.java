@@ -167,7 +167,7 @@ public final class Enemy extends GameCharacter {
         double partyHealth = FINAL_HP[finalPartySize] * (soloOpening ? 0.50 : 1.0);
         finalDamageScale = FINAL_DAMAGE[finalPartySize] * (soloOpening ? 0.50 : 1.0);
         double partyThreshold = FINAL_AP_THRESHOLD[finalPartySize] * (soloOpening ? 1.6 : 1.0);
-        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 2000 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
+        maxHp = Math.max(1, (int) Math.round((lootGoblin ? 450 : boss ? 1000 : sentinel ? SENTINEL_MAX_HP : WISP_MAX_HP) * STAGE_HP_MULTIPLIER[stage] * difficultyMultiplier * healthScale * partyHealth));
         hp = maxHp;
         attack = (int) Math.round(((lootGoblin ? 1 : boss ? 32 : sentinel ? attackSentinel ? 20 : SENTINEL_ATTACK : WISP_ATTACK) + STAGE_ATTACK_BONUS[stage]) * attackScale);
         defense = (int) Math.round((lootGoblin ? 18 : boss ? 24 : sentinel ? attackSentinel ? 9 : SENTINEL_DEFENSE : WISP_DEFENSE) * defenseScale);
@@ -183,12 +183,12 @@ public final class Enemy extends GameCharacter {
     /** Removes up to the supplied amount of current SP. */
     int loseSp(int amount) { int lost = Math.min(skillPoints, Math.max(0, amount)); skillPoints -= lost; return lost; }
     public int getMaxSp() { return merchant ? 800 : mirror ? 600 : lootGoblin ? 100 : boss ? 2000 : sentinel ? SENTINEL_BASE_SP : 80; }
-    int guardianAction(boolean companionsAlive) {
+    int guardianAction(boolean canSummonCompanions) {
         if (gripCooldown > 0) gripCooldown--;
         if (meshCooldown > 0) meshCooldown--;
         if (pulseCountdown > 0 && --pulseCountdown == 0) return 2;
         if (pulseCooldown > 0) pulseCooldown--;
-        if (!companionsAlive && meshCooldown == 0 && skillPoints >= 100) { skillPoints -= 100; meshCooldown = 6; return 4; }
+        if (canSummonCompanions && meshCooldown == 0 && skillPoints >= 100) { skillPoints -= 100; meshCooldown = 6; return 4; }
         if (pulseCountdown == 0 && pulseCooldown == 0 && skillPoints >= 50) { skillPoints -= 50; pulseCountdown = 5; return 1; }
         if (gripCooldown == 0 && skillPoints >= 15) { skillPoints -= 15; gripCooldown = 4; return 3; }
         return 0;
@@ -211,7 +211,11 @@ public final class Enemy extends GameCharacter {
     int applyTwinDefensePenalty() { twinDefensePenalty = (int)Math.ceil(10 * (1 + 2.97 * levelCurve) * difficultyMultiplier); return twinDefensePenalty; }
     void clearTwinDefensePenalty() { twinDefensePenalty = 0; }
     int healingPower(Enemy target) { return (int)(((long)target.getMaxHp() + 4) / 5); }
-    int heal(int amount) { if (lootGoblin) return 0; int healed = Math.min(maxHp - hp, Math.max(0, boss ? Math.min(500, amount) : amount)); hp += healed; return healed; }
+    int heal(int amount) {
+        if (lootGoblin) return 0;
+        int cap = boss ? (int)Math.ceil(200 * (1 + 2.97 * levelCurve) * difficultyMultiplier) : Integer.MAX_VALUE;
+        int healed = Math.min(maxHp - hp, Math.max(0, Math.min(cap, amount))); hp += healed; return healed;
+    }
     /** Returns whether the next action uses this monster's skill. */
     boolean usesSkillNext() { return (actionsTaken + 1) % (boss ? 4 : 3) == 0; }
     /** Countdown displayed before the Guardian's next fourth-action skill. */
