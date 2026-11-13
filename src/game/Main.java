@@ -96,6 +96,13 @@ public final class Main {
                 camp.requestFocusInWindow();
             }, settings);
             battleHolder[0] = battle;
+            battle.setExploreAction((progress, stage) -> {
+                if (stage == progress.getEncounter()) progress.advance();
+                merchantBattle[0] = false;
+                activeStage[0] = stage;
+                battle.start(progress, settings.rollAmbush(stage, random), stage);
+                battle.requestFocusInWindow();
+            });
             WorldMapPanel map = new WorldMapPanel((progress, stage) -> {
                 merchantBattle[0] = false;
                 activeStage[0] = stage;

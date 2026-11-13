@@ -71,7 +71,7 @@ public final class SettingsPanel extends JPanel {
             g.setFont(ClassicUi.numbers(17));
             for (int i = 0; i < labels.length; i++) {
                 int y = 137 + i * 32; g.setColor(i == cursor ? new Color(250, 218, 143) : Color.WHITE);
-                if (i == cursor) g.drawImage(PixelPointer.ART, 178, y - 15, 28, 21, null);
+                if (i == cursor) g.drawImage(PixelPointer.ART, 178, y - 15, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
                 g.drawString(labels[i], 215, y); g.drawString(values[i], 675, y);
                 g.setColor(new Color(55, 71, 107)); g.fillRect(430, y - 10, 210, 8);
                 g.setColor(new Color(94, 188, 246)); g.fillRect(430, y - 10, 210 * steps[i] / maxima[i], 8);
@@ -79,7 +79,7 @@ public final class SettingsPanel extends JPanel {
             }
             g.setColor(cursor == 7 ? new Color(250, 218, 143) : new Color(100, 128, 180));
             g.drawRect(345, 382, 270, 31);
-            if (cursor == 7) g.drawImage(PixelPointer.ART, 350, 387, 28, 21, null);
+            if (cursor == 7) g.drawImage(PixelPointer.ART, 350, 387, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
             g.setFont(ClassicUi.numbers(15)); g.drawString("RESET TO DEFAULTS", 389, 403);
             g.setColor(new Color(250, 218, 143)); g.setFont(ClassicUi.numbers(12));
             g.drawString(notice, 185, 431);

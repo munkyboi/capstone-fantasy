@@ -34,6 +34,8 @@ public final class BattlePanel extends JPanel {
     private final Runnable returnToMenu;
     private final Consumer<GameProgress> onVictory;
     private Consumer<GameProgress> onEscape;
+    private java.util.function.BiConsumer<GameProgress, Integer> onExplore;
+    private int victoryChoice;
     private final GameSettings settings;
     private final Random battleRandom;
     private final JLabel status = new JLabel();
@@ -138,6 +140,12 @@ public final class BattlePanel extends JPanel {
             @Override public List<String> rewardItems() { return victoryRewardItems; }
             @Override public int rewardPetot() { return victoryPetot; }
             @Override public int rewardExperience() { return victoryExperience; }
+            @Override public int victoryChoice() { return victoryChoice; }
+            @Override public boolean canExplore() { return !battle.isMerchantEncounter() && onExplore != null; }
+            @Override public void chooseVictory(int choice) {
+                victoryChoice = choice;
+                confirmCommand();
+            }
             @Override public List<String> leveledStudents() { return leveledStudents; }
             @Override public List<String> bonusXpStudents() { return bonusXpStudents; }
             @Override public boolean showEffects() { return showEffects; }
@@ -298,13 +306,15 @@ public final class BattlePanel extends JPanel {
         startEncounter(progress, ambushed, stage, false);
     }
     public void startMerchant(GameProgress progress) { startEncounter(progress, false, 2, true); }
+    /** Sets the action used to replay the current stage after victory. */
+    public void setExploreAction(java.util.function.BiConsumer<GameProgress, Integer> action) { onExplore = action; }
     private void startEncounter(GameProgress progress, boolean ambushed, int stage, boolean merchant) {
         ambushed = ambushed && settings.allowsAmbush(stage);
         this.progress = progress; encounterStage = stage;
         battle = merchant ? Battle.merchantBattle(progress, battleRandom, settings.getDifficulty()) : new Battle(progress, battleRandom, ambushed, stage, settings.getDifficulty()); commandIndex = 0;
         targeting = TargetAction.NONE; targetIndex = 0; choosingItem = false; itemChoice = 0; notice = null;
         abilityAnnouncement = null; abilityAlerts.clear(); abilityAlertTimer.stop();
-        victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of();
+        victoryRewardItems = List.of(); rewardRecorded = false; victoryPetot = 0; victoryExperience = 0; leveledStudents = List.of(); bonusXpStudents = List.of(); victoryChoice = 1;
         apTimer.stop(); effectTimer.stop(); ambushAlertTimer.stop(); victoryTimer.stop(); secondCastTimer.stop(); looperHitTimer.stop(); angelAttackTimer.stop(); twinShotTimer.stop(); sparkExplosionTimer.stop(); monsterTurnTimer.stop();
         victoryStartedNanos = 0;
         showEffects = false; attackingSprite = null;
@@ -635,6 +645,9 @@ public final class BattlePanel extends JPanel {
     }
 
     private void moveTarget(int direction) {
+        if (battle != null && battle.isVictory() && !battle.isMerchantEncounter() && onExplore != null) {
+            victoryChoice = Math.floorMod(victoryChoice + direction, 2); scene.repaint(); return;
+        }
         if (battle == null || battle.isOver() || targeting == TargetAction.NONE || targetsAllEnemies()) { return; }
         int size = targetsParty() ? battle.getParty().size() : battle.getEnemies().size();
         do { targetIndex = Math.floorMod(targetIndex + direction, size); }
@@ -649,7 +662,10 @@ public final class BattlePanel extends JPanel {
 
     private void confirmCommand() {
         if (battle == null || battle.isActionAnimating()) { return; }
-        if (battle.isOver()) { finish.doClick(); }
+        if (battle.isOver()) {
+            if (battle.isVictory() && victoryChoice == 0 && !battle.isMerchantEncounter() && onExplore != null) onExplore.accept(progress, encounterStage);
+            else finish.doClick();
+        }
         else if (choosingItem) {
             choosingItem = false;
             if (itemChoice == 0) beginTargeting(TargetAction.ITEM); else beginFlowerTargeting();
@@ -727,7 +743,7 @@ public final class BattlePanel extends JPanel {
         defend.setEnabled(canChoose && battle.canUseDefendOrEscape());
         escape.setEnabled(canChoose && !battle.isEscaping() && battle.canUseDefendOrEscape());
         if (canChoose && !commands[commandIndex].isEnabled()) commandIndex = 0;
-        finish.setVisible(over);
+        finish.setVisible(over && !battle.isVictory());
         finish.setText(battle.isVictory() ? "Continue" : "Return to Menu");
         updateCommandDisplay();
         scene.repaint();
@@ -738,7 +754,8 @@ public final class BattlePanel extends JPanel {
         String hint = battle.hasPendingLooperHits() ? "Looper Ring strikes..." : battle.hasPendingSecondCast() ? "Second cast incoming..." : choosingItem ? "Up/Down Choose item  •  Enter Confirm  •  Esc Cancel" : targeting == TargetAction.NONE ? "Up/Down Move  •  Enter Select"
                 : targetsParty() ? "Left/Right Choose ally  •  Enter Confirm  •  Esc Cancel"
                 : targetsAllEnemies() ? "Enter Confirm  •  Esc Cancel" : "Left/Right Choose enemy  •  Enter Confirm  •  Esc Cancel";
-        status.setText(over ? (battle.isVictory() ? "VICTORY  •  Enter: Continue" : "GAME OVER  •  Enter: Return to Menu")
+        status.setText(over ? (battle.isVictory() ? (battle.isMerchantEncounter() || onExplore == null
+                ? "VICTORY  •  Enter: Camp" : "VICTORY  •  Left/Right: Choose  •  Enter: Confirm") : "GAME OVER  •  Enter: Return to Menu")
                 : (battle.getCurrent() == null ? "Waiting for AP" : battle.getCurrent().getName() + " is ready")
                 + (battle.isEscaping() ? "  |  Escaping: " + battle.getEscapeInitiator().getName() + " (" + battle.getEscapeTurnsRemaining() + ")"
                     : "  |  Kits: " + battle.getKits() + "  Flowers: " + progress.getInventory().getWhiteFlowers()) + "  |  " + hint);

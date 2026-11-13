@@ -78,8 +78,8 @@ public final class SelectionPanel extends JPanel {
                 super.paintChildren(graphics);
                 if (cursor != 4 && cursor != 5) { return; }
                 JButton target = cursor == 4 ? continueButton : backButton;
-                int pointerWidth = ViewportFonts.pixels(26, ViewportFonts.factor(SelectionPanel.this.getWidth()));
-                int pointerHeight = pointerWidth * PixelPointer.ART.getHeight() / PixelPointer.ART.getWidth();
+                int pointerWidth = ViewportFonts.pixels(PixelPointer.WIDTH, ViewportFonts.factor(SelectionPanel.this.getWidth()));
+                int pointerHeight = ViewportFonts.pixels(PixelPointer.HEIGHT, ViewportFonts.factor(SelectionPanel.this.getWidth()));
                 Graphics2D g = (Graphics2D) graphics.create();
                 try {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -235,10 +235,11 @@ public final class SelectionPanel extends JPanel {
                     int left = (w - width) / 2;
                     g.drawImage(pixels, left, top, width, height, null);
                     if (index == cursor) {
-                        int size = ViewportFonts.pixels(42, scale);
+                        int size = ViewportFonts.pixels(PixelPointer.WIDTH, scale);
                         int pointerX = Math.max(ViewportFonts.pixels(6, scale), left - size / 2);
-                        int pointerY = top + height / 2 - size * 3 / 8;
-                        g.drawImage(PixelPointer.ART, pointerX, pointerY, size, size * 232 / 310, null);
+                        int pointerHeight = ViewportFonts.pixels(PixelPointer.HEIGHT, scale);
+                        int pointerY = top + height / 2 - pointerHeight / 2;
+                        g.drawImage(PixelPointer.ART, pointerX, pointerY, size, pointerHeight, null);
                     }
                 }
                 g.setColor(GOLD);

@@ -143,9 +143,10 @@ public final class InventoryPanel extends JPanel {
                 try {
                     java.awt.geom.Rectangle2D line = modelToView2D(choiceCursor);
                     if (line == null) { return; }
-                    int width = Math.max(1, Math.round(26 * getFont().getSize2D() / 13));
+                    int width = Math.max(1, Math.round(PixelPointer.WIDTH * getFont().getSize2D() / 13));
+                    int height = Math.max(1, Math.round(PixelPointer.HEIGHT * getFont().getSize2D() / 13));
                     graphics.drawImage(PixelPointer.HAND.getImage(), (int) line.getX(),
-                            (int) line.getCenterY() - width * 3 / 8, width, width * 3 / 4, null);
+                            (int) line.getCenterY() - height / 2, width, height, null);
                 } catch (javax.swing.text.BadLocationException ignored) { /* selection is being refreshed */ }
             }
         };

@@ -230,7 +230,7 @@ public final class CampPanel extends JPanel {
                 int position = POSITIONS[selected.getId()] + middleOffset;
                 drawStatus(g, selected, position);
                 g.drawImage(PixelPointer.ART, position - (selected.getId() == Student.ANGEL ? 115 : 97),
-                        285, 38, 28, null);
+                        285, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
                 g.setColor(new Color(7, 17, 39, 225)); g.fillRect(0, 451, WIDTH, 89);
                 g.setFont(ClassicUi.numbers(16)); g.setColor(new Color(250, 218, 143));
                 drawCentered(g, "Kits: " + progress.getKits() + "  •  Flowers: " + progress.getInventory().getWhiteFlowers() + "  •  " + progress.getPetot() + " Petot", WIDTH / 2, 474);
@@ -251,7 +251,7 @@ public final class CampPanel extends JPanel {
         drawCentered(g, "Return to main menu?", x + w / 2, y + 33);
         g.setFont(ClassicUi.body(14)); drawCentered(g, "Unsaved progress will be lost.", x + w / 2, y + 60);
         g.setFont(ClassicUi.numbers(16));
-        g.drawImage(PixelPointer.ART, x + (exitYes ? 200 : 85), y + 84, 27, 20, null);
+        g.drawImage(PixelPointer.ART, x + (exitYes ? 200 : 85), y + 84, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
         g.setColor(exitYes ? Color.WHITE : new Color(250, 218, 143)); g.drawString("No", x + 120, y + 102);
         g.setColor(exitYes ? new Color(250, 218, 143) : Color.WHITE); g.drawString("Yes", x + 235, y + 102);
     }
@@ -308,7 +308,7 @@ public final class CampPanel extends JPanel {
         for (int i = 0; i < options.length; i++) {
             int row = y + 45 + i * 25;
             g.setColor(i == statCursor ? new Color(250, 218, 143) : Color.WHITE);
-            if (i == statCursor) { g.drawImage(PixelPointer.ART, x + 18, row - 12, 25, 19, null); }
+            if (i == statCursor) { g.drawImage(PixelPointer.ART, x + 18, row - 12, PixelPointer.WIDTH, PixelPointer.HEIGHT, null); }
             g.drawString(options[i], x + 52, row + 2);
         }
     }

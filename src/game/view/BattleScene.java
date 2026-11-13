@@ -35,6 +35,9 @@ final class BattleScene extends JPanel {
         default java.util.List<String> rewardItems() { return java.util.List.of(); }
         default int rewardPetot() { return 0; }
         default int rewardExperience() { return 0; }
+        default int victoryChoice() { return 1; }
+        default boolean canExplore() { return false; }
+        default void chooseVictory(int choice) { }
         default java.util.List<String> leveledStudents() { return java.util.List.of(); }
         default java.util.List<String> bonusXpStudents() { return java.util.List.of(); }
         boolean showEffects();
@@ -53,7 +56,20 @@ final class BattleScene extends JPanel {
         default boolean escaping() { return false; }
     }
     private final State state;
-    BattleScene(State state) { this.state = state; }
+    BattleScene(State state) {
+        this.state = state;
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent event) {
+                if (state.battle() == null || !state.battle().isVictory() || getWidth() <= 0) return;
+                int x = (int) (event.getX() / hudScale()), y = (int) (event.getY() / hudScale());
+                int boxX = 300, buttonY = rewardButtonY();
+                if (y < buttonY || y > buttonY + 22) return;
+                if (state.canExplore() && x >= boxX + 40 && x <= boxX + 165) state.chooseVictory(0);
+                else if (state.canExplore() && x >= boxX + 195 && x <= boxX + 320) state.chooseVictory(1);
+                else if (!state.canExplore() && x >= boxX + 115 && x <= boxX + 240) state.chooseVictory(1);
+            }
+        });
+    }
     private static BufferedImage image(String path) {
         try { java.net.URL url = BattlePanel.class.getResource(path); return url == null ? null : ImageIO.read(url); }
         catch (IOException ex) { return null; }
@@ -328,17 +344,29 @@ final class BattleScene extends JPanel {
 
         private double hudScale() { return getWidth() / 960.0; }
         private int hudHeight() { return (int) Math.round(getHeight() / hudScale()); }
+        private int rewardRowCount() {
+            return (int) state.rewardItems().stream().distinct().count() + (state.rewardPetot() > 0 ? 1 : 0)
+                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
+                    + (state.bonusXpStudents().isEmpty() ? 0 : 1);
+        }
+        private int rewardButtonY() {
+            int y = Math.max(18, hudHeight() / 5) + 52;
+            int rows = rewardRowCount();
+            int rowHeight = Math.max(12, Math.min(24, (hudHeight() - y - 97) / Math.max(1, rows)));
+            return y + 53 + rows * rowHeight;
+        }
 
         private void drawRewards(Graphics2D g) {
             java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
             for (String id : state.rewardItems()) { counts.merge(id, 1, Integer::sum); }
             java.util.List<String> items = new java.util.ArrayList<>(counts.keySet());
-            if (items.isEmpty() && state.rewardPetot() == 0 && state.rewardExperience() == 0) { return; }
             int width = 360, x = (960 - width) / 2;
             int y = Math.max(18, hudHeight() / 5) + 52;
-            int height = 43 + (items.size() + (state.rewardPetot() > 0 ? 1 : 0)
+            int rows = items.size() + (state.rewardPetot() > 0 ? 1 : 0)
                     + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
-                    + (state.bonusXpStudents().isEmpty() ? 0 : 1)) * 24;
+                    + (state.bonusXpStudents().isEmpty() ? 0 : 1);
+            int rowHeight = Math.max(12, Math.min(24, (hudHeight() - y - 97) / Math.max(1, rows)));
+            int height = 82 + rows * rowHeight;
             g.setColor(new Color(12, 25, 48, 224));
             g.fillRect(x, y, width, height);
             g.setColor(new Color(247, 204, 114));
@@ -346,7 +374,7 @@ final class BattleScene extends JPanel {
             g.drawRect(x + 3, y + 3, width - 7, height - 7);
             g.setFont(ClassicUi.body(17));
             g.drawString("You gain:", x + 16, y + 27);
-            g.setFont(ClassicUi.numbers(14));
+            g.setFont(ClassicUi.numbers(Math.min(14, rowHeight - 2)));
             int offset = 0;
             if (state.rewardExperience() > 0) {
                 int cy = y + 48;
@@ -355,12 +383,12 @@ final class BattleScene extends JPanel {
                 offset++;
             }
             if (!state.bonusXpStudents().isEmpty()) {
-                int cy = y + 48 + offset * 24;
+                int cy = y + 48 + offset * rowHeight;
                 g.setColor(Color.WHITE); g.drawString("Bonus XP: " + String.join(", ", state.bonusXpStudents()), x + 16, cy + 4);
                 offset++;
             }
             if (state.rewardPetot() > 0) {
-                int cy = y + 48 + offset * 24;
+                int cy = y + 48 + offset * rowHeight;
                 g.setColor(new Color(240, 189, 73)); g.fillOval(x + 18, cy - 10, 18, 18);
                 g.setColor(new Color(255, 232, 154)); g.drawOval(x + 20, cy - 8, 14, 14);
                 g.setColor(Color.WHITE); g.drawString(state.rewardPetot() + " Petot", x + 50, cy + 6);
@@ -368,17 +396,28 @@ final class BattleScene extends JPanel {
             }
             for (int i = 0; i < items.size(); i++) {
                 String id = items.get(i);
-                int rowY = y + 36 + (i + offset) * 24;
-                drawRewardIcon(g, id, x + 16, rowY, 24);
+                int rowY = y + 36 + (i + offset) * rowHeight;
+                drawRewardIcon(g, id, x + 16, rowY, Math.min(24, rowHeight));
                 g.setColor(Color.WHITE);
                 String name = "first_aid_kit".equals(id) ? "First-Aid Kit"
                         : "white_flower".equals(id) ? "White Flower" : Equipment.fromId(id).getName();
-                g.drawString(counts.get(id) + "x " + name, x + 50, rowY + 18);
+                g.drawString(counts.get(id) + "x " + name, x + 50, rowY + rowHeight - 3);
             }
             if (!state.leveledStudents().isEmpty()) {
                 g.setColor(new Color(250, 218, 143));
                 g.drawString("Level up: " + String.join(", ", state.leveledStudents()), x + 16,
-                        y + 36 + (offset + items.size()) * 24 + 17);
+                        y + 36 + (offset + items.size()) * rowHeight + rowHeight - 3);
+            }
+            int buttonY = y + height - 29;
+            String[] labels = state.canExplore() ? new String[]{"Explore", "Camp"} : new String[]{"Camp"};
+            for (int i = 0; i < labels.length; i++) {
+                int choice = state.canExplore() ? i : 1;
+                int bx = state.canExplore() ? x + 40 + i * 155 : x + 115;
+                boolean selected = state.victoryChoice() == choice;
+                g.setColor(selected ? new Color(250, 218, 143) : Color.WHITE);
+                g.setFont(ClassicUi.numbers(16));
+                g.drawString(labels[i], bx + 38, buttonY + 16);
+                if (selected) g.drawImage(PixelPointer.ART, bx + 5, buttonY, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
             }
         }
 
@@ -417,7 +456,7 @@ final class BattleScene extends JPanel {
             for (int i = 0; i < labels.length; i++) {
                 int row = y + 50 + i * 28;
                 g.setColor(i == state.itemChoice() ? new Color(250, 218, 143) : Color.WHITE);
-                if (i == state.itemChoice()) g.drawImage(PixelPointer.ART, x + 12, row - 16, 25, 19, null);
+                if (i == state.itemChoice()) g.drawImage(PixelPointer.ART, x + 12, row - 16, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
                 g.drawString(labels[i], x + 42, row);
             }
         }

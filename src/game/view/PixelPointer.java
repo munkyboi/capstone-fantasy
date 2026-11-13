@@ -9,9 +9,11 @@ import javax.swing.ImageIcon;
 
 /** Pixel pointer based on the supplied reference image. */
 final class PixelPointer {
+    static final int WIDTH = 27;
+    static final int HEIGHT = 20;
     static final BufferedImage ART = loadArt();
     static final ImageIcon HAND = createHand();
-    static final ImageIcon EMPTY = new ImageIcon(new BufferedImage(32, 24, BufferedImage.TYPE_INT_ARGB));
+    static final ImageIcon EMPTY = new ImageIcon(new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB));
     private PixelPointer() { }
 
     private static BufferedImage loadArt() {
@@ -57,11 +59,11 @@ final class PixelPointer {
     }
 
     private static ImageIcon createHand() {
-        BufferedImage icon = new BufferedImage(32, 24, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage icon = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = icon.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g.drawImage(ART, 0, 0, 32, 24, null);
+            g.drawImage(ART, 0, 0, WIDTH, HEIGHT, null);
         } finally { g.dispose(); }
         return new ImageIcon(icon);
     }

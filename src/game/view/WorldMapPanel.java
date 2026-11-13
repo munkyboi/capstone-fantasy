@@ -32,6 +32,8 @@ public final class WorldMapPanel extends JPanel {
     private String notice;
     private boolean replayPrompt;
     private boolean replayYes;
+    private boolean exitPrompt;
+    private boolean exitYes;
 
     /** Creates the campus route screen.
      * @param battle starts the current encounter
@@ -50,18 +52,23 @@ public final class WorldMapPanel extends JPanel {
         Keys.bind(this, "LEFT", "map-left", () -> move(-1));
         Keys.bind(this, "RIGHT", "map-right", () -> move(1));
         Keys.bind(this, "UP", "map-up", () -> {
-            if (!replayPrompt && progress != null && progress.getEncounter() >= 3 && cursor == 2) {
+            if (!replayPrompt && !exitPrompt && progress != null && progress.getEncounter() >= 3 && cursor == 2) {
                 shopSelected = true; notice = null; repaint();
             } else { move(-1); }
         });
         Keys.bind(this, "DOWN", "map-down", () -> {
-            if (shopSelected && !replayPrompt) { shopSelected = false; repaint(); }
+            if (shopSelected && !replayPrompt && !exitPrompt) { shopSelected = false; repaint(); }
             else { move(1); }
         });
         Keys.bind(this, "ENTER", "map-enter", this::confirm);
         Keys.bind(this, "SPACE", "map-space", this::confirm);
-        Keys.bind(this, "C", "map-camp", () -> { if (!replayPrompt && progress != null && progress.getEncounter() > 0) { camp.accept(progress); } });
-        Keys.bind(this, "ESCAPE", "map-menu", () -> { if (replayPrompt) { replayPrompt = false; repaint(); } else { menu.run(); } });
+        Keys.bind(this, "C", "map-camp", () -> { if (!replayPrompt && !exitPrompt && progress != null && progress.getEncounter() > 0) { camp.accept(progress); } });
+        Keys.bind(this, "ESCAPE", "map-menu", () -> {
+            if (replayPrompt) replayPrompt = false;
+            else if (exitPrompt) exitPrompt = false;
+            else if (progress != null) { exitPrompt = true; exitYes = false; }
+            repaint();
+        });
     }
 
     /** Supplies the action used to enter Carbon Market. */
@@ -72,10 +79,11 @@ public final class WorldMapPanel extends JPanel {
      * @param progress current party progress
      */
     public void open(GameProgress progress) {
-        this.progress = progress; cursor = Math.min(progress.getEncounter(), LOCATIONS.length - 1); notice = null; replayPrompt = false; shopSelected = false; repaint();
+        this.progress = progress; cursor = Math.min(progress.getEncounter(), LOCATIONS.length - 1); notice = null; replayPrompt = false; exitPrompt = false; shopSelected = false; repaint();
     }
     private void move(int direction) {
         if (progress == null) { return; }
+        if (exitPrompt) { exitYes = !exitYes; repaint(); return; }
         if (replayPrompt) { replayYes = !replayYes; repaint(); return; }
         shopSelected = false;
         cursor = Math.max(0, Math.min(Math.min(progress.getEncounter(), LOCATIONS.length - 1), cursor + direction));
@@ -83,6 +91,11 @@ public final class WorldMapPanel extends JPanel {
     }
     private void confirm() {
         if (progress == null) { return; }
+        if (exitPrompt) {
+            exitPrompt = false;
+            if (exitYes) { menu.run(); return; }
+            repaint(); return;
+        }
         if (shopSelected && !replayPrompt) { if (progress.isMerchantDefeated()) shop.accept(progress); else merchant.accept(progress); return; }
         if (replayPrompt) {
             replayPrompt = false;
@@ -166,21 +179,23 @@ public final class WorldMapPanel extends JPanel {
             out.drawString(notice != null ? notice : shopSelected ? (progress.isMerchantDefeated() ? "Enter: Visit shop" : "Enter: Challenge the Mysterious Merchant") + "   •   Down: Route   •   Esc: Menu"
                     : cursor == 2 && progress.getEncounter() >= 3 ? "↑ Carbon Market   •   ← → Move   •   Enter: Select   •   C: Camp"
                     : "← → Move   •   Enter: Select   •   C: Camp after victory   •   Esc: Menu", 30, uiHeight - 42);
-            if (replayPrompt) {
+            if (replayPrompt || exitPrompt) {
                 int x = 280, y = 200, w = 400, h = 125;
                 out.setColor(new Color(12, 25, 48, 240)); out.fillRect(x, y, w, h);
                 out.setColor(new Color(247, 204, 114)); out.drawRect(x, y, w - 1, h - 1);
                 out.drawRect(x + 3, y + 3, w - 7, h - 7);
                 out.setFont(ClassicUi.numbers(16)); out.setColor(Color.WHITE);
-                String title = "Replay " + LOCATIONS[cursor] + "?";
+                String title = exitPrompt ? "Return to main menu?" : "Replay " + LOCATIONS[cursor] + "?";
                 out.drawString(title, x + (w - out.getFontMetrics().stringWidth(title)) / 2, y + 35);
                 out.setFont(ClassicUi.body(14));
-                out.drawString("Stage rewards are earned once.", x + 70, y + 61);
+                String details = exitPrompt ? "Unsaved progress will be lost." : "Stage rewards are earned once.";
+                out.drawString(details, x + (w - out.getFontMetrics().stringWidth(details)) / 2, y + 61);
                 out.setFont(ClassicUi.numbers(16));
-                int pointerX = x + (replayYes ? 200 : 85);
-                out.drawImage(PixelPointer.ART, pointerX, y + 78, 27, 20, null);
-                out.setColor(replayYes ? Color.WHITE : new Color(250, 218, 143)); out.drawString("No", x + 120, y + 96);
-                out.setColor(replayYes ? new Color(250, 218, 143) : Color.WHITE); out.drawString("Yes", x + 235, y + 96);
+                boolean yes = exitPrompt ? exitYes : replayYes;
+                int pointerX = x + (yes ? 200 : 85);
+                out.drawImage(PixelPointer.ART, pointerX, y + 78, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
+                out.setColor(yes ? Color.WHITE : new Color(250, 218, 143)); out.drawString("No", x + 120, y + 96);
+                out.setColor(yes ? new Color(250, 218, 143) : Color.WHITE); out.drawString("Yes", x + 235, y + 96);
             }
         } finally { out.dispose(); }
     }
