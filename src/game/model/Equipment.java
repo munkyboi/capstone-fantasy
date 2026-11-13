@@ -128,7 +128,7 @@ public final class Equipment extends Item {
             case "cadet_blade" -> "+10% HP regeneration";
             case "champion_wraps" -> "+10% SPD";
             case "heroes_ring" -> "+20% HP/DEF/regen; -40% SPD; 50% auto defend; no Defend/Escape";
-            case "looper_ring" -> "+10% ability cost; -20% DEF; +10% SPD; damaging hits leak 5–10% max SP; 50% chance of 5 random hits";
+            case "looper_ring" -> "+10% ability cost; -20% DEF; +10% SPD; hits leak 5–10% max SP; up to 5 damage loops, 50% chance each";
             case "ring_of_power" -> "+50% ATK/DEF/SPD; 50% AP refill when hit";
             case "light_saber" -> "+20% SPD; 100% hit damage over 5 turns";
             case "demon_hunter" -> "+20% ATK; +75% SPD; Piercing Bolts ignore 25% of positive DEF";

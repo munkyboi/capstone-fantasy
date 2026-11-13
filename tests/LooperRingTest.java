@@ -21,12 +21,12 @@ public final class LooperRingTest {
     private static void proc(double chance, int percent) {
         GameProgress p=equipped(); Student s=p.getParty().get(0);
         Battle b=new Battle(p,new Rolls(chance,percent)); Enemy e=b.getEnemies().get(0);
-        check(b.selectStudent(s) && b.attack(e), "attack");
+        int before=e.getHp(); check(b.selectStudent(s) && b.attack(e), "attack"); int original=before-e.getHp();
         long count=b.getEffects().stream().filter(x -> x.getEnemy()!=null && !x.isManaLeak()).count();
         check(count==1 && b.hasPendingLooperHits()==(chance < .5), "proc boundary " + chance);
         if (chance < .5) {
-            int bonus=(int)Math.ceil(s.getAttack()*(20+percent)/100.0);
-            for(int i=0;i<5;i++) { check(b.advanceLooperHit(), "queued hit " + i); check(b.getEffects().stream().anyMatch(x -> x.getAmount()==-bonus), "bonus damage range " + percent); }
+            int previous=0;
+            for(int i=0;i<5;i++) { int bonus=(int)Math.ceil(original * 0.5 + previous * 0.2 - 1e-9); check(b.advanceLooperHit(), "queued hit " + i); final int expected=bonus; check(b.getEffects().stream().anyMatch(x -> x.getAmount()==-expected), "loop damage " + i); previous=bonus; }
             check(!b.hasPendingLooperHits(), "sequence finishes after five hits");
         }
     }

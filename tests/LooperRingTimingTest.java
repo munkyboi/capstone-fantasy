@@ -27,6 +27,7 @@ public final class LooperRingTimingTest {
                 panel.start(progress, false, 0);
                 Battle battle = (Battle) field(panel, "battle");
                 Enemy enemy = battle.getEnemies().get(0);
+                Field hpField = Enemy.class.getDeclaredField("hp"); hpField.setAccessible(true); hpField.setInt(enemy, 10000);
                 panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel, 0, ""));
                 panel.getActionMap().get("battle-confirm").actionPerformed(new ActionEvent(panel, 0, ""));
                 Timer timer = (Timer) field(panel, "looperHitTimer");

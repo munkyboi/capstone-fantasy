@@ -33,6 +33,8 @@ public final class Battle {
     private Enemy twinTarget;
     private Student twinActor;
     private Student looperActor;
+    private Enemy lastHeroHitTarget, looperTarget;
+    private int lastHeroHitDamage, looperBaseDamage, looperPreviousDamage;
     private int angelHitsRemaining, angelDamage, angelAttackPower;
     private boolean angelExplosion;
     private Student angelActor;
@@ -323,6 +325,7 @@ public final class Battle {
         if (isActionAnimating() || isOver() || getCurrent() == null || !validEnemy(target)) { return false; }
         effects.clear();
         Student actor = getCurrent();
+        lastHeroHitDamage = 0; lastHeroHitTarget = null;
         int attackPower = actor.getAttack() * (actor.consumeEtherealCharge() ? 4 : 1);
         if (actor.getId() == Student.ANGEL) {
             angelActor = actor; angelAttackPower = attackPower; angelTarget = target;
@@ -344,6 +347,7 @@ public final class Battle {
     public boolean ability(Student ally, Enemy enemy) {
         if (isActionAnimating() || isOver() || getCurrent() == null) { return false; }
         Student actor = getCurrent();
+        lastHeroHitDamage = 0; lastHeroHitTarget = null;
         if (actor.getSp() < actor.getAbilitySpCost()) { return false; }
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS && (ally == null || !party.contains(ally))) { return false; }
         if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
@@ -446,11 +450,12 @@ public final class Battle {
         }
         return true;
     }
-    /** Rolls once per damaging action or cast, then strikes up to five living random enemies. */
+    /** Starts a chain based on the last hit of an attack or damaging cast. */
     private String looperHits(Student actor, String message) {
         if (!"looper_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY))
-                || isVictory() || random.nextDouble() >= 0.50) return message;
-        pendingLooperHits = 5; looperActor = actor;
+                || lastHeroHitDamage <= 0 || isVictory() || random.nextDouble() >= 0.50) return message;
+        pendingLooperHits = 5; looperActor = actor; looperTarget = lastHeroHitTarget;
+        looperBaseDamage = lastHeroHitDamage; looperPreviousDamage = 0;
         return message + "\nLooper Ring activates!";
     }
     /** Resolves one queued Looper Ring hit. The UI schedules these at 300 ms intervals. */
@@ -458,12 +463,16 @@ public final class Battle {
         if (!hasPendingLooperHits()) return false;
         List<Enemy> living = enemies.stream().filter(Enemy::isAlive).toList();
         if (living.isEmpty() || isOver()) { pendingLooperHits = 0; pendingSecondCast = false; finish(message); return false; }
-        Enemy target = living.get(random.nextInt(living.size()));
-        int damage = target.takeDamage((int) Math.ceil(looperActor.getAttack() * (20 + random.nextInt(21)) / 100.0));
+        Enemy target = looperTarget != null && looperTarget.isAlive() ? looperTarget : living.get(random.nextInt(living.size()));
+        looperTarget = target;
+        int power = (int) Math.min(Integer.MAX_VALUE, ((long) looperBaseDamage * 5 + (long) looperPreviousDamage * 2 + 9) / 10);
+        int damage = target.takeDamage(power);
+        looperPreviousDamage = damage;
         if (angelExplosion && looperActor == angelActor) { angelDamage += damage; angelTarget = target; }
         effects.clear(); effects.add(new BattleEffect(target, -damage)); applyManaLeak(true, target, damage);
         message = "Looper Ring hits " + target.getName() + " for " + damage + " damage." + defeated(target);
         pendingLooperHits--;
+        if (pendingLooperHits > 0 && random.nextDouble() >= 0.5) pendingLooperHits = 0;
         if (isVictory()) { pendingLooperHits = 0; pendingSecondCast = false; angelExplosion = false; finish(message); }
         else if (pendingLooperHits == 0 && !pendingSecondCast && !angelExplosion) finish(message);
         return true;
@@ -816,6 +825,7 @@ public final class Battle {
         return hurt(target, attack, false);
     }
     private int hurt(Enemy target, int attack, boolean guaranteedHit) {
+        lastHeroHitTarget = target; lastHeroHitDamage = 0;
         if (!guaranteedHit && !hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         int defense = target.getDefense();
         Student actor = getCurrent();
@@ -823,6 +833,7 @@ public final class Battle {
             defense -= (int)Math.ceil(defense * 0.25);
         }
         int damage = target.takeDamage(damageAfterDefense(attack, defense) + random.nextInt(DAMAGE_VARIATION));
+        lastHeroHitDamage = damage;
         effects.add(new BattleEffect(target, -damage));
         applyManaLeak(hasManaLeak(getCurrent()), target, damage);
         return damage;
