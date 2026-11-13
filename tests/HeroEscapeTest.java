@@ -48,6 +48,8 @@ public final class HeroEscapeTest {
             GameProgress interrupted=new GameProgress(List.of(Student.ZACK,Student.BOGART));BattlePanel interruptedPanel=new BattlePanel(()->{},ignored->{},new GameSettings(),fixed);interruptedPanel.start(interrupted,false,0);
             Battle interruptedBattle=(Battle)field(interruptedPanel,"battle");Student interruptedLead=interruptedBattle.getCurrent();
             for(int i=0;i<4;i++)key(interruptedPanel,"battle-down");key(interruptedPanel,"battle-confirm");interruptedLead.takeDamage(9999);
+            @SuppressWarnings("unchecked") Map<Student,Double> interruptedAp=(Map<Student,Double>)field(interruptedPanel,"actionPoints");
+            Student survivor=interruptedBattle.getParty().stream().filter(s->s!=interruptedLead).findFirst().orElseThrow();interruptedAp.put(survivor,(double)survivor.getActionThreshold());
             advance.invoke(interruptedPanel,0.0);check(!interruptedBattle.isEscaping()&&interruptedBattle.getCurrent()!=null&&interruptedBattle.getCurrent()!=interruptedLead,"surviving hero can act after escape fails");stop(interruptedPanel);
         }catch(Exception e){throw new RuntimeException(e);}});
         System.out.println("Hero Escape checks passed");

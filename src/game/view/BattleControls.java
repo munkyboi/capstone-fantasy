@@ -50,7 +50,11 @@ final class BattleControls {
         logScroll.getViewport().setOpaque(false);
         logScroll.setFocusable(false);
         logScroll.getVerticalScrollBar().setFocusable(false);
-        info.add(logScroll, BorderLayout.CENTER);
+        JPanel logFrame = frame();
+        logFrame.setLayout(new BorderLayout());
+        logFrame.setPreferredSize(new Dimension(300, 150));
+        ViewportFonts.scalePreferredSize(logFrame);
+        logFrame.add(logScroll, BorderLayout.CENTER);
         JPanel members = new JPanel(new GridLayout(0, 1));
         members.setOpaque(false);
         for (int i = 0; i < partyStatus.length; i++) {
@@ -59,7 +63,7 @@ final class BattleControls {
             member.setFont(ClassicUi.numbers(13));
             member.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
             JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
-            JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(160, 15));
+            JProgressBar bar = apBars[i]; bar.setPreferredSize(new Dimension(76, 11));
             ViewportFonts.scalePreferredSize(bar);
             bar.setUI(new ActionBarUI());
             bar.setBackground(new Color(15, 26, 61));
@@ -67,11 +71,12 @@ final class BattleControls {
             row.add(member, BorderLayout.CENTER); row.add(bar, BorderLayout.EAST);
             members.add(row);
         }
-        info.add(members, BorderLayout.SOUTH);
+        info.add(members, BorderLayout.CENTER);
         bottom.add(info, BorderLayout.CENTER);
+        bottom.add(logFrame, BorderLayout.EAST);
         JPanel actions = frame();
         actions.setLayout(new GridLayout(6, 1, 0, 1));
-        actions.setPreferredSize(new Dimension(190, 160));
+        actions.setPreferredSize(new Dimension(145, 160));
         ViewportFonts.scalePreferredSize(actions);
         for (JButton button : new JButton[] {attack, ability, item, defend, escape, finish}) {
             button.setFocusable(false);
@@ -104,8 +109,8 @@ final class BattleControls {
             Student student = battle.getParty().get(i);
             partyStatus[i].setForeground(!over && student == battle.getCurrent()
                     ? new Color(250, 218, 143) : Color.WHITE);
-            partyStatus[i].setText(String.format("%-8s L%-2d HP %3d / %3d SP %3d / %3d%s",
-                    student.getName(), student.getLevel(), student.getHp(), student.getMaxHp(), student.getSp(), student.getMaxSp(),
+            partyStatus[i].setText(String.format("%-7s L%-3d %4d HP  %4d SP%s",
+                    student.getName(), student.getLevel(), student.getHp(), student.getSp(),
                     student.isAlive() ? "" : "  KO"));
         }
     }

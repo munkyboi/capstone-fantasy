@@ -299,13 +299,20 @@ final class BattleScene extends JPanel {
                         output.drawRect(left + 1, y - 13, columnWidth - 3, 28);
                     }
                     output.setColor(targeted ? new Color(255, 232, 160) : Color.WHITE);
-                    output.drawString((enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " / "
-                            + enemy.getMaxHp() + " HP" + (enemy.hasEscaped() ? " ESCAPED" : enemy.isAlive() ? "" : " KO"), left + 7, y);
+                    String label = (enemy.isMerchant() ? "Merchant" : enemy.isMirror() ? enemy.getName().replace("Mirror Image", "Mirror") : enemy.isBoss() ? "Guardian" : enemy.getName().replace("Stone ", "").replace("Library ", "")) + "  " + enemy.getHp() + " HP"
+                            + (enemy.hasEscaped() ? " ESC" : enemy.isAlive() ? "" : " KO");
+                    java.awt.Font normalFont = output.getFont();
+                    float labelSize = normalFont.getSize2D();
+                    while (output.getFontMetrics().stringWidth(label) > columnWidth - 68 && labelSize > 7) {
+                        labelSize -= 0.5f; output.setFont(normalFont.deriveFont(labelSize));
+                    }
+                    output.drawString(label, left + 7, y);
+                    output.setFont(normalFont);
                     output.setColor(new Color(52, 68, 101));
-                    output.fillRect(left + 7, y + 5, 122, 4);
+                    output.fillRect(left + columnWidth - 54, y - 8, 46, 4);
                     output.setColor(new Color(239, 157, 102));
-                    output.fillRect(left + 7, y + 5,
-                            enemy.isAlive() ? (int) (122 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
+                    output.fillRect(left + columnWidth - 54, y - 8,
+                            enemy.isAlive() ? (int) (46 * state.enemyPoints(enemy) / enemy.getActionThreshold()) : 0, 4);
                 }
                 if (state.showEffects()) { drawEffects(output, virtualWidth, virtualHeight); }
                 if (state.abilityAnnouncement() != null) drawAbilityAlert(output, state.abilityAnnouncement());

@@ -201,6 +201,10 @@ public final class Battle {
     public boolean hasDamageOverTime(GameCharacter target) {
         return target != null && target.isAlive() && !isOver() && burns.stream().anyMatch(burn -> burn.target == target && burn.ticks < 5);
     }
+    private void clearKnockedOutHeroEffects(Student hero) {
+        burns.removeIf(burn -> burn.target == hero);
+        guards.remove(hero); hero.endDefend();
+    }
     /** Applies one tick to effects on a participant whose action bar has filled. */
     public boolean tickDamageOverTime(GameCharacter participant) {
         if (participant == null || isOver() || !participant.isAlive() || burns.isEmpty()) return false;
@@ -231,6 +235,8 @@ public final class Battle {
     }
     /** Keeps DOT indicators when the participant also performs an action. */
     public void prependEffects(List<BattleEffect> earlier) { if (earlier != null && !earlier.isEmpty()) effects.addAll(0, earlier); }
+    /** Displays all effects produced by simultaneous AP fills. */
+    public void replaceEffects(List<BattleEffect> combined) { effects.clear(); effects.addAll(combined); }
     private void applyLightSaber(Student actor, Enemy target, int damage) {
         if (damage > 0 && target.isAlive() && "light_saber".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
             burns.add(new DamageOverTime(target, damage, hasManaLeak(actor)));
@@ -321,6 +327,7 @@ public final class Battle {
         if (actor.getAbilityType() == Student.AbilityType.HEALING_KISS) {
             effects.clear();
             boolean revived = !ally.isAlive();
+            if (revived) clearKnockedOutHeroEffects(ally);
             int healed = ally.heal((int) Math.ceil(revived ? ally.getMaxHp() * 0.3 : (ally.getMaxHp() - ally.getHp()) * 0.5));
             if (revived) ally.restoreSp((int) Math.ceil(ally.getMaxSp() * 0.3));
             if (healed > 0) { effects.add(new BattleEffect(ally, healed)); }
@@ -434,6 +441,7 @@ public final class Battle {
         if (isActionAnimating() || isOver() || getCurrent() == null || target == null || !party.contains(target) || target.isAlive()) return false;
         int restored = progress.getInventory().useWhiteFlower(target);
         if (restored <= 0) return false;
+        clearKnockedOutHeroEffects(target);
         effects.clear(); effects.add(new BattleEffect(target, restored));
         finish(getCurrent().getName() + " uses White Flower. " + target.getName() + " returns with " + restored + " HP.");
         return true;
@@ -522,7 +530,7 @@ public final class Battle {
                 } else {
                     int damage = (int)Math.ceil((target.getMaxSp() - target.getSp()) * (50 + random.nextInt(11)) / 100.0);
                     int taken = target.takeDamage(damage); effects.add(new BattleEffect(target, -taken));
-                    if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
+                    if (!target.isAlive()) { clearKnockedOutHeroEffects(target); }
                     text.append("\n").append(target.getName()).append(" takes ").append(taken).append(" damage.");
                 }
                 message = text.toString();
@@ -657,7 +665,7 @@ public final class Battle {
         int damage = target.takeDamage(enemy.scaleDamage(Math.max(MINIMUM_DAMAGE,
                 enemy.getAttack() + bonus - target.getDefense() + (guaranteedHit ? 0 : random.nextInt(DAMAGE_VARIATION)))) * multiplier);
         effects.add(new BattleEffect(target, -damage));
-        if (!target.isAlive()) { guards.remove(target); target.endDefend(); }
+        if (!target.isAlive()) { clearKnockedOutHeroEffects(target); }
         if (damage > 0 && "blade_mail".equals(armor)) {
             effects.add(BattleEffect.status(target, "Reflect"));
             int reflected = enemy.takeDamage((int) Math.round(damage * 0.5));

@@ -16,17 +16,18 @@ public final class ActionCycleDotTest {
             check(b.enemyAttack(merchant)&&b.getStunTurns(hero)==2,"merchant stuns");hero.heal(999);
             check(b.enemyAttack(merchant)&&b.enemyAttack(merchant)&&b.hasDamageOverTime(hero),"merchant applies DOT");hero.heal(999);int hp=hero.getHp();
             Field ap=BattlePanel.class.getDeclaredField("actionPoints");ap.setAccessible(true);@SuppressWarnings("unchecked") Map<Student,Double> points=(Map<Student,Double>)ap.get(panel);
+            Field cycleField=BattlePanel.class.getDeclaredField("processedDotCycles");cycleField.setAccessible(true);@SuppressWarnings("unchecked") Set<GameCharacter> processed=(Set<GameCharacter>)cycleField.get(panel);
             Field ep=BattlePanel.class.getDeclaredField("enemyPoints");ep.setAccessible(true);@SuppressWarnings("unchecked") Map<Enemy,Double> enemyPoints=(Map<Enemy,Double>)ep.get(panel);enemyPoints.replaceAll((e,v)->0.0);
             Method advance=BattlePanel.class.getDeclaredMethod("advanceActionPoints",double.class);advance.setAccessible(true);
-            points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
+            processed.remove(hero);points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
             check(hero.getHp()==hp-22&&b.getStunTurns(hero)==1&&points.get(hero)==0.0,"first DOT tick on stunned cycle");
-            points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
+            processed.remove(hero);points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
             check(hero.getHp()==hp-44&&b.getStunTurns(hero)==0&&points.get(hero)==0.0,"second DOT tick on stunned cycle");
-            points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
+            processed.remove(hero);points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
             check(hero.getHp()==hp-66&&b.getCurrent()==hero,"third tick before selection");
             advance.invoke(panel,100.0);check(hero.getHp()==hp-66,"no DOT while choosing a command");
             check(b.defend(hero),"finish the selected action");hero.takeDamage(hero.getHp()-1);
-            points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
+            processed.remove(hero);points.put(hero,(double)hero.getActionThreshold());advance.invoke(panel,0.0);
             check(b.isDefeat()&&b.getCurrent()==null,"DOT knockout prevents an action and ends the battle");
             for(String name:List.of("effectTimer","ambushAlertTimer","victoryTimer","apTimer","secondCastTimer","abilityAlertTimer")){Field t=BattlePanel.class.getDeclaredField(name);t.setAccessible(true);((javax.swing.Timer)t.get(panel)).stop();}
         }catch(ReflectiveOperationException e){throw new RuntimeException(e);}});
