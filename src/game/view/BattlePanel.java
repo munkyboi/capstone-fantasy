@@ -688,8 +688,7 @@ public final class BattlePanel extends JPanel {
                 if (battle.isMerchantEncounter()) progress.unlockCarbonMarket();
                 else { rewards.addAll(progress.claimStageRewardItems(encounterStage)); rewards.addAll(game.model.MonsterLoot.award(battle.getEnemies(), progress, battleRandom, settings.getDifficulty())); }
                 victoryRewardItems = List.copyOf(rewards);
-                int earned = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getPetotDrop).sum();
-                victoryPetot = progress.addPetot(earned * (settings.isGreedIsGood() ? 10 : 1));
+                victoryPetot = progress.addPetot(battle.victoryPetot(settings.isGreedIsGood()));
                 int baseExperience = battle.getEnemies().stream().filter(Enemy::isDefeated).mapToInt(Enemy::getExperienceDrop).sum();
                 double multiplier = switch (progress.getParty().size()) {
                     case 1 -> 3.0; case 2 -> 2.0; case 3 -> 1.5; case 4 -> 1.0;

@@ -100,17 +100,33 @@ public final class Equipment extends Item {
      * @return defense bonus
      */
     public int getDefenseBonus() { return defenseBonus; }
+    /** Percentage of maximum SP recovered on a successful accessory regeneration roll. */
+    public int getSpRegenPercent() {
+        return switch (id) {
+            case "market_charm" -> 3;
+            case "guardian_band", "heroes_ring" -> 4;
+            case "focus_charm", "courage_charm", "sentinel_band", "ring_of_power" -> 5;
+            case "campus_medal", "looper_ring" -> 6;
+            case "scholars_ward" -> 10;
+            default -> 0;
+        };
+    }
     /** Describes special legendary effects in the equipment screen. */
     public String getSpecialDescription() {
-        return switch (id) {
-            case "campus_vest" -> "+5% HP; +5% HP regeneration";
-            case "training_uniform" -> "+5% ACC; +5% AGI";
-            case "sentinel_band" -> "+50 HP; +8% HP regeneration";
-            case "focus_charm", "scholar_staff" -> "+5% ACC";
-            case "scholars_ward" -> "Zack only; +30% HP; +20% DEF; 25% chance to restore 10% max SP when AP fills";
-            case "hunter_crossbows" -> "+5% AGI";
-            case "cadet_blade" -> "+5% HP regeneration";
-            case "champion_wraps" -> "+5% SPD";
+        String description = switch (id) {
+            case "campus_vest" -> "+5% HP; +10% HP regeneration";
+            case "training_uniform" -> "+10% ACC; +10% AGI";
+            case "sentinel_band" -> "+50 HP; +15% HP regeneration";
+            case "market_charm" -> "+10% Petot after victory while wearer is alive";
+            case "focus_charm" -> "+5% ACC";
+            case "guardian_band" -> "15% chance to reduce an incoming attack's damage by 25%";
+            case "courage_charm" -> "At 50% HP or less, 20% chance to heal 5% max HP after a direct attack";
+            case "campus_medal" -> "+10% ACC; +10% AGI";
+            case "scholar_staff" -> "+10% ACC";
+            case "scholars_ward" -> "Zack only; +30% HP; +20% DEF";
+            case "hunter_crossbows" -> "+10% AGI";
+            case "cadet_blade" -> "+10% HP regeneration";
+            case "champion_wraps" -> "+10% SPD";
             case "heroes_ring" -> "+20% HP/DEF/regen; -40% SPD; 50% auto defend; no Defend/Escape";
             case "looper_ring" -> "+10% ability cost; -20% DEF; +10% SPD; damaging hits leak 5–10% max SP; 50% chance of 5 random hits";
             case "ring_of_power" -> "+50% ATK/DEF/SPD; 50% AP refill when hit";
@@ -124,6 +140,8 @@ public final class Equipment extends Item {
             case "ethereal_robe" -> "+15% DEF; +100 HP; +10% regen; damage empowers next attack";
             default -> "";
         };
+        int spRegen = getSpRegenPercent();
+        return spRegen == 0 ? description : description + "; 25% chance to restore " + spRegen + "% max SP when AP fills";
     }
     /** Checks whether a student can equip the item.
      * @param studentId character ID

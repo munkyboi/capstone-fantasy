@@ -11,14 +11,14 @@ public final class HealthRegeneration {
     /** Returns the character's regeneration rate, including equipment and defense. */
     public static double rate(Student student) {
         double bonus = switch (java.util.Objects.toString(student.getEquipmentId(Equipment.Slot.ARMOR), "")) {
-            case "campus_vest" -> 0.05;
+            case "campus_vest" -> 0.10;
             case "ethereal_robe", "designer_leather_vest" -> 0.10;
             case "blade_mail" -> 0.20;
             case "ultra_instinct_shirt" -> 0.30;
             default -> 0.0;
         };
-        if ("cadet_blade".equals(student.getEquipmentId(Equipment.Slot.WEAPON))) bonus += 0.05;
-        if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.08;
+        if ("cadet_blade".equals(student.getEquipmentId(Equipment.Slot.WEAPON))) bonus += 0.10;
+        if ("sentinel_band".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.15;
         if ("heroes_ring".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))) bonus += 0.20;
         if (student.isDefending()) bonus += 0.20;
         return BASE_RATES[student.getId()] + bonus;

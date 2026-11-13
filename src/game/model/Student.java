@@ -146,20 +146,21 @@ public class Student extends GameCharacter {
     public double agilityWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
-        return getAgility() * (1.0 + ("hunter_crossbows".equals(weapon) ? 0.05 : 0)
-                + ("training_uniform".equals(armor) ? 0.05 : 0));
+        String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        return getAgility() * (1.0 + ("hunter_crossbows".equals(weapon) ? 0.10 : 0)
+                + ("training_uniform".equals(armor) ? 0.10 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
     }
     public double accuracyWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
         String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
-        return getAccuracy() * (1.0 + ("training_uniform".equals(armor) ? 0.05 : 0) + ("scholar_staff".equals(weapon) ? 0.05 : 0)
-                + ("focus_charm".equals(accessory) ? 0.05 : 0));
+        return getAccuracy() * (1.0 + ("training_uniform".equals(armor) ? 0.10 : 0) + ("scholar_staff".equals(weapon) ? 0.10 : 0)
+                + ("focus_charm".equals(accessory) ? 0.05 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
     }
     public double effectiveSpeedWithEquipment(Equipment.Slot slot, String replacement) {
         String weapon = slot == Equipment.Slot.WEAPON ? replacement : weaponId;
         return statWithEquipment(Stat.SPD, slot, replacement)
-                + ("champion_wraps".equals(weapon) ? getUnmodifiedSpeed() * 0.05 : 0);
+                + ("champion_wraps".equals(weapon) ? getUnmodifiedSpeed() * 0.10 : 0);
     }
     /** Previews a stat if a slot were changed; pass a null slot for current equipment. */
     public int statWithEquipment(Stat stat, Equipment.Slot slotToReplace, String replacement) {

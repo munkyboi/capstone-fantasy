@@ -273,11 +273,12 @@ public final class Battle {
                 text.append(student.getName()).append(" regenerated ").append(healed).append(" HP.");
                 restored = true;
             }
-            if (student.isAlive() && student.getSp() < student.getMaxSp()
-                    && "scholars_ward".equals(student.getEquipmentId(Equipment.Slot.ACCESSORY))
-                    && random.nextDouble() < 0.25) {
+            String accessory = student.getEquipmentId(Equipment.Slot.ACCESSORY);
+            int spRegen = accessory == null ? 0 : Equipment.fromId(accessory).getSpRegenPercent();
+            if (student.isAlive() && student.getSp() < student.getMaxSp() && spRegen > 0 && random.nextDouble() < 0.25) {
                 int before = student.getSp();
-                student.restoreSp(Math.min(student.getMaxSp(), before + (student.getMaxSp() + 9) / 10));
+                int recovery = (int)(((long)student.getMaxSp() * spRegen + 99) / 100);
+                student.restoreSp((int)Math.min(student.getMaxSp(), (long)before + recovery));
                 int recovered = student.getSp() - before;
                 if (!restored && !keepCurrentEffects) effects.clear();
                 effects.add(BattleEffect.status(student, "+" + recovered + " SP"));
@@ -507,6 +508,15 @@ public final class Battle {
     public boolean canUseDefendOrEscape() {
         Student actor = getCurrent();
         return actor != null && !"heroes_ring".equals(actor.getEquipmentId(Equipment.Slot.ACCESSORY));
+    }
+    /** Victory Petot, including difficulty, optional greed, and Market Charm. */
+    public int victoryPetot(boolean greed) {
+        long amount = enemies.stream().filter(Enemy::isDefeated).mapToLong(Enemy::getPetotDrop).sum();
+        if (greed) amount *= 10;
+        if (party.stream().anyMatch(s -> s.isAlive() && "market_charm".equals(s.getEquipmentId(Equipment.Slot.ACCESSORY)))) {
+            amount = (amount * 11 + 9) / 10;
+        }
+        return (int)Math.min(GameProgress.MAX_PETOT, amount);
     }
     public boolean canDefend(Student target) {
         Student actor = getCurrent();
@@ -770,9 +780,20 @@ public final class Battle {
         int power = Math.max(0, enemy.getAttack() + bonus);
         int adjusted = damageAfterDefense(power, ignoreDefense ? 0 : target.getDefense());
         double regenerationRate = "blade_mail".equals(armor) ? HealthRegeneration.rate(target) : 0;
-        int damage = target.takeDamage(enemy.scaleDamage(adjusted + (guaranteedHit ? 0 : random.nextInt(DAMAGE_VARIATION))) * multiplier);
+        int incoming = enemy.scaleDamage(adjusted + (guaranteedHit ? 0 : random.nextInt(DAMAGE_VARIATION))) * multiplier;
+        String accessory = target.getEquipmentId(Equipment.Slot.ACCESSORY);
+        if ("guardian_band".equals(accessory) && random.nextDouble() < 0.15) {
+            incoming = Math.max(1, (int)Math.ceil(incoming * 0.75));
+            effects.add(BattleEffect.status(target, "Ward"));
+        }
+        int damage = target.takeDamage(incoming);
         effects.add(new BattleEffect(target, -damage));
         if (!target.isAlive()) { clearKnockedOutHeroEffects(target); }
+        if (damage > 0 && target.isAlive() && "courage_charm".equals(accessory)
+                && target.getHp() * 2L <= target.getMaxHp() && random.nextDouble() < 0.20) {
+            int healed = target.heal((target.getMaxHp() + 19) / 20);
+            if (healed > 0) { effects.add(BattleEffect.status(target, "Courage")); effects.add(new BattleEffect(target, healed)); }
+        }
         if (damage > 0 && "blade_mail".equals(armor)) {
             effects.add(BattleEffect.status(target, "Reflect"));
             int reflectedPower = (int)Math.min(Integer.MAX_VALUE, Math.ceil(damage * 0.50 * (1.0 + regenerationRate) - 1e-9));

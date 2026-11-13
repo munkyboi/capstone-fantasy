@@ -66,7 +66,10 @@ public final class ShopPanel extends JPanel {
             int index = firstVisible + i;
             CarbonMarket.Offer item = CarbonMarket.offers().get(index);
             ViewportFonts.setScaledIcon(offers[i], index == cursor ? PixelPointer.HAND : PixelPointer.EMPTY);
-            offers[i].setText("<html>" + item.name() + "  •  " + item.price() + " Petot<br>" + item.description() + "</html>");
+            int spRegen = "first_aid_kit".equals(item.id()) ? 0 : game.model.Equipment.fromId(item.id()).getSpRegenPercent();
+            String spText = spRegen == 0 || item.description().contains("restore " + spRegen + "%")
+                    ? "" : "  •  AP fill: 25% chance to restore " + spRegen + "% SP.";
+            offers[i].setText("<html>" + item.name() + "  •  " + item.price() + " Petot<br>" + item.description() + spText + "</html>");
             offers[i].setForeground(index == cursor ? new Color(250, 218, 143) : Color.WHITE);
         }
         message.setText(text); repaint();

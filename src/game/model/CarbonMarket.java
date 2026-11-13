@@ -6,7 +6,7 @@ public final class CarbonMarket {
     public record Offer(String id, String name, int price, String description) { }
     private static final java.util.List<Offer> OFFERS = java.util.List.of(
             new Offer("first_aid_kit", "First-Aid Kit", 20, "Restores HP to one student."),
-            new Offer("market_charm", "Market Charm", 60, "+1 ATK and +1 DEF."),
+            new Offer("market_charm", "Market Charm", 60, "+1 ATK/DEF; +10% Petot after victory while wearer is alive."),
             new Offer("ring_of_power", "Ring of Power", 2500, "+50% ATK/DEF/SPD; 50% chance to refill AP when hit."),
             new Offer("light_saber", "Light Saber", 2500, "Warrior: +100 ATK, +20% SPD; 100% hit damage over 5 turns."),
             new Offer("demon_hunter", "Demon Hunter", 2500, "Hunter: +20% ATK, +75% SPD; Piercing Bolts ignore 25% of positive DEF."),
