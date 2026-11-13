@@ -12,7 +12,6 @@ public final class GameSettings {
     private static final double MAX_AP_PER_SECOND = 30.0;
     private double apPerSecond = DEFAULT_AP_PER_SECOND;
     private BattleSpeed battleSpeed = BattleSpeed.NORMAL;
-    private int growthFactor = 7;
     private int levelCap = 30;
     private int partySize = 3;
     private XpBoost xpBoost = XpBoost.NORMAL;
@@ -23,7 +22,7 @@ public final class GameSettings {
     /** Creates settings with the default action-point rate. */
     public GameSettings() { }
     public BattleSpeed getBattleSpeed() { return battleSpeed; }
-    public int getGrowthFactor() { return growthFactor; }
+    public int getGrowthFactor() { return switch (difficulty) { case EASY -> 1; case NORMAL -> 7; case HARD -> 15; case INSANE -> 30; }; }
     public int getLevelCap() { return levelCap; }
     public int getPartySize() { return partySize; }
     public XpBoost getXpBoost() { return xpBoost; }
@@ -36,7 +35,7 @@ public final class GameSettings {
     public void setDifficulty(Difficulty value) { difficulty = java.util.Objects.requireNonNull(value); }
     /** Restores all user-facing options to their default values. */
     public void resetDefaults() {
-        setBattleSpeed(BattleSpeed.NORMAL); growthFactor = 7; levelCap = 30; partySize = 3;
+        setBattleSpeed(BattleSpeed.NORMAL); levelCap = 30; partySize = 3;
         xpBoost = XpBoost.NORMAL; difficulty = Difficulty.NORMAL; ambushEnabled = true; greedIsGood = false;
     }
     /** Adjusts the elapsed-time AP rate without changing the rendering frame rate. */
@@ -44,7 +43,6 @@ public final class GameSettings {
         battleSpeed = java.util.Objects.requireNonNull(speed);
         apPerSecond = switch (speed) { case SLOW -> 5.0; case NORMAL -> 10.0; case FAST -> 15.0; case ULTRA -> 20.0; };
     }
-    public void setGrowthFactor(int value) { if (value < 1 || value > 20) throw new IllegalArgumentException("Invalid growth factor"); growthFactor = value; }
     public void setLevelCap(int value) { if (value < 20 || value > 100 || value % 10 != 0) throw new IllegalArgumentException("Invalid level cap"); levelCap = value; }
     public void setPartySize(int value) { if (value < 1 || value > 4) throw new IllegalArgumentException("Invalid party size"); partySize = value; }
     /** Load saved preferences; invalid or missing settings fall back to defaults. */
@@ -54,7 +52,6 @@ public final class GameSettings {
         try (var reader = java.nio.file.Files.newBufferedReader(file)) {
             var props = new java.util.Properties(); props.load(reader);
             settings.setBattleSpeed(BattleSpeed.valueOf(props.getProperty("battleSpeed", "NORMAL")));
-            settings.setGrowthFactor(Integer.parseInt(props.getProperty("growthFactor", "7")));
             int savedCap = Integer.parseInt(props.getProperty("levelCap", "30"));
             settings.setLevelCap(savedCap);
             settings.setPartySize(Integer.parseInt(props.getProperty("partySize", "3")));
@@ -73,7 +70,7 @@ public final class GameSettings {
     public void save(java.nio.file.Path file) throws java.io.IOException {
         var parent = file.toAbsolutePath().getParent(); java.nio.file.Files.createDirectories(parent);
         var props = new java.util.Properties(); props.setProperty("battleSpeed", battleSpeed.name());
-        props.setProperty("growthFactor", Integer.toString(growthFactor)); props.setProperty("levelCap", Integer.toString(levelCap));
+        props.setProperty("levelCap", Integer.toString(levelCap));
         props.setProperty("partySize", Integer.toString(partySize));
         props.setProperty("xpBoost", xpBoost.name()); props.setProperty("difficulty", difficulty.name());
         props.setProperty("ambushEnabled", Boolean.toString(ambushEnabled));

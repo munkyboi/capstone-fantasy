@@ -49,6 +49,9 @@ public final class ShopPanel extends JPanel {
         Keys.bind(this, "UP", "shop-up", () -> move(-1)); Keys.bind(this, "DOWN", "shop-down", () -> move(1));
         Keys.bind(this, "ENTER", "shop-buy", this::buy); Keys.bind(this, "SPACE", "shop-buy-space", this::buy);
         Keys.bind(this, "ESCAPE", "shop-back", back);
+        // Give the active shop priority over window-wide Escape shortcuts on other screens.
+        getInputMap(WHEN_FOCUSED).put(javax.swing.KeyStroke.getKeyStroke("ESCAPE"), "shop-back");
+        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(javax.swing.KeyStroke.getKeyStroke("ESCAPE"), "shop-back");
     }
     /** Opens the market for the supplied party. */
     public void open(GameProgress progress) { this.progress = progress; cursor = 0; firstVisible = 0; refresh("Welcome to Carbon Market!"); }

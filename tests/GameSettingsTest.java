@@ -13,6 +13,13 @@ public final class GameSettingsTest {
     public static void main(String[] args) throws Exception {
         GameSettings settings = new GameSettings();
         check(settings.getApPerSecond() == 10 && settings.getGrowthFactor() == 7 && settings.getLevelCap() == 30 && settings.getPartySize() == 3, "defaults");
+        int[] growthRates = {1, 7, 15, 30};
+        for (GameSettings.Difficulty difficulty : GameSettings.Difficulty.values()) {
+            GameSettings choice = new GameSettings(); choice.setDifficulty(difficulty);
+            check(choice.getGrowthFactor() == growthRates[difficulty.ordinal()], "difficulty sets growth " + difficulty);
+            Student hero = Student.create(0); hero.configureProgression(choice.getGrowthFactor(), 100);
+            check(hero.gainExperience(100) == 1 && hero.getXpRequired() == 100 + growthRates[difficulty.ordinal()], "XP curve " + difficulty);
+        }
         settings.setBattleSpeed(GameSettings.BattleSpeed.SLOW); check(settings.getApPerSecond() == 5, "slow AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.FAST); check(settings.getApPerSecond() == 15, "fast AP");
         settings.setBattleSpeed(GameSettings.BattleSpeed.ULTRA); check(settings.getApPerSecond() == 20, "ultra AP");
@@ -38,7 +45,7 @@ public final class GameSettingsTest {
         check(maxGrowth.getLevel() == 100 && maxGrowth.gainExperience(1) == 0, "lower cap preserves level 100");
         Path dir = Files.createTempDirectory("game-settings-");
         try {
-            settings.setGrowthFactor(15); settings.setPartySize(4); settings.setLevelCap(50); Path file = dir.resolve("settings.properties"); settings.save(file);
+            settings.setDifficulty(GameSettings.Difficulty.HARD); settings.setPartySize(4); settings.setLevelCap(50); Path file = dir.resolve("settings.properties"); settings.save(file);
             GameSettings loaded = GameSettings.load(file); check(loaded.getGrowthFactor() == 15 && loaded.getPartySize() == 4 && loaded.getLevelCap() == 50 && loaded.getApPerSecond() == 20 && !loaded.isAmbushEnabled(), "settings persist");
             SwingUtilities.invokeAndWait(() -> {
                 try {
@@ -61,21 +68,21 @@ public final class GameSettingsTest {
             SwingUtilities.invokeAndWait(() -> {
                 SettingsPanel ui = new SettingsPanel(edited, uiFile, () -> {});
                 key(ui, "settings-right"); key(ui, "settings-right"); key(ui, "settings-down"); key(ui, "settings-right");
-                key(ui, "settings-down"); key(ui, "settings-right"); key(ui, "settings-down"); key(ui, "settings-right");
+                key(ui, "settings-down"); key(ui, "settings-right");
                 key(ui, "settings-confirm");
             });
             GameSettings uiSaved = GameSettings.load(uiFile);
-            check(uiSaved.getApPerSecond() == 20 && uiSaved.getGrowthFactor() == 8 && uiSaved.getLevelCap() == 40
+            check(uiSaved.getApPerSecond() == 20 && uiSaved.getGrowthFactor() == 7 && uiSaved.getLevelCap() == 40
                     && uiSaved.getPartySize() == 4, "keyboard settings persist");
             SwingUtilities.invokeAndWait(() -> {
                 SettingsPanel ui = new SettingsPanel(edited, uiFile, () -> {});
-                key(ui, "settings-down"); key(ui, "settings-down");
+                key(ui, "settings-down");
                 for (int i = 0; i < 6; i++) key(ui, "settings-right");
                 check(edited.getLevelCap() == 100, "settings allow level 100");
             });
             SwingUtilities.invokeAndWait(() -> {
                 GameSettings toggle = new GameSettings(); SettingsPanel ui = new SettingsPanel(toggle, uiFile, () -> {});
-                for (int i = 0; i < 6; i++) key(ui, "settings-down");
+                for (int i = 0; i < 5; i++) key(ui, "settings-down");
                 key(ui, "settings-confirm"); check(!toggle.isAmbushEnabled(), "enter toggles ambush off");
                 key(ui, "settings-back"); check(!GameSettings.load(uiFile).isAmbushEnabled(), "ambush toggle saves");
                 toggle.resetDefaults(); check(toggle.isAmbushEnabled(), "reset enables ambush");
@@ -84,6 +91,14 @@ public final class GameSettingsTest {
             Files.writeString(oldSettings, "levelCap=40\npartySize=4\n");
             GameSettings migrated = GameSettings.load(oldSettings);
             check(migrated.getLevelCap() == 40 && migrated.getPartySize() == 4 && migrated.isAmbushEnabled(), "legacy cap 40 and preferences remain unchanged");
+            Files.writeString(oldSettings, "growthFactor=20\ndifficulty=INSANE\nlevelCap=40\npartySize=4\n");
+            migrated = GameSettings.load(oldSettings);
+            check(migrated.getDifficulty() == GameSettings.Difficulty.INSANE && migrated.getGrowthFactor() == 30 && migrated.getLevelCap() == 40, "old growth preference yields to saved difficulty");
+            GameProgress migratedParty = new GameProgress(List.of(0, 1));
+            Student existing = migratedParty.getParty().get(0); existing.configureProgression(7, 100); existing.gainExperience(1700);
+            int existingLevel = existing.getLevel(); double existingFraction = (double) existing.getXpProgress() / existing.getXpRequired();
+            migratedParty.applySettings(migrated);
+            check(existing.getLevel() == existingLevel && existing.getExperienceGrowth() == 30 && Math.abs((double) existing.getXpProgress() / existing.getXpRequired() - existingFraction) < 0.01, "difficulty change preserves level and XP progress");
             SwingUtilities.invokeAndWait(() -> {
                 List<List<Integer>> chosen = new ArrayList<>();
                 SelectionPanel selection = new SelectionPanel(() -> {}, chosen::add);
@@ -119,7 +134,7 @@ public final class GameSettingsTest {
                 check(recovered.getExperience() == reserveXp && recovered.getAllocatedStatPoints(Student.Stat.ATK) == 1, "reserve stats retained " + format);
             }
             GameProgress level100 = new GameProgress(List.of(0)); level100.advance();
-            GameSettings maxSettings = new GameSettings(); maxSettings.setLevelCap(100); maxSettings.setGrowthFactor(20);
+            GameSettings maxSettings = new GameSettings(); maxSettings.setLevelCap(100); maxSettings.setDifficulty(GameSettings.Difficulty.INSANE);
             level100.applySettings(maxSettings); Student maxStudent = level100.getParty().get(0);
             maxStudent.gainExperience(Long.MAX_VALUE); maxStudent.allocateStatPoint(Student.Stat.SPD);
             for (SaveStore.Format format : SaveStore.Format.values()) {

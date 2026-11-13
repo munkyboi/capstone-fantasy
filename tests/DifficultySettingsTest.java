@@ -62,7 +62,7 @@ public final class DifficultySettingsTest {
                     key(ui, "settings-back"); GameSettings reset = GameSettings.load(file);
                     check(reset.getDifficulty() == GameSettings.Difficulty.NORMAL && reset.getXpBoost() == GameSettings.XpBoost.NORMAL, "reset is saved on exit");
                     SettingsPanel sliders = new SettingsPanel(reset, file, () -> {});
-                    for (int i = 0; i < 4; i++) key(sliders, "settings-down");
+                    for (int i = 0; i < 3; i++) key(sliders, "settings-down");
                     key(sliders, "settings-right"); key(sliders, "settings-right");
                     key(sliders, "settings-down"); key(sliders, "settings-right"); key(sliders, "settings-right");
                     key(sliders, "settings-back"); GameSettings selected = GameSettings.load(file);

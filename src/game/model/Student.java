@@ -245,7 +245,7 @@ public class Student extends GameCharacter {
     public int getLevelCap() { return configuredLevelCap == 0 ? 30 : configuredLevelCap; }
     /** Change progression while preserving level and fraction of progress toward the next level. */
     public void configureProgression(int growth, int cap) {
-        if (growth < 0 || growth > 20 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
+        if (growth < 0 || growth > 30 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
         int level = getLevel();
         long oldStart = experienceForLevel(level, experienceGrowth);
         long oldNext = level == 100 ? oldStart : experienceForLevel(level + 1, experienceGrowth);
@@ -257,7 +257,7 @@ public class Student extends GameCharacter {
     }
     /** Restores the progression rules before restoring experience. */
     public void restoreProgression(int growth, int cap) {
-        if (growth < 0 || growth > 20 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
+        if (growth < 0 || growth > 30 || (cap < 20 || cap > 100 || cap % 10 != 0)) throw new IllegalArgumentException("Invalid progression");
         experienceGrowth = growth; configuredLevelCap = cap;
     }
     /** Returns total earned experience. */

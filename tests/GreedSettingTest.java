@@ -17,7 +17,7 @@ public final class GreedSettingTest {
             SwingUtilities.invokeAndWait(() -> {
                 try {
                     SettingsPanel ui = new SettingsPanel(settings, file, () -> {});
-                    for (int i = 0; i < 7; i++) key(ui, "settings-down");
+                    for (int i = 0; i < 6; i++) key(ui, "settings-down");
                     key(ui, "settings-confirm"); check(settings.isGreedIsGood(), "enter toggles greed on");
                     key(ui, "settings-back"); check(GameSettings.load(file).isGreedIsGood(), "greed setting persists");
                     GameProgress progress = new GameProgress(List.of(0, 1, 2));
