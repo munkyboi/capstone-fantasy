@@ -63,7 +63,7 @@ Headings use Eight Bit Dragon by Chequered Ink and body labels use Gome Pixel by
 
 ## Direction
 
-The game is intended for a school audience. Its battle layout takes inspiration from classic JRPGs and [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system).
+The game is intended for a school audience. Its battle layout takes inspiration from classic JRPGs.
 
 ## Art references and assets
 
@@ -79,4 +79,3 @@ The game is intended for a school audience. Its battle layout takes inspiration 
 - **Library Wisp battle-facing revision:** `assets/sprites/library-wisp-v3.png`, edited from v2 with OpenAI’s built-in image tool to face the party to the left while preserving its blue flames and floating book.
 - **Stone Sentinel:** `assets/sprites/stone-sentinel-v1.png`, generated with OpenAI's built-in image tool. Prompt: "Original formidable stone sentinel guardian enemy for a wholesome 16-bit school fantasy JRPG, full-body standing idle sprite, made of blue-gray carved stone with sturdy blocky armor and subtle cyan crystal light, confident guardian stance, readable at small scale, facing left, transparent background, crisp pixel art, no gore, no horror, no sinister symbols, no text, no watermark, one character only, SFW."
 - **Tiny Dungeon:** Kenney, [source](https://kenney.nl/assets/tiny-dungeon), CC0 1.0. The downloaded pack and its license are in `assets/kenney-tiny-dungeon/`.
-- **Battle layout reference:** [Sara's Turn Based Battle System](https://sarajs.itch.io/saras-turn-based-battle-system). No assets or code from that project are included.
