@@ -20,81 +20,89 @@ final class BattleHudOverlays {
         this.uniformIcon = uniformIcon;
         this.rewardArt = rewardArt;
     }
+        private int rewardEntryCount() {
+            return (int) state.rewardItems().stream().distinct().count()
+                    + (state.rewardPetot() > 0 ? 1 : 0) + (state.rewardExperience() > 0 ? 1 : 0);
+        }
         private int rewardRowCount() {
-            return (int) state.rewardItems().stream().distinct().count() + (state.rewardPetot() > 0 ? 1 : 0)
-                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
+            return (rewardEntryCount() + 1) / 2 + (state.leveledStudents().isEmpty() ? 0 : 1)
                     + (state.bonusXpStudents().isEmpty() ? 0 : 1);
         }
-        int rewardButtonY() {
-            int y = Math.max(18, hudHeight.getAsInt() / 5) + 52;
-            int rows = rewardRowCount();
-            int rowHeight = Math.max(12, Math.min(24, (hudHeight.getAsInt() - y - 97) / Math.max(1, rows)));
-            return y + 53 + rows * rowHeight;
+        private int rewardTop() { return Math.max(18, hudHeight.getAsInt() / 5) + 52; }
+        private int rewardRowHeight() {
+            int available = (int) Math.floor(hudHeight.getAsInt() * 0.77) - rewardTop() - 82;
+            return Math.max(9, Math.min(24, available / Math.max(1, rewardRowCount())));
         }
+        int rewardButtonY() { return rewardTop() + 53 + rewardRowCount() * rewardRowHeight(); }
 
         void drawRewards(Graphics2D g) {
             java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
-            for (String id : state.rewardItems()) { counts.merge(id, 1, Integer::sum); }
-            java.util.List<String> items = new java.util.ArrayList<>(counts.keySet());
-            int width = 360, x = (960 - width) / 2;
-            int y = Math.max(18, hudHeight.getAsInt() / 5) + 52;
-            int rows = items.size() + (state.rewardPetot() > 0 ? 1 : 0)
-                    + (state.rewardExperience() > 0 ? 1 : 0) + (state.leveledStudents().isEmpty() ? 0 : 1)
-                    + (state.bonusXpStudents().isEmpty() ? 0 : 1);
-            int rowHeight = Math.max(12, Math.min(24, (hudHeight.getAsInt() - y - 97) / Math.max(1, rows)));
-            int height = 82 + rows * rowHeight;
-            g.setColor(new Color(12, 25, 48, 224));
-            g.fillRect(x, y, width, height);
+            for (String id : state.rewardItems()) counts.merge(id, 1, Integer::sum);
+            int width = 360, x = (960 - width) / 2, y = rewardTop();
+            int rowHeight = rewardRowHeight(), height = 82 + rewardRowCount() * rowHeight;
+            g.setColor(new Color(12, 25, 48, 224)); g.fillRect(x, y, width, height);
             g.setColor(new Color(247, 204, 114));
-            g.drawRect(x, y, width - 1, height - 1);
-            g.drawRect(x + 3, y + 3, width - 7, height - 7);
-            g.setFont(ClassicUi.body(17));
-            g.drawString("You gain:", x + 16, y + 27);
-            g.setFont(ClassicUi.numbers(Math.min(14, rowHeight - 2)));
-            int offset = 0;
+            g.drawRect(x, y, width - 1, height - 1); g.drawRect(x + 3, y + 3, width - 7, height - 7);
+            g.setFont(ClassicUi.body(17)); g.drawString("You gain:", x + 16, y + 27);
+            int entry = 0;
             if (state.rewardExperience() > 0) {
-                int cy = y + 48;
-                g.setColor(new Color(175, 133, 245)); g.fillPolygon(new int[] {x + 27, x + 35, x + 27, x + 19}, new int[] {cy - 10, cy - 2, cy + 6, cy - 2}, 4);
-                g.setColor(Color.WHITE); g.drawString(state.rewardExperience() + " XP each", x + 50, cy + 4);
-                offset++;
-            }
-            if (!state.bonusXpStudents().isEmpty()) {
-                int cy = y + 48 + offset * rowHeight;
-                g.setColor(Color.WHITE); g.drawString("Bonus XP: " + String.join(", ", state.bonusXpStudents()), x + 16, cy + 4);
-                offset++;
+                int left = x + 16 + (entry % 2) * 170, top = y + 36 + (entry / 2) * rowHeight;
+                int size = Math.min(18, rowHeight), cx = left + size / 2, cy = top + rowHeight / 2;
+                int radius = Math.max(3, size / 2 - 1);
+                g.setColor(new Color(175, 133, 245));
+                g.fillPolygon(new int[] {cx, cx + radius, cx, cx - radius}, new int[] {cy - radius, cy, cy + radius, cy}, 4);
+                drawRewardText(g, state.rewardExperience() + " XP each", left + 29, top, rowHeight, 137);
+                entry++;
             }
             if (state.rewardPetot() > 0) {
-                int cy = y + 48 + offset * rowHeight;
-                g.setColor(new Color(240, 189, 73)); g.fillOval(x + 18, cy - 10, 18, 18);
-                g.setColor(new Color(255, 232, 154)); g.drawOval(x + 20, cy - 8, 14, 14);
-                g.setColor(Color.WHITE); g.drawString(state.rewardPetot() + " Petot", x + 50, cy + 6);
-                offset++;
+                int left = x + 16 + (entry % 2) * 170, top = y + 36 + (entry / 2) * rowHeight;
+                int size = Math.min(18, rowHeight), iconY = top + (rowHeight - size) / 2;
+                g.setColor(new Color(240, 189, 73)); g.fillOval(left, iconY, size, size);
+                g.setColor(new Color(255, 232, 154)); g.drawOval(left + 2, iconY + 2, Math.max(1, size - 4), Math.max(1, size - 4));
+                drawRewardText(g, state.rewardPetot() + " Petot", left + 29, top, rowHeight, 137);
+                entry++;
             }
-            for (int i = 0; i < items.size(); i++) {
-                String id = items.get(i);
-                int rowY = y + 36 + (i + offset) * rowHeight;
-                drawRewardIcon(g, id, x + 16, rowY, Math.min(24, rowHeight));
-                g.setColor(Color.WHITE);
+            for (java.util.Map.Entry<String, Integer> reward : counts.entrySet()) {
+                int left = x + 16 + (entry % 2) * 170, top = y + 36 + (entry / 2) * rowHeight;
+                String id = reward.getKey();
+                drawRewardIcon(g, id, left, top, Math.min(24, rowHeight));
                 String name = "first_aid_kit".equals(id) ? "First-Aid Kit"
                         : "white_flower".equals(id) ? "White Flower" : Equipment.fromId(id).getName();
-                g.drawString(counts.get(id) + "x " + name, x + 50, rowY + rowHeight - 3);
+                drawRewardText(g, reward.getValue() + "x " + name, left + 29, top, rowHeight, 137,
+                        "campus_vest".equals(id) || "campus_medal".equals(id) ? new Color(168, 230, 163) : Color.WHITE);
+                entry++;
+            }
+            int row = (entry + 1) / 2;
+            if (!state.bonusXpStudents().isEmpty()) {
+                drawSummary(g, "Bonus XP: " + String.join(", ", state.bonusXpStudents()), x + 16, y + 36 + row++ * rowHeight, rowHeight);
             }
             if (!state.leveledStudents().isEmpty()) {
-                g.setColor(new Color(250, 218, 143));
-                g.drawString("Level up: " + String.join(", ", state.leveledStudents()), x + 16,
-                        y + 36 + (offset + items.size()) * rowHeight + rowHeight - 3);
+                drawSummary(g, "Level up: " + String.join(", ", state.leveledStudents()), x + 16, y + 36 + row * rowHeight, rowHeight);
             }
-            int buttonY = y + height - 29;
+            int buttonY = rewardButtonY();
             String[] labels = state.canExplore() ? new String[]{"Explore", "Camp"} : new String[]{"Camp"};
             for (int i = 0; i < labels.length; i++) {
                 int choice = state.canExplore() ? i : 1;
                 int bx = state.canExplore() ? x + 40 + i * 155 : x + 115;
                 boolean selected = state.victoryChoice() == choice;
                 g.setColor(selected ? new Color(250, 218, 143) : Color.WHITE);
-                g.setFont(ClassicUi.numbers(16));
-                g.drawString(labels[i], bx + 38, buttonY + 16);
+                g.setFont(ClassicUi.numbers(16)); g.drawString(labels[i], bx + 38, buttonY + 16);
                 if (selected) g.drawImage(PixelPointer.ART, bx + 5, buttonY, PixelPointer.WIDTH, PixelPointer.HEIGHT, null);
             }
+        }
+
+        private void drawRewardText(Graphics2D g, String text, int x, int y, int rowHeight, int width) {
+            drawRewardText(g, text, x, y, rowHeight, width, Color.WHITE);
+        }
+        private void drawRewardText(Graphics2D g, String text, int x, int y, int rowHeight, int width, Color color) {
+            int fontSize = Math.min(14, Math.max(7, rowHeight - 2));
+            g.setFont(ClassicUi.numbers(fontSize));
+            while (fontSize > 7 && g.getFontMetrics().stringWidth(text) > width) g.setFont(ClassicUi.numbers(--fontSize));
+            g.setColor(color); g.drawString(text, x, y + rowHeight - 3);
+        }
+
+        private void drawSummary(Graphics2D g, String text, int x, int y, int rowHeight) {
+            drawRewardText(g, text, x, y, rowHeight, 328);
         }
 
         private void drawRewardIcon(Graphics2D g, String id, int x, int y, int size) {

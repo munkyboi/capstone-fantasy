@@ -35,6 +35,14 @@ public final class HealthRegenerationTest {
         check(HealthRegeneration.amount(c.getParty().get(0)) == 32, "shirt bonus");
         GameProgress a = new GameProgress(List.of(3)); equip(a, 3, "designer_leather_vest");
         check(HealthRegeneration.amount(a.getParty().get(0)) == 26, "vest bonus includes equipment HP");
+        GameProgress training = new GameProgress(List.of(Student.CHARICE)); equip(training, Student.CHARICE, "training_uniform");
+        Student trainee = training.getParty().get(0);
+        check(Math.abs(HealthRegeneration.rate(trainee) - .16) < 1e-9 && HealthRegeneration.amount(trainee) == 14, "uniform adds ten percentage points");
+        training.getInventory().addEquipment("sentinel_band");
+        check(training.equip(trainee, Equipment.Slot.ACCESSORY, "sentinel_band"), "equip regeneration accessory");
+        check(Math.abs(HealthRegeneration.rate(trainee) - .31) < 1e-9 && HealthRegeneration.amount(trainee) == 43, "uniform and accessory regeneration stack");
+        trainee.takeDamage(50); check(HealthRegeneration.attempt(trainee, fixed(.249)) == 43, "uniform bonus applies on a successful roll");
+        check(Equipment.fromId("training_uniform").getSpecialDescription().contains("+10% HP regeneration"), "uniform description includes regeneration");
         GameProgress campParty = new GameProgress(List.of(0)); Student camper = campParty.getParty().get(0); camper.takeDamage(50);
         SwingUtilities.invokeAndWait(() -> {
             CampPanel camp = new CampPanel(p -> {}, () -> {}, p -> {}, p -> {}, fixed(0));

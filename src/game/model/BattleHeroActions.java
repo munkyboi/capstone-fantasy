@@ -52,7 +52,7 @@ final class BattleHeroActions {
     private int hurt(Enemy target, int power) { return battle.hurt(target, power); }
     private int hurt(Enemy target, int power, boolean guaranteed) { return battle.hurt(target, power, guaranteed); }
     private void applyLightSaber(Student s, Enemy e, int damage) { battle.applyLightSaber(s, e, damage); }
-    private void reflectStoneSkin(boolean shielded, GameCharacter source, int damage) { battle.reflectStoneSkin(shielded, source, damage); }
+    private void reflectStoneSkin(Enemy target, boolean shielded, GameCharacter source, int damage) { battle.reflectStoneSkin(target, shielded, source, damage); }
     private void applyManaLeak(boolean enabled, Enemy target, int damage) { battle.applyManaLeak(enabled, target, damage); }
     private static boolean hasManaLeak(Student s) { return Battle.hasManaLeak(s); }
     private String defeated(Enemy e) { return battle.defeated(e); }
@@ -63,6 +63,7 @@ final class BattleHeroActions {
         effects.clear();
         Student actor = getCurrent();
         if (actor.getId() == Student.CHARICE && actor.getSp() < 2) return false;
+        battle.beginOffensiveAction(actor);
         battle.heroAnnouncement(null); rainArrowTargets.clear();
         lastHeroHitDamage = 0; lastHeroHitTarget = null;
         int multiplier = actor.consumeEtherealCharge() ? 4 : 1;
@@ -100,6 +101,7 @@ final class BattleHeroActions {
         if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS
                 && actor.getAbilityType() != Student.AbilityType.ARCANE_BURST && actor.getAbilityType() != Student.AbilityType.RAIN_OF_ARROWS && !validEnemy(enemy)) { return false; }
         if (!actor.spendAbilitySp()) { return false; }
+        if (actor.getAbilityType() != Student.AbilityType.HEALING_KISS) battle.beginOffensiveAction(actor);
         String skillName = switch (actor.getAbilityType()) {
             case ARCANE_BURST -> "Arcane Burst"; case CADET_STRIKE -> "Cadet Strike";
             case RAIN_OF_ARROWS -> "Rain of Arrows"; case HEALING_KISS -> "Angel Hug";
@@ -209,7 +211,8 @@ final class BattleHeroActions {
             int power = (int) Math.ceil(angelDamage * (80 + random.nextInt(21)) / 100.0);
             boolean shielded = target.getStoneSkinHits() > 0;
             int damage = target.takeDamage(power);
-            reflectStoneSkin(shielded, angelActor, damage);
+            reflectStoneSkin(target, shielded, angelActor, damage);
+            battle.grantHeadmastersFavor(angelActor, damage);
             if (damage > 0) { effects.add(new BattleEffect(target, -damage)); applyManaLeak(hasManaLeak(angelActor), target, damage); }
             angelExplosion = false;
             finish("Combo explosion hits " + target.getName() + " for " + damage + " damage." + defeated(target));
@@ -245,7 +248,8 @@ final class BattleHeroActions {
         effects.clear();
         boolean shielded = target.getStoneSkinHits() > 0;
         int damage = target.takeDamage(power);
-        reflectStoneSkin(shielded, looperActor, damage);
+        reflectStoneSkin(target, shielded, looperActor, damage);
+        battle.grantHeadmastersFavor(looperActor, damage);
         looperPreviousDamage = damage;
         if (angelExplosion && looperActor == angelActor) { angelDamage += damage; angelTarget = target; }
         effects.add(new BattleEffect(target, -damage)); applyManaLeak(true, target, damage);

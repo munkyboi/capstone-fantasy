@@ -65,7 +65,7 @@ final class BattleScene extends JPanel {
     BattleScene(State state) {
         this.state = state;
         this.overlays = new BattleHudOverlays(state, this::hudHeight, uniformIcon, rewardArt);
-        this.spritesRenderer = new BattleSpritesRenderer(this, sprites, stunIcon, dotIcon);
+        this.spritesRenderer = new BattleSpritesRenderer(this, sprites, stunIcon, dotIcon, focusIcon);
         this.hudRenderer = new BattleHudRenderer(state, effectRenderer, overlays);
         addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent event) {
@@ -129,6 +129,7 @@ final class BattleScene extends JPanel {
         private final BufferedImage sprites = image("/assets/sprites/student-party-idle-v1.png");
         private final BufferedImage stunIcon = trimIcon(image("/assets/ui/stunned-icon-v1.png"));
         private final BufferedImage dotIcon = trimIcon(image("/assets/ui/damage-over-time-icon-v1.png"));
+        private final BufferedImage focusIcon = trimIcon(image("/assets/ui/focus-penalty-v1.png"));
         private final BufferedImage wisp = image("/assets/sprites/library-wisp-v3.png");
         private final BufferedImage sentinel = image("/assets/sprites/stone-sentinel-v1.png");
         private final BufferedImage attackSentinel = image("/assets/sprites/attack-sentinel-v1.png");

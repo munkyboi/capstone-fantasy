@@ -14,7 +14,7 @@ public final class AccessorySpRegenerationUiTest {
   BattlePanel panel=new BattlePanel(()->{},ignored->{},new GameSettings(),random);panel.start(p,true,0);Battle b=(Battle)field(panel,"battle");
   @SuppressWarnings("unchecked") Map<Student,Double> hp=(Map<Student,Double>)field(panel,"actionPoints");
   @SuppressWarnings("unchecked") Map<Enemy,Double> ep=(Map<Enemy,Double>)field(panel,"enemyPoints");ep.replaceAll((enemy,value)->-1000.0);hp.put(z,(double)z.getActionThreshold()-1);
-  Method advance=BattlePanel.class.getDeclaredMethod("advanceActionPoints",double.class);advance.setAccessible(true);advance.invoke(panel,.11);
+  Method advance=BattlePanel.class.getDeclaredMethod("advanceActionPoints",double.class);advance.setAccessible(true);advance.invoke(panel,.2);
   check(z.getSp()==109&&b.getCurrent()==z,"SP recovered when bar fills");
   check(b.getEffects().stream().anyMatch(effect->"+9 SP".equals(effect.getLabel())),"recovery indicator");
   advance.invoke(panel,2.0);check(z.getSp()==109,"no extra roll while choosing a command");

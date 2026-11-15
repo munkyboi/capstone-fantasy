@@ -51,7 +51,7 @@ final class BattleDotEngine {
                 int taken = target.takeDamage(damage);
                 if (taken > 0) {
                     if (!changed) effects.clear();
-                    if (target instanceof Enemy enemy) { effects.add(new BattleEffect(enemy, -taken)); battle.reflectStoneSkin(shielded, burn.source, taken); battle.applyManaLeak(burn.manaLeak, enemy, taken); }
+                    if (target instanceof Enemy enemy) { effects.add(new BattleEffect(enemy, -taken)); battle.reflectStoneSkin(enemy, shielded, burn.source, taken); battle.applyManaLeak(burn.manaLeak, enemy, taken); }
                     else if (target instanceof Student student) {
                         effects.add(new BattleEffect(student, -taken));
                         if (!student.isAlive()) battle.dotKnockout(student);

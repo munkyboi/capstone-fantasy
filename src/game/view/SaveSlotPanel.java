@@ -16,6 +16,8 @@ import javax.swing.SwingConstants;
 
 /** Keyboard-operated save and load slot screen. */
 public final class SaveSlotPanel extends JPanel {
+    private static final java.time.format.DateTimeFormatter SAVE_DATE =
+            java.time.format.DateTimeFormatter.ofPattern("d MMM uuuu h:mm a", java.util.Locale.ENGLISH);
     /** Serialized state: store.
      * @serial
      */
@@ -36,6 +38,7 @@ public final class SaveSlotPanel extends JPanel {
      * @serial
      */
     private final JLabel[] slots = {new JLabel(), new JLabel(), new JLabel()};
+    private final JLabel[] pointers = {new JLabel(), new JLabel(), new JLabel()};
     /** Serialized state: info.
      * @serial
      */
@@ -64,6 +67,9 @@ public final class SaveSlotPanel extends JPanel {
      * @serial
      */
     private boolean overwritePending;
+    private GameProgress rememberedProgress;
+    private int rememberedSlot;
+    private SaveStore.Format rememberedFormat;
 
     /** Creates the slot screen.
      * @param store save file storage
@@ -78,11 +84,15 @@ public final class SaveSlotPanel extends JPanel {
         heading.setFont(ClassicUi.title(30)); heading.setForeground(new Color(250, 218, 143));
         add(heading, BorderLayout.NORTH);
         JPanel center = new JPanel(new GridLayout(4, 1, 0, 8)); center.setOpaque(false);
-        for (JLabel label : slots) {
+        for (int i = 0; i < slots.length; i++) {
+            JLabel label = slots[i];
             label.setForeground(Color.WHITE); label.setFont(ClassicUi.numbers(19));
             label.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(162, 184, 215), 2),
                     BorderFactory.createEmptyBorder(8, 18, 8, 18)));
-            center.add(label);
+            JPanel row = new JPanel(new BorderLayout()); row.setOpaque(false);
+            pointers[i].setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
+            row.add(pointers[i], BorderLayout.WEST); row.add(label, BorderLayout.CENTER);
+            center.add(row);
         }
         info.setForeground(new Color(250, 218, 143)); info.setFont(ClassicUi.numbers(15));
         center.add(info); add(center, BorderLayout.CENTER);
@@ -101,7 +111,12 @@ public final class SaveSlotPanel extends JPanel {
     public void openSave(GameProgress progress) { this.progress = progress; saving = true; open(); }
     /** Opens the screen for loading. */
     public void openLoad() { progress = null; saving = false; open(); }
-    private void open() { slot = 0; format = SaveStore.Format.TEXT; overwritePending = false; refresh("Choose a slot and format."); }
+    private void open() {
+        boolean useRemembered = saving && progress == rememberedProgress && rememberedFormat != null;
+        slot = useRemembered ? rememberedSlot : 0;
+        format = useRemembered ? rememberedFormat : SaveStore.Format.TEXT;
+        overwritePending = false; refresh("Choose a slot and format.");
+    }
     private void move(int direction) { slot = Math.floorMod(slot + direction, 3); overwritePending = false; refresh("Choose a slot and format."); }
     private void switchFormat() { format = format == SaveStore.Format.TEXT ? SaveStore.Format.BINARY : SaveStore.Format.TEXT; overwritePending = false; refresh("Choose a slot and format."); }
     private void confirm() {
@@ -111,20 +126,28 @@ public final class SaveSlotPanel extends JPanel {
                     overwritePending = true; refresh("Slot already has a " + formatName() + " save. Enter again to overwrite; Esc cancels."); return;
                 }
                 store.save(slot + 1, format, progress); overwritePending = false;
+                remember(progress);
                 refresh("Saved successfully. Press Esc to return to camp.");
             } else {
                 GameProgress result = store.load(slot + 1, format);
+                remember(result);
                 loaded.accept(result);
             }
         } catch (SaveException ex) { overwritePending = false; refresh(ex.getMessage()); }
+    }
+    private void remember(GameProgress savedProgress) {
+        rememberedProgress = savedProgress; rememberedSlot = slot; rememberedFormat = format;
     }
     private String formatName() { return format == SaveStore.Format.TEXT ? "text" : "binary"; }
     private void refresh(String message) {
         heading.setText((saving ? "SAVE GAME" : "LOAD GAME") + "  •  " + formatName().toUpperCase());
         for (int i = 0; i < slots.length; i++) {
-            ViewportFonts.setScaledIcon(slots[i], i == slot ? PixelPointer.HAND : PixelPointer.EMPTY);
-            slots[i].setText("SLOT " + (i + 1) + "     "
-                    + (store.exists(i + 1, format) ? "Saved game" : "Empty"));
+            ViewportFonts.setScaledIcon(pointers[i], i == slot ? PixelPointer.HAND : PixelPointer.EMPTY);
+            String description = store.exists(i + 1, format)
+                    ? "Saved game" + store.lastSavedAt(i + 1, format)
+                            .map(time -> "    " + SAVE_DATE.format(time.atZone(java.time.ZoneId.systemDefault())))
+                            .orElse("") : "Empty";
+            slots[i].setText("SLOT " + (i + 1) + "     " + description);
         }
         info.setText(message);
         help.setText("↑ ↓ Slot   •   ← → Text / Binary   •   Enter Confirm   •   Esc Back");

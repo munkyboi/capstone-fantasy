@@ -10,13 +10,14 @@ import java.awt.image.BufferedImage;
 /** Draws heroes, enemies and their targeting and status markers. */
 final class BattleSpritesRenderer {
     private final BattleScene scene;
-    private final BufferedImage sprites, stunIcon, dotIcon;
+    private final BufferedImage sprites, stunIcon, dotIcon, focusIcon;
 
-    BattleSpritesRenderer(BattleScene scene, BufferedImage sprites, BufferedImage stunIcon, BufferedImage dotIcon) {
+    BattleSpritesRenderer(BattleScene scene, BufferedImage sprites, BufferedImage stunIcon, BufferedImage dotIcon, BufferedImage focusIcon) {
         this.scene = scene;
         this.sprites = sprites;
         this.stunIcon = stunIcon;
         this.dotIcon = dotIcon;
+        this.focusIcon = focusIcon;
     }
 
     void draw(Graphics2D g, Battle battle, int w, int h, int slotWidth, int spriteWidth, int spriteHeight) {
@@ -77,6 +78,12 @@ final class BattleSpritesRenderer {
                         int centerX = Math.max(8, Math.min(w - 8, spriteCenter + (battle.getStunTurns(student) > 0 ? 8 : 0)));
                         int centerY = Math.max(8, spriteTop - 9);
                         BattleScene.drawFit(g, dotIcon, 0, dotIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
+                    }
+                    if (student.isAlive() && !battle.isOver() && battle.getFocusPenaltyStacks(student) > 0 && focusIcon != null) {
+                        int otherIcons = (battle.getStunTurns(student) > 0 ? 1 : 0) + (battle.hasDamageOverTime(student) ? 1 : 0);
+                        int centerX = Math.max(8, Math.min(w - 8, spriteCenter + (otherIcons == 0 ? 0 : otherIcons == 1 ? 16 : 23)));
+                        int centerY = Math.max(8, spriteTop - 9);
+                        BattleScene.drawFit(g, focusIcon, 0, focusIcon.getWidth(), centerX - 7, centerY - 7, 14, 14);
                     }
                     if (scene.battleState().partyTarget(index)) {
                         int slice = sprites != null ? sprites.getWidth() / 4 : 0;

@@ -53,6 +53,15 @@ public final class SaveStore {
      * @return true when the file exists
      */
     public boolean exists(int slot, Format format) { return Files.isRegularFile(file(slot, format)); }
+    /** Returns the save file's last modification time, if available.
+     * @param slot slot number from one to three
+     * @param format save format
+     * @return last modification time, or empty if unavailable
+     */
+    public java.util.Optional<java.time.Instant> lastSavedAt(int slot, Format format) {
+        try { return java.util.Optional.of(Files.getLastModifiedTime(file(slot, format)).toInstant()); }
+        catch (IOException | SecurityException ex) { return java.util.Optional.empty(); }
+    }
     /** Saves a camp state, replacing only the chosen slot and format.
      * @param slot slot number from one to three
      * @param format save format
@@ -166,7 +175,7 @@ public final class SaveStore {
                     throw new IOException("Invalid student information");
                 }
                 ids.add(id); hp.add(oldStats || oldEquipmentHp && savedMax != newMax ? scaleResource(savedHp, savedMax, newMax) : savedHp); xp.add(experience);
-                int oldMaxSp = !currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithEquipment(Equipment.Slot.ACCESSORY, accessory.isEmpty() ? null : accessory);
+                int oldMaxSp = !currentStats(version) ? legacyMaxSp(expected) : expected.maxSpWithArmorAndAccessory(armor.isEmpty() ? null : armor, accessory.isEmpty() ? null : accessory);
                 oldMaxSps.add(legacyLooper && "looper_ring".equals(accessory) ? oldMaxSp * 2 : oldMaxSp);
             }
             if (!"true".equals(properties.getProperty("inventory.campusPass", "true"))) {
@@ -238,6 +247,7 @@ public final class SaveStore {
     }
     /** Recognizes the earlier Blade Mail and Hero's Ring HP bonuses in text saves. */
     private static boolean compatibleEquipmentMaxHp(Student student, String armor, String accessory, int savedMax) {
+        if ("campus_medal".equals(accessory) && savedMax == student.maxHpWithEquipment(armor == null || armor.isEmpty() ? null : armor, null)) return true;
         if (!"blade_mail".equals(armor) && !"heroes_ring".equals(accessory)) return false;
         int base = student.maxHpWithEquipment(null, null);
         double[] armorBonuses = "blade_mail".equals(armor) ? new double[]{2.0, 2.5}

@@ -74,7 +74,7 @@ public final class BattlePanel extends JPanel {
     /** Serialized state: log.
      * @serial
      */
-    private final JTextArea log = new JTextArea();
+    private final JTextArea log = new AccessibleTextComponents.Area();
     /** Serialized state: log scroll.
      * @serial
      */
@@ -552,7 +552,16 @@ public final class BattlePanel extends JPanel {
     JButton inputAttack() { return attack; } JButton inputAbility() { return ability; } JButton inputFinish() { return finish; }
     BattleScene inputScene() { return scene; }
     boolean inputCanExplore() { return onExplore != null; }
-    void inputExplore() { onExplore.accept(progress, encounterStage); }
+    void inputExplore() {
+        for (Student student : progress.getParty()) {
+            int percent = 30 + battleRandom.nextInt(21);
+            int hpRecovery = (int) (((long) student.getMaxHp() * percent + 99) / 100);
+            int spRecovery = (int) (((long) student.getMaxSp() * percent + 99) / 100);
+            student.heal(Math.min(hpRecovery, student.getMaxHp() - student.getHp()));
+            student.restoreSp((int) Math.min(student.getMaxSp(), (long) student.getSp() + spRecovery));
+        }
+        onExplore.accept(progress, encounterStage);
+    }
     void refresh() {
         boolean over = battle.isOver();
         if (over) {

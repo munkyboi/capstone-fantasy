@@ -52,6 +52,8 @@ digraph UML {
  BattlePanel -> BattleViewState [style=dashed,arrowhead=vee];
  BattleHudController [label="{{BattleHudController|HUD updates}}"];
  BattlePanel -> BattleHudController [style=dashed,arrowhead=vee];
+ FocusCharm [label="{{FocusCharmMechanic|damage penalty and bonus turns}}"] ;
+ Battle -> FocusCharm [style=dashed,arrowhead=vee];
  Main -> BattlePanel [style=dotted,label="creates"];
  Main -> Camp [style=dotted,label="creates"];
  Main -> InventoryPanel [style=dotted,label="creates"];

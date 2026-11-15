@@ -27,6 +27,7 @@ public final class Battle {
     private final boolean merchantEncounter;
     private final java.util.Set<Student> apRefills = new java.util.HashSet<>();
     private final BattleDotEngine dots = new BattleDotEngine(this);
+    private final FocusCharmMechanic focus = new FocusCharmMechanic();
     private int turn = -1;
     private BattleHeroActions heroActions;
     private BattleEnemyDamage enemyDamageResolver;
@@ -518,26 +519,29 @@ public final class Battle {
     }
     int hurt(Enemy target, int attack, boolean guaranteedHit) {
         heroActions.recordHit(target, 0);
-        if (!guaranteedHit && !hits(getCurrent(), target)) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
+        boolean landed = guaranteedHit || hits(getCurrent(), target);
+        focus.hit(landed);
+        if (!landed) { effects.add(BattleEffect.status(target, "Dodge")); return 0; }
         int defense = target.getDefense();
         Student actor = getCurrent();
         if (defense > 0 && actor != null && "demon_hunter".equals(actor.getEquipmentId(Equipment.Slot.WEAPON))) {
             defense -= (int)Math.ceil(defense * 0.25);
         }
         boolean shielded = target.getStoneSkinHits() > 0;
-        int damage = target.takeDamage(damageAfterDefense(attack, defense) + random.nextInt(DAMAGE_VARIATION));
-        reflectStoneSkin(shielded, actor, damage);
+        int damage = target.takeDamage(focus.reduce(damageAfterDefense(attack, defense) + random.nextInt(DAMAGE_VARIATION)));
+        reflectStoneSkin(target, shielded, actor, damage);
+        grantHeadmastersFavor(actor, damage);
         heroActions.recordHit(target, damage);
         effects.add(new BattleEffect(target, -damage));
         applyManaLeak(hasManaLeak(getCurrent()), target, damage);
         return damage;
     }
     /** Stone Skin returns 10% of actual damage without triggering further reflection. */
-    void reflectStoneSkin(boolean shielded, GameCharacter source, int damage) {
+    void reflectStoneSkin(Enemy protectedEnemy, boolean shielded, GameCharacter source, int damage) {
         if (!shielded || damage <= 0 || !(source instanceof Student hero) || !hero.isAlive()) return;
         int reflected = hero.takeDamage((int)(((long)damage + 9) / 10));
         if (reflected > 0) {
-            effects.add(BattleEffect.status(hero, "Reflect"));
+            effects.add(BattleEffect.status(protectedEnemy, "Reflect"));
             effects.add(new BattleEffect(hero, -reflected));
             if (!hero.isAlive()) { clearKnockedOutHeroEffects(hero); if (getCurrent() == hero) turn = -1; }
         }
@@ -550,6 +554,18 @@ public final class Battle {
         int amount = (int) Math.ceil(target.getMaxSp() * (5 + random.nextInt(6)) / 100.0);
         int drained = target.loseSp(amount);
         if (drained > 0) effects.add(BattleEffect.manaLeak(target, drained));
+    }
+    void beginOffensiveAction(Student actor) { focus.begin(actor); }
+    /** Returns the number of pending Focus Charm damage-penalty stacks.
+     * @param student hero to inspect
+     * @return penalty stacks, from zero to three
+     */
+    public int getFocusPenaltyStacks(Student student) { return focus.stacks(student); }
+    void grantHeadmastersFavor(Student actor, int damage) {
+        if (actor == null || !actor.isAlive() || !actor.hasCampusSet() || damage <= 0 || actor.getSp() >= actor.getMaxSp()) return;
+        int percent = 3 + random.nextInt(3);
+        int recovered = (int) Math.min((long) actor.getMaxSp() - actor.getSp(), ((long) damage * percent + 99) / 100);
+        if (recovered > 0) { actor.restoreSp(actor.getSp() + recovered); effects.add(BattleEffect.status(actor, "+" + recovered + " SP")); }
     }
     String defeated(Enemy target) { return target.isAlive() ? "" : " " + target.getName() + " is defeated."; }
     void clearGuards() {
@@ -565,6 +581,8 @@ public final class Battle {
     void finish(String action) {
         message = action;
         if (hasPendingLooperHits()) return;
+        Student extraTurn = focus.complete();
+        if (extraTurn != null && !isOver()) { apRefills.add(extraTurn); effects.add(BattleEffect.status(extraTurn, "Focus")); }
         if (isVictory()) { message += "\nAll enemies defeated! Victory!"; clearGuards(); return; }
         turn = -1;
     }

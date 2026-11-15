@@ -71,10 +71,10 @@ public final class EquipmentSystemTest {
                 key(panel, "inventory-right"); key(panel, "inventory-right");
                 key(panel, "inventory-confirm"); key(panel, "inventory-down");
                 Field details = InventoryPanel.class.getDeclaredField("details"); details.setAccessible(true);
-                String preview = ((javax.swing.JTextArea) details.get(panel)).getText();
-                check(preview.contains("Focus Charm") && preview.contains("ATK +2"), "item and stat preview");
+                String preview = ((javax.swing.text.JTextComponent) details.get(panel)).getText();
+                check(preview.contains("Focus Charm") && preview.contains("ATK +5"), "item and stat preview");
                 key(panel, "inventory-confirm");
-                check(charice.getAttack() == baseAttack + 2 && "focus_charm".equals(charice.getEquipmentId(Equipment.Slot.ACCESSORY)),
+                check(charice.getAttack() == baseAttack + 5 && "focus_charm".equals(charice.getEquipmentId(Equipment.Slot.ACCESSORY)),
                         "equip accessory with keyboard");
                 key(panel, "inventory-back"); check(returned[0] == 1, "return to camp");
             } catch (ReflectiveOperationException ex) { throw new RuntimeException(ex); }
@@ -90,7 +90,7 @@ public final class EquipmentSystemTest {
                 GameProgress loaded = store.load(1, format);
                 Student loadedCharice = find(loaded, Student.CHARICE), loadedZack = find(loaded, Student.ZACK);
                 check("focus_charm".equals(loadedCharice.getEquipmentId(Equipment.Slot.ACCESSORY))
-                        && loadedCharice.getAttack() == baseAttack + 2 && loadedZack.hasVest(), "equipped items survive " + format);
+                        && loadedCharice.getAttack() == baseAttack + 5 && loadedZack.hasVest(), "equipped items survive " + format);
                 check(loaded.getInventory().getEquipmentIds().contains("training_uniform")
                         && loaded.getInventory().isRewardClaimed(0) && loaded.getInventory().isRewardClaimed(1), "bag and reward flags survive " + format);
                 check(loaded.equip(loadedZack, Equipment.Slot.WEAPON, "scholar_staff")

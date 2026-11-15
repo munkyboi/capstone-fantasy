@@ -25,8 +25,8 @@ public final class RewardEquipmentBonusesTest {
         equip(p,0,Equipment.Slot.WEAPON,"scholar_staff"); equip(p,0,Equipment.Slot.ACCESSORY,"focus_charm");
         equip(p,1,Equipment.Slot.WEAPON,"cadet_blade"); equip(p,2,Equipment.Slot.WEAPON,"hunter_crossbows");
         equip(p,3,Equipment.Slot.WEAPON,"champion_wraps");
-        check(z.getAttack()==29 && b.getAttack()==19 && c.getAttack()==14 && a.getAttack()==28, "attack bonuses");
-        near(z.getEffectiveAccuracy(),9.2,"both accuracy bonuses stack"); near(c.getEffectiveAgility(),14.3,"agility bonus retains fraction");
+        check(z.getAttack()==32 && b.getAttack()==19 && c.getAttack()==14 && a.getAttack()==28, "attack bonuses");
+        near(z.getEffectiveAccuracy(),12.8,"both accuracy bonuses stack"); near(c.getEffectiveAgility(),14.3,"agility bonus retains fraction");
         near(a.getEffectiveSpeed(),5.5,"speed bonus retains fraction"); check(HealthRegeneration.amount(b)==27,"cadet regeneration adds ten percentage points");
         GameProgress tank = new GameProgress(List.of(1)); equip(tank,1,Equipment.Slot.WEAPON,"cadet_blade");
         equip(tank,1,Equipment.Slot.ARMOR,"blade_mail");
@@ -39,16 +39,16 @@ public final class RewardEquipmentBonusesTest {
         equip(boosted,0,Equipment.Slot.ACCESSORY,"focus_charm"); Battle accurate = new Battle(boosted,hitRoll);
         Enemy accurateEnemy=accurate.getEnemies().get(0);
         check(accurate.selectStudent(member(boosted,0)) && accurate.attack(accurateEnemy) && accurateEnemy.getHp()<accurateEnemy.getMaxHp(),"bonus changes hit outcome");
-        near(Battle.hitChance(c.getEffectiveAgility(),z.getEffectiveAccuracy(),100), 1 - Math.min(.60,14.3/(14.3+9.2)),"precise hit formula");
-        near(z.accuracyWithEquipment(Equipment.Slot.WEAPON,null),8.4,"preview removal keeps charm");
+        near(Battle.hitChance(c.getEffectiveAgility(),z.getEffectiveAccuracy(),100), 1 - Math.min(.60,14.3/(14.3+12.8)),"precise hit formula");
+        near(z.accuracyWithEquipment(Equipment.Slot.WEAPON,null),12.0,"preview removal keeps charm");
         near(c.agilityWithEquipment(Equipment.Slot.WEAPON,null),13,"preview removes crossbows");
         near(a.effectiveSpeedWithEquipment(Equipment.Slot.WEAPON,null),5,"preview removes wraps");
         for (String id : List.of("focus_charm","scholar_staff","cadet_blade","hunter_crossbows","champion_wraps"))
-            check(Equipment.fromId(id).getSpecialDescription().contains(id.equals("focus_charm") ? "+5%" : "+10%"), "item description " + id);
+            check(Equipment.fromId(id).getSpecialDescription().contains(id.equals("focus_charm") ? "+50%" : "+10%"), "item description " + id);
         p.advance(); Path dir=Files.createTempDirectory("item-bonus-");
         try { SaveStore store=new SaveStore(dir); for(SaveStore.Format fmt:SaveStore.Format.values()) {
             store.save(1,fmt,p); GameProgress loaded=store.load(1,fmt);
-            near(member(loaded,0).getEffectiveAccuracy(),9.2,"saved ACC " + fmt);
+            near(member(loaded,0).getEffectiveAccuracy(),12.8,"saved ACC " + fmt);
             near(member(loaded,2).getEffectiveAgility(),14.3,"saved AGI " + fmt);
             near(member(loaded,3).getEffectiveSpeed(),5.5,"saved SPD " + fmt);
             check(HealthRegeneration.amount(member(loaded,1))==27,"saved regeneration " + fmt);
@@ -61,9 +61,9 @@ public final class RewardEquipmentBonusesTest {
             check("14".equals(format.invoke(null,13.65)),"stats display the ceiling without decimals");
             InventoryPanel ui=new InventoryPanel(()->{}); ui.open(p); ui.setSize(960,540); layout(ui);
             key(ui,"inventory-confirm"); layout(ui);
-            Field field=InventoryPanel.class.getDeclaredField("details"); field.setAccessible(true); JTextArea details=(JTextArea)field.get(ui);
+            Field field=InventoryPanel.class.getDeclaredField("details"); field.setAccessible(true); JTextPane details=(JTextPane)field.get(ui);
             JScrollPane scroll=(JScrollPane)SwingUtilities.getAncestorOfClass(JScrollPane.class,details);
-            check(details.getLineWrap() && scroll.getHorizontalScrollBarPolicy()==JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,"no horizontal scrolling");
+            check(details.getScrollableTracksViewportWidth() && scroll.getHorizontalScrollBarPolicy()==JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,"no horizontal scrolling");
             check(details.getText().contains("Preview:\n") && details.getText().contains("AGI ") && details.getText().contains("ACC "),"column preview contains stats");
         } catch(ReflectiveOperationException e) {throw new RuntimeException(e);} });
         System.out.println("Reward equipment bonuses checks passed");

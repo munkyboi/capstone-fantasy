@@ -45,6 +45,7 @@ assets/ui/carbon-market-icon-v1.png
 assets/ui/carbon-market-locked-icons-v1.png
 assets/ui/carbon-market-open-icons-v1.png
 assets/ui/damage-over-time-icon-v1.png
+assets/ui/focus-penalty-v1.png
 assets/ui/hand-pointer-reference.png
 assets/ui/reward-icons-v1.png
 assets/ui/reward-uniform-v1.png

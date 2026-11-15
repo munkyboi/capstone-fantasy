@@ -35,6 +35,7 @@ final class BattleActionFlow {
         } else if (panel.actionBattle().getCurrent() != actor || panel.actionBattle().isOver()) {
             panel.resetStudentAp(actor);
             panel.showActionEffects(attacking ? actor : null);
+            panel.applyApRefills();
             if (!panel.actionBattle().isOver()) { panel.selectReadyStudent(); }
         }
         if (panel.actionBattle().isOver()) { panel.actionApTimer().stop(); }
@@ -49,7 +50,7 @@ final class BattleActionFlow {
             panel.announceAbility();
             panel.showActionEffects(actor);
             if (panel.actionBattle().hasPendingLooperHits()) panel.actionLooperTimer().restart();
-            else if (!panel.actionBattle().isOver()) panel.selectReadyStudent();
+            else if (!panel.actionBattle().isOver()) { panel.applyApRefills(); panel.selectReadyStudent(); }
         }
         if (panel.actionBattle().isOver()) panel.actionApTimer().stop();
         panel.actionTickNow();
@@ -64,7 +65,7 @@ final class BattleActionFlow {
             panel.actionLooperTimer().stop();
             if (panel.actionBattle().hasPendingAngelAttack() && !panel.actionBattle().isOver()) scheduleAngelAttack();
             else if (panel.actionBattle().hasPendingSecondCast() && !panel.actionBattle().isOver()) panel.actionSecondCastTimer().restart();
-            else if (!panel.actionBattle().isOver()) panel.selectReadyStudent();
+            else if (!panel.actionBattle().isOver()) { panel.applyApRefills(); panel.selectReadyStudent(); }
         }
         if (panel.actionBattle().isOver()) panel.actionApTimer().stop();
         panel.actionTickNow();
@@ -82,7 +83,7 @@ final class BattleActionFlow {
         panel.showActionEffects(actor);
         if (panel.actionBattle().hasPendingTwinShot()) scheduleTwinShot();
         else if (panel.actionBattle().hasPendingLooperHits()) panel.actionLooperTimer().restart();
-        else if (!panel.actionBattle().isOver()) panel.selectReadyStudent();
+        else if (!panel.actionBattle().isOver()) { panel.applyApRefills(); panel.selectReadyStudent(); }
         if (panel.actionBattle().isOver()) panel.actionApTimer().stop();
         panel.actionTickNow();
         panel.refresh();
@@ -110,7 +111,7 @@ final class BattleActionFlow {
         panel.showActionEffects(actor);
         if (panel.actionBattle().hasPendingLooperHits()) panel.actionLooperTimer().restart();
         else if (panel.actionBattle().hasPendingAngelAttack()) scheduleAngelAttack();
-        else if (!panel.actionBattle().isOver()) panel.selectReadyStudent();
+        else if (!panel.actionBattle().isOver()) { panel.applyApRefills(); panel.selectReadyStudent(); }
         if (panel.actionBattle().isOver()) panel.actionApTimer().stop();
         panel.actionTickNow();
         panel.refresh();

@@ -18,7 +18,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+import javax.swing.JTextPane;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 import javax.swing.SwingConstants;
 import javax.swing.text.DefaultHighlighter;
 
@@ -67,11 +69,11 @@ public final class InventoryPanel extends JPanel {
     /** Serialized state: bag contents.
      * @serial
      */
-    private final JTextArea bagContents = textArea();
+    private final JTextPane bagContents = textArea();
     /** Serialized state: details.
      * @serial
      */
-    private final JTextArea details = choiceArea();
+    private final JTextPane details = choiceArea();
     /** Serialized state: choice cursor.
      * @serial
      */
@@ -192,14 +194,14 @@ public final class InventoryPanel extends JPanel {
         JLabel label = new JLabel(); label.setOpaque(true); label.setFont(ClassicUi.numbers(13));
         label.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8)); return label;
     }
-    private static JTextArea textArea() {
-        JTextArea text = new JTextArea(); text.setEditable(false); text.setFocusable(false);
+    private static JTextPane textArea() {
+        JTextPane text = new AccessibleTextComponents.Pane(); text.setEditable(false); text.setFocusable(false);
         text.setFont(ClassicUi.numbers(13)); text.setForeground(Color.WHITE);
         text.setOpaque(false); text.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         return text;
     }
-    private JTextArea choiceArea() {
-        JTextArea area = new JTextArea() {
+    private JTextPane choiceArea() {
+        JTextPane area = new AccessibleTextComponents.Pane() {
             @Override protected void paintComponent(Graphics graphics) {
                 super.paintComponent(graphics);
                 if (choiceCursor < 0) { return; }
@@ -214,12 +216,11 @@ public final class InventoryPanel extends JPanel {
             }
         };
         area.setEditable(false); area.setFocusable(false); area.setOpaque(false);
-        area.setLineWrap(true); area.setWrapStyleWord(true);
         area.setFont(ClassicUi.numbers(13)); area.setForeground(Color.WHITE);
         area.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
         return area;
     }
-    private static JScrollPane scroll(JTextArea area) {
+    private static JScrollPane scroll(JTextPane area) {
         JScrollPane pane = new JScrollPane(area); pane.setBorder(null); pane.setFocusable(false); pane.setOpaque(false); pane.getViewport().setOpaque(false);
         javax.swing.JScrollBar bar = pane.getVerticalScrollBar();
         bar.setFocusable(false); bar.setPreferredSize(new Dimension(10, 0));
@@ -285,6 +286,17 @@ public final class InventoryPanel extends JPanel {
         else { back.run(); }
     }
     private static String name(String id) { return id == null ? "Empty" : Equipment.fromId(id).getName(); }
+    private static boolean isSetItem(String id) { return "campus_vest".equals(id) || "campus_medal".equals(id); }
+    private static String itemLabel(String id) { return isSetItem(id) ? "<font color='#a8e6a3'>" + name(id) + "</font>" : name(id); }
+    private static void colorSetItems(JTextPane text) {
+        SimpleAttributeSet style = new SimpleAttributeSet(); StyleConstants.setForeground(style, new Color(168, 230, 163));
+        for (String item : new String[]{"Campus Vest", "Campus Medal"}) {
+            int from = 0, index;
+            while ((index = text.getText().indexOf(item, from)) >= 0) {
+                text.getStyledDocument().setCharacterAttributes(index, item.length(), style, false); from = index + item.length();
+            }
+        }
+    }
     private static String formatStat(double value) {
         return Long.toString((long) Math.ceil(value - 1e-9));
     }
@@ -321,7 +333,7 @@ public final class InventoryPanel extends JPanel {
             Equipment.Slot gearSlot = Equipment.Slot.values()[i];
             ViewportFonts.setScaledIcon(slots[i], i == slotIndex ? PixelPointer.HAND : PixelPointer.EMPTY);
             slots[i].setText("<html>" + gearSlot.name()
-                    + "<br>&nbsp;&nbsp; " + name(current.getEquipmentId(gearSlot)) + "</html>");
+                    + "<br>&nbsp;&nbsp; " + itemLabel(current.getEquipmentId(gearSlot)) + "</html>");
             styleRow(slots[i], i == slotIndex);
         }
         StringBuilder bag = new StringBuilder("First-Aid Kits  × ").append(progress.getKits())
@@ -330,7 +342,7 @@ public final class InventoryPanel extends JPanel {
         List<String> items = progress.getInventory().getEquipmentIds();
         if (items.isEmpty()) { bag.append("  (none)\n"); }
         else { for (String id : items) { bag.append("  ").append(name(id)).append('\n'); } }
-        bagContents.setText(bag.toString()); bagContents.setCaretPosition(0);
+        bagContents.setText(bag.toString()); colorSetItems(bagContents); bagContents.setCaretPosition(0);
 
         choiceHeading.setText(choosing ? "CHOOSE " + slot().name() : "EQUIPMENT DETAILS");
         StringBuilder choiceText = new StringBuilder();
@@ -369,7 +381,7 @@ public final class InventoryPanel extends JPanel {
             choiceText.append("\nEnter to change this slot.");
         }
         choiceCursor = selectedStart;
-        details.setText(choiceText.toString());
+        details.setText(choiceText.toString()); colorSetItems(details);
         details.getHighlighter().removeAllHighlights();
         if (selectedStart >= 0) {
             try { details.getHighlighter().addHighlight(selectedStart, selectedEnd,

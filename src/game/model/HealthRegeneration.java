@@ -14,7 +14,7 @@ public final class HealthRegeneration {
      */
     public static double rate(Student student) {
         double bonus = switch (java.util.Objects.toString(student.getEquipmentId(Equipment.Slot.ARMOR), "")) {
-            case "campus_vest" -> 0.10;
+            case "campus_vest", "training_uniform" -> 0.10;
             case "ethereal_robe", "designer_leather_vest" -> 0.10;
             case "blade_mail" -> 0.20;
             case "ultra_instinct_shirt" -> 0.30;

@@ -50,7 +50,7 @@ public final class Equipment extends Item {
             case "hunter_crossbows" -> new Equipment(id, "Hunter Crossbows", Slot.WEAPON, 3, 0, Student.CHARICE);
             case "champion_wraps" -> new Equipment(id, "Champion Wraps", Slot.WEAPON, 3, 0, Student.ANGEL);
             case "campus_vest" -> new Equipment();
-            case "focus_charm" -> new Equipment(id, "Focus Charm", Slot.ACCESSORY, 2, 0, -1);
+            case "focus_charm" -> new Equipment(id, "Focus Charm", Slot.ACCESSORY, 5, 0, -1);
             case "scholars_ward" -> new Equipment(id, "Scholar’s Ward", Slot.ACCESSORY, 0, 0, Student.ZACK);
             case "training_uniform" -> new Equipment(id, "Training Uniform", Slot.ARMOR, 0, 6, -1);
             case "market_charm" -> new Equipment(id, "Market Charm", Slot.ACCESSORY, 1, 1, -1);
@@ -68,7 +68,7 @@ public final class Equipment extends Item {
             case "ultra_instinct_shirt" -> new Equipment(id, "Ultra Instinct Shirt", Slot.ARMOR, 0, 0, -1);
             case "designer_leather_vest" -> new Equipment(id, "Designer Leather Vest", Slot.ARMOR, 0, 0, -1);
             case "ethereal_robe" -> new Equipment(id, "Ethereal Robe", Slot.ARMOR, 0, 0, -1);
-            case "campus_medal" -> new Equipment(id, "Campus Medal", Slot.ACCESSORY, 5, 3, -1);
+            case "campus_medal" -> new Equipment(id, "Campus Medal", Slot.ACCESSORY, 0, 0, -1);
             default -> throw new ItemNotFoundException(id);
         };
     }
@@ -133,14 +133,14 @@ public final class Equipment extends Item {
      */
     public String getSpecialDescription() {
         String description = switch (id) {
-            case "campus_vest" -> "+5% HP; +10% HP regeneration";
-            case "training_uniform" -> "+10% ACC; +10% AGI";
+            case "campus_vest" -> "+5% HP; +10% HP regeneration; Campus set with Campus Medal";
+            case "training_uniform" -> "+10% ACC; +10% AGI; +10% HP regeneration";
             case "sentinel_band" -> "+50 HP; +15% HP regeneration";
             case "market_charm" -> "+10% Petot after victory while wearer is alive";
-            case "focus_charm" -> "+5% ACC";
+            case "focus_charm" -> "+5 ATK; +50% ACC; -30% SPD; 50%+ misses: extra turn; next attack -30% damage per stack (max 3)";
             case "guardian_band" -> "15% chance to reduce an incoming attack's damage by 25%";
             case "courage_charm" -> "At 50% HP or less, 20% chance to heal 5% max HP after a direct attack";
-            case "campus_medal" -> "+10% ACC; +10% AGI";
+            case "campus_medal" -> "+10% HP/ACC/AGI; Campus Vest set: +10% ATK/SPD/SP/DEF; direct damage restores 3-5% as SP";
             case "scholar_staff" -> "+10% ACC";
             case "scholars_ward" -> "Zack only; +30% HP; +20% DEF";
             case "hunter_crossbows" -> "+10% AGI";

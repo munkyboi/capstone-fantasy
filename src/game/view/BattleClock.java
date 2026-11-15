@@ -18,6 +18,7 @@ final class BattleClock {
     private final JProgressBar[] apBars;
     private final Timer apTimer, monsterTurnTimer, sparkExplosionTimer;
     private final BattleScene scene;
+    private Student focusPriority;
 
     BattleClock(BattlePanel panel, GameSettings settings, Map<Student, Double> actionPoints,
             Map<Enemy, Double> enemyPoints, JProgressBar[] apBars, Timer apTimer,
@@ -28,7 +29,7 @@ final class BattleClock {
         this.scene = scene;
     }
     void reset(boolean ambushed) {
-        Battle battle = panel.battleForClock(); actionPoints.clear(); enemyPoints.clear();
+        Battle battle = panel.battleForClock(); actionPoints.clear(); enemyPoints.clear(); focusPriority = null;
         for (Student student : battle.getParty()) actionPoints.put(student, ambushed || !student.isAlive() ? 0.0 : (double)student.getActionThreshold());
         for (Enemy enemy : battle.getEnemies()) enemyPoints.put(enemy, ambushed ? enemy.getActionThreshold() * 0.8 : 0.0);
     }
@@ -134,6 +135,7 @@ final class BattleClock {
         java.util.List<Student> refilled = new java.util.ArrayList<>();
         for (Student student : battle.consumeApRefills()) {
             if (!student.isAlive()) continue;
+            if (battle.getFocusPenaltyStacks(student) > 0) focusPriority = student;
             if (actionPoints.get(student) + AP_EPSILON < student.getActionThreshold()) {
                 if (student.isAlive()) refilled.add(student);
             }
@@ -148,7 +150,10 @@ final class BattleClock {
     boolean selectReadyStudent() {
         Battle battle = panel.battleForClock();
         if (battle.isOver() || battle.getCurrent() != null) { return false; }
-        for (Student student : battle.getParty()) {
+        java.util.List<Student> ordered = new java.util.ArrayList<>(battle.getParty());
+        if (focusPriority != null && ordered.remove(focusPriority)) ordered.add(0, focusPriority);
+        focusPriority = null;
+        for (Student student : ordered) {
             if (battle.isOver()) return false;
             if (student.isAlive() && actionPoints.get(student) + AP_EPSILON >= student.getActionThreshold()) {
                 if (battle.isEscaping() && student != battle.getEscapeInitiator()) {

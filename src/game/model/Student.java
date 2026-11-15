@@ -251,7 +251,7 @@ public class Student extends GameCharacter {
         String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
         String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
         return getAccuracy() * (1.0 + ("training_uniform".equals(armor) ? 0.10 : 0) + ("scholar_staff".equals(weapon) ? 0.10 : 0)
-                + ("focus_charm".equals(accessory) ? 0.05 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
+                + ("focus_charm".equals(accessory) ? 0.50 : 0) + ("campus_medal".equals(accessory) ? 0.10 : 0));
     }
     /** Calculates speed for a proposed equipment change.
      * @param slot selected slot
@@ -301,6 +301,9 @@ public class Student extends GameCharacter {
         double multiplier = stat != Stat.HP && "ring_of_power".equals(accessory) ? 1.5 : 1.0;
         if (stat == Stat.HP && ("campus_vest".equals(armor)
                 || (armor == null && slotToReplace != Equipment.Slot.ARMOR && vestEquipped))) multiplier += 0.05;
+        if (stat == Stat.HP && "campus_medal".equals(accessory)) multiplier += 0.10;
+        if (isCampusSet(armor, accessory) && (stat == Stat.ATK || stat == Stat.DEF || stat == Stat.SPD)) multiplier += 0.10;
+        if (stat == Stat.SPD && "focus_charm".equals(accessory)) multiplier -= 0.30;
         if (stat == Stat.HP && "heroes_ring".equals(accessory)) multiplier += 0.2;
         if (stat == Stat.HP && "scholars_ward".equals(accessory)) multiplier += 0.3;
         if (stat == Stat.HP && "blade_mail".equals(armor)) multiplier += 2.5;
@@ -449,7 +452,25 @@ public class Student extends GameCharacter {
      * @return maximum skill points for a proposed equipment change
      */
     public int maxSpWithEquipment(Equipment.Slot slot, String replacement) {
-        return MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
+        String armor = slot == Equipment.Slot.ARMOR ? replacement : armorId;
+        String accessory = slot == Equipment.Slot.ACCESSORY ? replacement : accessoryId;
+        return maxSpWithArmorAndAccessory(armor, accessory);
+    }
+    /** Calculates maximum SP for save validation and equipment previews.
+     * @param armor armor ID or null
+     * @param accessory accessory ID or null
+     * @return maximum SP with the specified equipment
+     */
+    public int maxSpWithArmorAndAccessory(String armor, String accessory) {
+        int base = MAX_SP[id] + (getLevel() - 1) * 3 + allocatedSp * 3;
+        return isCampusSet(armor, accessory) ? (int) Math.round(base * 1.10) : base;
+    }
+    /** Whether the student wears both pieces of the Campus set.
+     * @return true if both set pieces are equipped
+     */
+    public boolean hasCampusSet() { return isCampusSet(armorId, accessoryId); }
+    private static boolean isCampusSet(String armor, String accessory) {
+        return "campus_vest".equals(armor) && "campus_medal".equals(accessory);
     }
     /** Returns points earned but not spent.
      * @return points earned but not spent
